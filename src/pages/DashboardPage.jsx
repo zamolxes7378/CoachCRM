@@ -798,7 +798,7 @@ export default function DashboardPage({ user }) {
                       const created = await createClient({
                         type: ncType || 'couple',
                         partnerA: { firstName: ncFirstName || '', lastName: ncLastName.trim() },
-                        phase: 'debut',
+                        phase: 'prospect',
                         status: 'active',
                         startDate: today,
                       })

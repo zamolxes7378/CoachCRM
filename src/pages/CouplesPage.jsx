@@ -1022,7 +1022,7 @@ export default function CouplesPage() {
                         firstName: newFirstName || '',
                         lastName: newLastName.trim(),
                       },
-                      phase: 'debut',
+                      phase: 'prospect',
                       source: newSource || null,
                       status: 'active',
                       startDate: today,
