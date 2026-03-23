@@ -13,7 +13,7 @@ const sourceIcons = { website: Globe, phone: Phone, referral: UserCheck }
 export default function CouplesPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { clients: mockCouples, sessions: mockSessions, recruitmentSources, getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel, getComputedStatus, getProspectStageInfo, formatDate, getClientType } = useData()
+  const { clients: mockCouples, sessions: mockSessions, recruitmentSources, getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel, getComputedStatus, getProspectStageInfo, formatDate, getClientType, createClient } = useData()
   const [search, setSearch] = useState('')
   const [sortMode, setSortMode] = useState('none')
   const [showModal, setShowModal] = useState(false)
@@ -1013,52 +1013,48 @@ export default function CouplesPage() {
                     opacity: ((newSource === 'referral' || newSource === 'parrainage') && externalReferrer && !(externalReferrer.lastName || '').trim()) ? 0.4 : 1
                   }}
                   disabled={(newSource === 'referral' || newSource === 'parrainage') && externalReferrer && !(externalReferrer.lastName || '').trim()}
-                  onClick={() => {
-                    // Create parrainage link if referrer selected
-                    if (selectedReferrer) {
-                      if (!selectedReferrer.clientLinks) selectedReferrer.clientLinks = []
-                      selectedReferrer.clientLinks.push({ clientId: 'new-client', type: 'parrainage', role: 'parrain' })
+                  onClick={async () => {
+                    const today = new Date().toISOString().split('T')[0]
+                    // Build new client object
+                    const newClient = {
+                      type: newClientType || 'couple',
+                      partnerA: {
+                        firstName: newFirstName || '',
+                        lastName: newLastName.trim(),
+                      },
+                      phase: 'debut',
+                      source: newSource || null,
+                      status: 'active',
+                      startDate: today,
                     }
-                    // Auto-create from external referrer
-                    if (externalReferrer && externalReferrer.lastName && externalReferrer.lastName.trim()) {
+                    // Save to Supabase
+                    const created = await createClient(newClient)
+                    
+                    // Handle external referrer parrainage link
+                    if (created && externalReferrer && externalReferrer.lastName && externalReferrer.lastName.trim()) {
                       const refType = externalReferrer.referrerType || 'particulier'
-                      const today = new Date().toISOString().split('T')[0]
-
-                      if (refType === 'professionnel') {
-                        // PROFESSIONNEL → mockProfessionals
-                        mockProfessionals.push({
-                          id: 'pro-' + Date.now(),
-                          firstName: externalReferrer.firstName || '',
-                          lastName: externalReferrer.lastName.trim(),
-                          email: externalReferrer.email || '',
-                          phone: externalReferrer.phone || '',
-                          note: externalReferrer.role || '',
-                          createdAt: today,
-                          referrals: [{ clientId: 'new-client', date: today, clientName: 'Nouveau client' }]
-                        })
-                      } else {
-                        // PARTICULIER → prospect in mockCouples
-                        const newProspect = {
-                          id: 'ext-ref-' + Date.now(),
+                      if (refType === 'particulier') {
+                        // Create the external referrer as a prospect client too
+                        await createClient({
+                          type: 'individual',
                           partnerA: {
                             firstName: externalReferrer.firstName || '',
                             lastName: externalReferrer.lastName.trim(),
-                            email: externalReferrer.email || '', phone: externalReferrer.phone || ''
+                            email: externalReferrer.email || '',
+                            phone: externalReferrer.phone || ''
                           },
-                          type: 'individual',
-                          status: 'active',
                           phase: 'prospect',
-                          referrerType: 'particulier',
-                          note: externalReferrer.role || '',
+                          status: 'active',
                           startDate: today,
-                          createdAt: today,
-                          sessions: [],
-                          clientLinks: [{ clientId: 'new-client', type: 'parrainage', role: 'parrain' }]
-                        }
-                        mockCouples.push(newProspect)
+                          referrerType: 'particulier',
+                        })
                       }
                     }
-                    setShowModal(false); setWizardStep(0); setNewClientType(''); setNewChildren([]); setNewFamilyAdults([{}]); setNewLastName(''); setNewReferents([0]); setSelectedReferrer(null); setReferrerSearch(''); setExternalReferrer(null); alert('Client créé (démo)')
+                    
+                    setShowModal(false); setWizardStep(0); setNewClientType(''); setNewChildren([]); setNewFamilyAdults([{}]); setNewLastName(''); setNewFirstName(''); setNewReferents([0]); setSelectedReferrer(null); setReferrerSearch(''); setExternalReferrer(null)
+                    if (created) {
+                      navigate(`/couples/${created.id}`)
+                    }
                   }}
                 >
                   <Plus size={16} style={{ color: 'white' }} /> Créer le client

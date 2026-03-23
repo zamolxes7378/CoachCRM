@@ -7,7 +7,7 @@ import DuplicateAlert from '../components/DuplicateAlert'
 
 export default function DashboardPage({ user }) {
   const navigate = useNavigate()
-  const { clients: mockCouples, sessions: mockSessions, reports: mockReports, getCoupleName, formatTime, formatDate, formatRelativeDate, getPhaseLabel, getComputedStatus } = useData()
+  const { clients: mockCouples, sessions: mockSessions, reports: mockReports, getCoupleName, formatTime, formatDate, formatRelativeDate, getPhaseLabel, getComputedStatus, createClient, createSession } = useData()
   const [visibleCount, setVisibleCount] = useState(10)
   const [sessionView, setSessionView] = useState('future') // 'past' | 'future'
   const [searchQuery, setSearchQuery] = useState('')
@@ -783,19 +783,42 @@ export default function DashboardPage({ user }) {
                 <button className="btn btn-ghost" onClick={() => setShowNewSession(false)}>Annuler</button>
                 <button
                   className="btn btn-accent"
-                  disabled={!newSessionClient || !newSessionDate || !newSessionTime}
-                  onClick={() => {
+                  disabled={(!newSessionClient || !newSessionDate || !newSessionTime) || (isNewClient && !ncLastName.trim())}
+                  onClick={async () => {
                     const selectedDate = new Date(`${newSessionDate}T${newSessionTime}`)
                     if (selectedDate < new Date()) {
                       if (!confirm('La date choisie est dans le passé. Souhaitez-vous quand même créer cette séance ?')) return
                     }
+                    
+                    let clientId = newSessionClient
+                    
+                    if (isNewClient) {
+                      // Create client in Supabase
+                      const today = new Date().toISOString().split('T')[0]
+                      const created = await createClient({
+                        type: ncType || 'couple',
+                        partnerA: { firstName: ncFirstName || '', lastName: ncLastName.trim() },
+                        phase: 'debut',
+                        status: 'active',
+                        startDate: today,
+                      })
+                      if (!created) { alert('Erreur lors de la création du client'); return }
+                      clientId = created.id
+                    }
+                    
+                    // Create session in Supabase
+                    const sessionData = {
+                      coupleId: clientId,
+                      date: `${newSessionDate}T${newSessionTime}:00`,
+                      status: 'scheduled',
+                      title: newSessionNote || null,
+                    }
+                    await createSession(sessionData)
+                    
                     setShowNewSession(false)
                     setNewSessionNote('')
-                    if (isNewClient) {
-                      alert('Client créé et séance planifiée (démo)')
-                    } else {
-                      navigate(`/couples/${newSessionClient}`)
-                    }
+                    resetWizard()
+                    navigate(`/couples/${clientId}`)
                   }}
                 >
                   <Plus size={16} /> {isNewClient ? 'Créer client + séance' : duplicate ? 'Ajouter quand même' : 'Créer la séance'}
