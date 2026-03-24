@@ -1,7 +1,7 @@
 # CoachCRM — Règles Métier & Techniques
 
 > Document de référence consolidant toutes les règles métier et techniques actuellement implémentées dans CoachCRM.
-> Dernière mise à jour : 24 mars 2026
+> Dernière mise à jour : 24 mars 2026 (session 2 — stabilisation phases + transitions prospect/client)
 
 ---
 
@@ -104,6 +104,8 @@
 | `completed` | Terminé | **Statut** | Suivi thérapeutique terminé |
 
 > **`prospect` est un stade du client**, pas une phase de thérapie. Un prospect peut avoir n'importe quelle phase de thérapie attribuée (ex : "Début", "Intégration") pour anticiper le parcours. `therapyPhasesData` ne contient **jamais** `prospect`.
+>
+> **Tout nouveau client est créé comme prospect** (`phase: 'prospect'`). Le dropdown "Phase de la thérapie" dans le formulaire de création est indicatif uniquement — la phase réelle ne s'applique qu'après la conversion.
 
 ---
 
@@ -155,6 +157,15 @@ Un prospect est un client dont `couple.phase === 'prospect'`. C'est le **seul in
 - Le parrainage (`referredBy`) permet de lier un prospect à un client existant
 - L'affichage se fait dans un onglet séparé "Prospects" (vs "Clients")
 
+#### Helper `isProspect(couple)`
+
+```
+isProspect(couple) → couple.phase === 'prospect'
+```
+
+- Exposé via `useData().isProspect`
+- Utilisé pour le comptage et le filtrage des onglets Prospects/Clients
+
 ### 3.3 Source de vérité unique (centralisation)
 
 | Donnée | Source | Exposé via |
@@ -165,6 +176,12 @@ Un prospect est un client dont `couple.phase === 'prospect'`. C'est le **seul in
 | Phase par défaut | `therapyPhasesData[0].key` | `useData().defaultPhaseKey` |
 
 > **Aucune page ne doit définir ses propres `phaseIcons`, `phaseColors` ou fallback `'debut'` en dur.** Tout passe par `useData()`.
+
+### 3.4 Auto-complétion des séances passées
+
+- **Côté affichage** : les séances dont l'heure de fin (`date + duration`) est passée sont affichées comme "complétées" (transformation `useMemo` dans `DataContext`)
+- **Côté persistance** : quand une séance passée encore en `scheduled` est modifiée (choix du moyen de paiement, note, etc.), son statut est **automatiquement persisté** à `completed` en base
+- **En mode démo** : les mutations se font en mémoire (`rawSessions`, `rawClients`) avec `setRawSessions([...])` pour déclencher un re-render
 
 ---
 
@@ -551,6 +568,13 @@ Un prospect est un client dont `couple.phase === 'prospect'`. C'est le **seul in
 
 ### 20.2 Création de client
 
+- **Tout nouveau client est créé comme prospect** (`phase: 'prospect'`)
 - Le formulaire de création envoie **partnerA ET partnerB** (si couple/famille) avec tous les champs contrôlés (état React)
 - L'adresse de facturation est incluse **dans chaque partenaire** (`partnerA.billingAddress`, `partnerB.billingAddress`)
 - Le Nom est toujours converti en **MAJUSCULES** via `.toUpperCase()` avant l'envoi
+
+### 20.3 Mode démo ("Accès rapide")
+
+- Les transitions prospect ↔ client fonctionnent **aussi en mode démo** (mutation en mémoire)
+- L'auto-complétion des séances passées est gérée en mémoire
+- Les modifications déclenchent un re-render via `setRawSessions([...rawSessions])`
