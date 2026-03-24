@@ -1,6 +1,6 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Archive, RotateCcw, Users, User, Home as Family } from 'lucide-react'
+import { ArrowLeft, Archive, RotateCcw, Users, User } from 'lucide-react'
 import { useData } from '../context/DataContext'
 
 export default function DeletedClientsPage() {
@@ -74,7 +74,13 @@ export default function DeletedClientsPage() {
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontSize: '0.786rem', fontWeight: 700
                       }}>
-                        {client.type === 'individual' ? <User size={16} /> : <Users size={16} />}
+                        {client.type === 'individual' ? <User size={16} /> : client.type === 'family' ? (
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="7" cy="6" r="2.5"/><circle cx="17" cy="6" r="2.5"/><circle cx="12" cy="9" r="2"/>
+                            <path d="M1 20v-1.5a4.5 4.5 0 0 1 4.5-4.5h3a4.5 4.5 0 0 1 4.5 4.5V20"/>
+                            <path d="M15.5 14h3a4.5 4.5 0 0 1 4.5 4.5V20"/>
+                          </svg>
+                        ) : <Users size={16} />}
                       </div>
                       <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.929rem' }}>
                         {getCoupleName(client)}
@@ -87,7 +93,17 @@ export default function DeletedClientsPage() {
                       color: 'var(--text-tertiary)',
                       display: 'inline-flex', alignItems: 'center', gap: 5
                     }}>
-                      {(() => { const TC = (typeConfig[client.type] || typeConfig.couple).icon; return <TC size={16} /> })()}
+                      {(() => {
+                        if (client.type === 'family') return (
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="7" cy="6" r="2.5"/><circle cx="17" cy="6" r="2.5"/><circle cx="12" cy="9" r="2"/>
+                            <path d="M1 20v-1.5a4.5 4.5 0 0 1 4.5-4.5h3a4.5 4.5 0 0 1 4.5 4.5V20"/>
+                            <path d="M15.5 14h3a4.5 4.5 0 0 1 4.5 4.5V20"/>
+                          </svg>
+                        )
+                        const TC = client.type === 'individual' ? User : Users
+                        return <TC size={16} />
+                      })()}
                       {(typeConfig[client.type] || typeConfig.couple).label}
                     </span>
                   </td>

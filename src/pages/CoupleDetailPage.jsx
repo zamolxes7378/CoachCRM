@@ -301,8 +301,9 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
             {getClientType(couple) === 'family' && (
               <>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="9" cy="7" r="3"/><circle cx="17" cy="7" r="2.5"/>
-                  <path d="M2 21v-2a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v2"/><path d="M17 14a4 4 0 0 1 4 4v3"/>
+                  <circle cx="7" cy="6" r="2.5"/><circle cx="17" cy="6" r="2.5"/><circle cx="12" cy="9" r="2"/>
+                  <path d="M1 20v-1.5a4.5 4.5 0 0 1 4.5-4.5h3a4.5 4.5 0 0 1 4.5 4.5V20"/>
+                  <path d="M15.5 14h3a4.5 4.5 0 0 1 4.5 4.5V20"/>
                 </svg>
                 <span>Famille</span>
               </>
@@ -2665,8 +2666,9 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                   {getClientType(couple) === 'family' && (
                     <>
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="9" cy="7" r="3"/><circle cx="17" cy="7" r="2.5"/>
-                        <path d="M2 21v-2a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v2"/><path d="M17 14a4 4 0 0 1 4 4v3"/>
+                        <circle cx="7" cy="6" r="2.5"/><circle cx="17" cy="6" r="2.5"/><circle cx="12" cy="9" r="2"/>
+                        <path d="M1 20v-1.5a4.5 4.5 0 0 1 4.5-4.5h3a4.5 4.5 0 0 1 4.5 4.5V20"/>
+                        <path d="M15.5 14h3a4.5 4.5 0 0 1 4.5 4.5V20"/>
                       </svg>
                       Famille
                     </>
