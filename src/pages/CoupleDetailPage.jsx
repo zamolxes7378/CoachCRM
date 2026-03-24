@@ -2737,7 +2737,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
             {/* Content — scrollable */}
             <div style={{ padding: '20px 28px', flex: 1, overflowY: 'auto' }}>
               {/* Phase stepper in modal */}
-              {couple.phase !== 'prospect' && (() => {
+              {(() => {
                 const currentPhaseIdx = therapyPhasesData.findIndex(t => t.key === phase)
                 return (
                   <div style={{ marginBottom: 'var(--space-md)' }}>

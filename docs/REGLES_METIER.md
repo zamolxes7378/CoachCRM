@@ -118,10 +118,27 @@
 
 ### 3.2 Règles prospects
 
-- Un prospect a `phase === 'prospect'` et `sessionsCount === 0`
-- La source de recrutement est obligatoire à l'identification
+- **`prospect` n'est PAS une phase de thérapie** — c'est un statut spécial (`couple.phase === 'prospect'`)
+- Un prospect **n'a pas** de séances planifiées ni complétées
+- Un prospect **peut avoir des contacts** (appels, emails, SMS, etc.)
+- Un prospect **peut parrainer** d'autres clients
+- Un prospect **peut se voir attribuer n'importe quelle phase de thérapie** (ex : "Début", "Intégration") dès sa création via le dropdown "Phase de la thérapie" ou via le stepper dans la modale identité
+- **Le stepper de phase est visible pour TOUS les clients**, y compris les prospects
+- **Conversion automatique** : un prospect devient automatiquement client lorsque sa **première séance est marquée "complétée"**. Sa phase passe de `'prospect'` à `defaultPhaseKey` (première phase de `therapyPhasesData`)
+- La source de recrutement est renseignée à la création
 - Le parrainage (`referredBy`) permet de lier un prospect à un client existant
 - L'affichage se fait dans un onglet séparé "Prospects" (vs "Clients")
+
+### 3.3 Source de vérité unique (centralisation)
+
+| Donnée | Source | Exposé via |
+|---|---|---|
+| Phases de thérapie | `therapyPhasesData` (Paramètres → DB) | `useData().therapyPhases` |
+| Icônes de phase | `DataContext.phaseIcons` | `useData().phaseIcons` |
+| Couleurs de phase | `DataContext.phaseColors` | `useData().phaseColors` |
+| Phase par défaut | `therapyPhasesData[0].key` | `useData().defaultPhaseKey` |
+
+> **Aucune page ne doit définir ses propres `phaseIcons`, `phaseColors` ou fallback `'debut'` en dur.** Tout passe par `useData()`.
 
 ---
 
