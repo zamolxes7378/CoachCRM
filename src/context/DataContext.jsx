@@ -164,7 +164,16 @@ export function DataProvider({ user, children }) {
     },
     updateSession: async (id, updates) => {
       const result = await ds.updateSession(id, unadaptSession(updates))
-      if (result) await loadData()
+      if (result) {
+        // Auto-transition: prospect → début when first session completed
+        if (updates.status === 'completed' && result.client_id) {
+          const client = rawClients.find(c => c.id === result.client_id)
+          if (client && client.phase === 'prospect') {
+            await ds.updateClient(client.id, { phase: 'debut' })
+          }
+        }
+        await loadData()
+      }
       return result
     },
     createSession: async (session) => {
