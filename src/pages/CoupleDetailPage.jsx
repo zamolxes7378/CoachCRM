@@ -2782,8 +2782,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                 <div className="grid-2">
                   <div className="input-group">
                     <label>Prénom</label>
-                    <input className="input" placeholder="Prénom" value={editPartnerA.firstName || ''} onChange={e => setEditPartnerA({ ...editPartnerA, firstName: e.target.value })}
-                      style={!(editPartnerA.firstName || '').trim() ? { background: '#FFF5F5', borderColor: '#FECACA' } : {}} />
+                    <input className="input" placeholder="Prénom" value={editPartnerA.firstName || ''} onChange={e => setEditPartnerA({ ...editPartnerA, firstName: e.target.value })} />
                   </div>
                   <div className="input-group">
                     <label>Nom <span style={{ color: 'var(--error)' }}>*</span></label>
@@ -2794,13 +2793,11 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                 <div className="grid-2">
                   <div className="input-group">
                     <label>Email</label>
-                    <input className="input" type="email" placeholder="email@exemple.com" value={editPartnerA.email || ''} onChange={e => setEditPartnerA({ ...editPartnerA, email: e.target.value })}
-                      style={!(editPartnerA.email || '').trim() ? { background: '#FFF5F5', borderColor: '#FECACA' } : {}} />
+                    <input className="input" type="email" placeholder="email@exemple.com" value={editPartnerA.email || ''} onChange={e => setEditPartnerA({ ...editPartnerA, email: e.target.value })} />
                   </div>
                   <div className="input-group">
                     <label>Téléphone</label>
-                    <input className="input" type="tel" placeholder="06 12 34 56 78" value={editPartnerA.phone || ''} onChange={e => setEditPartnerA({ ...editPartnerA, phone: e.target.value })}
-                      style={!(editPartnerA.phone || '').trim() ? { background: '#FFF5F5', borderColor: '#FECACA' } : {}} />
+                    <input className="input" type="tel" placeholder="06 12 34 56 78" value={editPartnerA.phone || ''} onChange={e => setEditPartnerA({ ...editPartnerA, phone: e.target.value })} />
                   </div>
                 </div>
                 <div className="grid-2">
@@ -2817,8 +2814,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                       <span style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)', fontWeight: 400, fontStyle: 'italic' }}>optionnel</span>
                     </label>
                     <input className="input" type="number" min="1920" max={new Date().getFullYear()} placeholder={`ex. ${new Date().getFullYear() - 35}`}
-                      value={editPartnerA.birthYear || ''} onChange={e => setEditPartnerA({ ...editPartnerA, birthYear: e.target.value })}
-                      style={!(editPartnerA.birthDate || '').trim() && !(editPartnerA.birthYear || '').toString().trim() ? { background: '#FFF5F5', borderColor: '#FECACA' } : {}} />
+                      value={editPartnerA.birthYear || ''} onChange={e => setEditPartnerA({ ...editPartnerA, birthYear: e.target.value })} />
                   </div>
                 </div>
               </div>
@@ -2860,8 +2856,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                   <div className="grid-2">
                     <div className="input-group">
                       <label>Prénom</label>
-                      <input className="input" placeholder="Prénom" value={editPartnerB.firstName || ''} onChange={e => setEditPartnerB({ ...editPartnerB, firstName: e.target.value })}
-                        style={!(editPartnerB.firstName || '').trim() ? { background: '#FFF5F5', borderColor: '#FECACA' } : {}} />
+                      <input className="input" placeholder="Prénom" value={editPartnerB.firstName || ''} onChange={e => setEditPartnerB({ ...editPartnerB, firstName: e.target.value })} />
                     </div>
                     <div className="input-group">
                       <label>Nom <span style={{ color: 'var(--error)' }}>*</span></label>
@@ -2872,13 +2867,11 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                   <div className="grid-2">
                     <div className="input-group">
                       <label>Email</label>
-                      <input className="input" type="email" placeholder="email@exemple.com" value={editPartnerB.email || ''} onChange={e => setEditPartnerB({ ...editPartnerB, email: e.target.value })}
-                        style={!(editPartnerB.email || '').trim() ? { background: '#FFF5F5', borderColor: '#FECACA' } : {}} />
+                      <input className="input" type="email" placeholder="email@exemple.com" value={editPartnerB.email || ''} onChange={e => setEditPartnerB({ ...editPartnerB, email: e.target.value })} />
                     </div>
                     <div className="input-group">
                       <label>Téléphone</label>
-                      <input className="input" type="tel" placeholder="06 12 34 56 78" value={editPartnerB.phone || ''} onChange={e => setEditPartnerB({ ...editPartnerB, phone: e.target.value })}
-                        style={!(editPartnerB.phone || '').trim() ? { background: '#FFF5F5', borderColor: '#FECACA' } : {}} />
+                      <input className="input" type="tel" placeholder="06 12 34 56 78" value={editPartnerB.phone || ''} onChange={e => setEditPartnerB({ ...editPartnerB, phone: e.target.value })} />
                     </div>
                   </div>
                   <div className="grid-2">
@@ -2895,8 +2888,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                         <span style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)', fontWeight: 400, fontStyle: 'italic' }}>optionnel</span>
                       </label>
                       <input className="input" type="number" min="1920" max={new Date().getFullYear()} placeholder={`ex. ${new Date().getFullYear() - 35}`}
-                        value={editPartnerB.birthYear || ''} onChange={e => setEditPartnerB({ ...editPartnerB, birthYear: e.target.value })}
-                        style={!(editPartnerB.birthDate || '').trim() && !(editPartnerB.birthYear || '').toString().trim() ? { background: '#FFF5F5', borderColor: '#FECACA' } : {}} />
+                        value={editPartnerB.birthYear || ''} onChange={e => setEditPartnerB({ ...editPartnerB, birthYear: e.target.value })} />
                     </div>
                   </div>
                 </div>
