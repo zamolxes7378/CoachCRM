@@ -1,12 +1,12 @@
 import { useState, useMemo } from 'react'
-import { Calendar, Heart, Clock, PenTool, FileText, ArrowRight, Sprout, Search, Target, UserPlus, Mic, CheckCircle, XCircle, ChevronDown, CreditCard, Landmark, Banknote, Plus, AlertTriangle, X, Hourglass, Receipt, Award } from 'lucide-react'
+import { Calendar, Heart, Clock, PenTool, FileText, ArrowRight, Mic, CheckCircle, XCircle, ChevronDown, CreditCard, Landmark, Banknote, Plus, AlertTriangle, X, Hourglass, Receipt, Award, Search, Sprout } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useData } from '../context/DataContext'
 
 
 export default function DashboardPage({ user }) {
   const navigate = useNavigate()
-  const { clients: mockCouples, sessions: mockSessions, reports: mockReports, getCoupleName, formatTime, formatDate, formatRelativeDate, getPhaseLabel, getComputedStatus, createSession } = useData()
+  const { clients: mockCouples, sessions: mockSessions, reports: mockReports, phaseIcons, phaseColors, getCoupleName, formatTime, formatDate, formatRelativeDate, getPhaseLabel, getComputedStatus, createSession } = useData()
   const [visibleCount, setVisibleCount] = useState(10)
   const [sessionView, setSessionView] = useState('future') // 'past' | 'future'
   const [searchQuery, setSearchQuery] = useState('')
@@ -71,7 +71,7 @@ export default function DashboardPage({ user }) {
   const parrains = mockCouples.filter(c => mockCouples.some(r => r.referredBy === c.id)).length
   const pendingExercises = mockCouples.reduce((acc, c) => acc + (c.exercises || []).filter(e => e.status === 'pending' || e.status === 'in-progress').length, 0)
 
-  const phaseIcons = { prospect: UserPlus, debut: Sprout, analyse: Search, integration: Target }
+
 
   // Compute session number per couple (chronological order)
   const sessionNumbers = {}
@@ -149,12 +149,6 @@ export default function DashboardPage({ user }) {
                       .sort((a, b) => a.date.localeCompare(b.date))
                       .map(session => {
                         const PhaseIcon = phaseIcons[session.phase] || Sprout
-                        const phaseColors = {
-                          prospect: { bg: '#F5F0FF', color: '#6B46C1' },
-                          debut: { bg: '#EBF8FF', color: '#2B6CB0' },
-                          analyse: { bg: '#FFF3E0', color: '#E67E22' },
-                          integration: { bg: '#F0FFF4', color: '#276749' }
-                        }
                         const pc = phaseColors[session.phase] || { bg: 'var(--primary-100)', color: 'var(--primary-700)' }
                         const statusLabel = session.status === 'completed' ? 'Séance terminée'
                           : session.status === 'cancelled' ? 'Séance annulée' : 'Séance planifiée'

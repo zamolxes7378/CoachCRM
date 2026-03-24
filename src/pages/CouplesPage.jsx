@@ -1,19 +1,19 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Plus, Search, Users, User, Sprout, Target, TrendingUp, X, ArrowDownUp, ArrowUpAZ, UserPlus, Calendar, Globe, Phone, UserCheck, CheckCircle, XCircle, HelpCircle, Link2, Award, LayoutGrid, List, Star, Baby, Trash2, Briefcase } from 'lucide-react'
+import { Plus, Search, Users, User, TrendingUp, X, ArrowDownUp, ArrowUpAZ, Calendar, Globe, Phone, UserCheck, CheckCircle, XCircle, HelpCircle, Link2, Award, LayoutGrid, List, Star, Baby, Trash2, Briefcase, Sprout } from 'lucide-react'
 // mockProfessionals removed — now from DataContext
 import { useData } from '../context/DataContext'
 import { findDuplicateClients } from '../utils/duplicateUtils'
 import DuplicateAlert from '../components/DuplicateAlert'
 
-const phaseIcons = { prospect: UserPlus, debut: Sprout, analyse: Search, integration: Target }
+
 
 const sourceIcons = { website: Globe, phone: Phone, referral: UserCheck }
 
 export default function CouplesPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { clients: mockCouples, sessions: mockSessions, recruitmentSources, therapyPhases: therapyPhasesData, getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel, getComputedStatus, getProspectStageInfo, formatDate, getClientType, createClient } = useData()
+  const { clients: mockCouples, sessions: mockSessions, recruitmentSources, therapyPhases: therapyPhasesData, phaseIcons, phaseColors: centralPhaseColors, defaultPhaseKey, getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel, getComputedStatus, getProspectStageInfo, formatDate, getClientType, createClient } = useData()
   const [search, setSearch] = useState('')
   const [sortMode, setSortMode] = useState('none')
   const [showModal, setShowModal] = useState(false)
@@ -267,12 +267,7 @@ export default function CouplesPage() {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-sm)' }}>
                 <div style={{ display: 'flex', gap: 'var(--space-xs)', alignItems: 'center' }}>
                   {(() => {
-                    const phaseColors = {
-                      debut: { bg: '#EBF8FF', color: '#2B6CB0' },
-                      analyse: { bg: '#FFF3E0', color: '#E67E22' },
-                      integration: { bg: '#F0FFF4', color: '#276749' }
-                    }
-                    const pc = phaseColors[couple.phase] || { bg: 'var(--primary-100)', color: 'var(--primary-700)' }
+                    const pc = centralPhaseColors[couple.phase] || { bg: 'var(--primary-100)', color: 'var(--primary-700)' }
                     return (<>
                       <div style={{
                         width: 32, height: 32, borderRadius: 'var(--radius-full)',
@@ -300,13 +295,7 @@ export default function CouplesPage() {
 
 
               {couple.phase !== 'prospect' && (() => {
-                const therapyPhases = ['debut', 'analyse', 'integration', 'bilan_final']
-                const phaseColorMap = {
-                  debut: { color: '#2B6CB0', bg: '#EBF8FF' },
-                  analyse: { color: '#E67E22', bg: '#FFF3E0' },
-                  integration: { color: '#276749', bg: '#F0FFF4' },
-                  bilan_final: { color: '#6B46C1', bg: '#F5F0FF' }
-                }
+                const therapyPhases = therapyPhasesData.map(tp => tp.key)
                 const nowStr = new Date().toISOString()
                 const coupleSessions = mockSessions.filter(s => s.coupleId === couple.id && s.status !== 'cancelled')
                 const doneByPhase = {}
@@ -323,7 +312,7 @@ export default function CouplesPage() {
                       const done = doneByPhase[p] || 0
                       const sched = schedByPhase[p] || 0
                       if (done + sched === 0) return null
-                      const pc = phaseColorMap[p]
+                      const pc = centralPhaseColors[p]
                       return (
                         <React.Fragment key={p}>
                           {done > 0 && <div style={{
@@ -427,8 +416,7 @@ export default function CouplesPage() {
           <tbody>
             {filtered.map(couple => {
               const PhaseIcon = phaseIcons[couple.phase] || Sprout
-              const phaseColors = { debut: '#2B6CB0', analyse: '#E67E22', integration: '#276749', completed: 'var(--text-tertiary)' }
-              const pc = phaseColors[couple.phase] || 'var(--primary-600)'
+              const pc = centralPhaseColors[couple.phase]?.color || 'var(--primary-600)'
               const referrals = mockCouples.filter(c => c.referredBy === couple.id)
               const referrer = couple.referredBy ? mockCouples.find(c => c.id === couple.referredBy) : null
               return (

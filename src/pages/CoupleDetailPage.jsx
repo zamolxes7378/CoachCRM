@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, TrendingUp, PenTool, CheckCircle, XCircle, Clock, AlertTriangle, FileText, Sprout, Search, Target, Award, Calendar, UserPlus, Mic, MicOff, Loader, CreditCard, Landmark, Banknote, Phone, Mail, MessageSquare, Plus, Share2, Edit3, Sparkles, RefreshCw, Globe, Hourglass, Euro, X, Trash2, BookOpen, ChevronRight, Heart, AlertCircle, Crosshair, Check, HelpCircle, Link2, Users, User, Star, Baby, Briefcase } from 'lucide-react'
+import { ArrowLeft, TrendingUp, PenTool, CheckCircle, XCircle, Clock, AlertTriangle, FileText, Calendar, Mic, MicOff, Loader, CreditCard, Landmark, Banknote, Phone, Mail, MessageSquare, Plus, Share2, Edit3, Sparkles, RefreshCw, Globe, Hourglass, Euro, X, Trash2, BookOpen, ChevronRight, Heart, AlertCircle, Crosshair, Check, HelpCircle, Link2, Users, User, Star, Baby, Briefcase, Sprout } from 'lucide-react'
 // mockProfessionals removed — now from DataContext
 import { useData } from '../context/DataContext'
 import { findDuplicateClients, findDuplicatePros } from '../utils/duplicateUtils'
 import DuplicateAlert from '../components/DuplicateAlert'
 
-const phaseIcons = { prospect: UserPlus, debut: Sprout, analyse: Search, integration: Target, bilan_final: Award }
+
 
 const sampleTranscriptions = [
   "Le couple a abordé les difficultés de communication récurrentes. Travail sur l'écoute active et la reformulation. Progrès notables dans l'expression des émotions.",
@@ -20,7 +20,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
   const params = useParams()
   const id = coupleIdProp || params.id
   const navigate = useNavigate()
-  const { clients: mockCouples, sessions: mockSessions, reports: mockReports, recruitmentSources, sessionRates, therapyPhases: therapyPhasesData, getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel, getClientType, formatDate, formatTime, updateSession, updateClient, professionals: mockProfessionals, createProfessional: createPro, updateProfessional: updatePro } = useData()
+  const { clients: mockCouples, sessions: mockSessions, reports: mockReports, recruitmentSources, sessionRates, therapyPhases: therapyPhasesData, phaseIcons, phaseColors, defaultPhaseKey, getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel, getClientType, formatDate, formatTime, updateSession, updateClient, professionals: mockProfessionals, createProfessional: createPro, updateProfessional: updatePro } = useData()
   const couple = mockCouples.find(c => c.id === id)
   // Sanitize: remove self-referencing clientLinks
   if (couple?.clientLinks) {
@@ -226,14 +226,6 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
   const contactIcons = { phone: Phone, email: Mail, sms: MessageSquare, social: Share2, web: Globe, parrainage: Award }
   const contactLabels = { phone: 'Appel', email: 'Email', sms: 'SMS', social: 'Réseaux sociaux', web: 'Site web', parrainage: 'Parrainage' }
   const contactColors = { phone: { bg: '#E8F5E9', color: '#2E7D32' }, email: { bg: '#E3F2FD', color: '#1565C0' }, sms: { bg: '#FFF3E0', color: '#E65100' }, social: { bg: '#F3E5F5', color: '#7B1FA2' }, web: { bg: '#E0F2F1', color: '#00695C' }, parrainage: { bg: '#F5F0FF', color: '#8B5CF6' } }
-
-  const phaseColors = {
-    prospect: { bg: '#E8D8FE', color: '#6B46C1' },
-    debut: { bg: '#EBF8FF', color: '#2B6CB0' },
-    analyse: { bg: '#FFF3E0', color: '#E67E22' },
-    integration: { bg: '#F0FFF4', color: '#276749' },
-    bilan_final: { bg: '#FAF5FF', color: '#6B46C1' }
-  }
 
   // Generate virtual parrainage events from clientLinks (dynamic — disappear if link removed)
   const parrainageEvents = (couple.clientLinks || []).filter(l => l.type === 'parrainage' || l.type === 'parrainage-pro').map(link => {
@@ -1143,7 +1135,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                       </div>
                       <div style={{ fontSize: '0.714rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
                         {(() => {
-                          const effectivePhase = session.phase || couple?.phase || 'debut'
+                          const effectivePhase = session.phase || couple?.phase || defaultPhaseKey
                           if (effectivePhase === 'prospect') return null
                           const ppc = phaseColors[effectivePhase]
                           const isPlanned = session.status === 'scheduled'
@@ -1898,8 +1890,8 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                     <div style={{ fontSize: '0.571rem', color: 'var(--text-tertiary)', fontWeight: 600, marginBottom: 6 }}>Phase de la thérapie</div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 0 }}>
                       {therapyPhasesData.map((tp, i) => {
-                        const currentPhaseIdx = therapyPhasesData.findIndex(t => t.key === (session.phase || 'debut'))
-                        const isActive = tp.key === (session.phase || 'debut')
+                        const currentPhaseIdx = therapyPhasesData.findIndex(t => t.key === (session.phase || defaultPhaseKey))
+                        const isActive = tp.key === (session.phase || defaultPhaseKey)
                         const isCompleted = i < currentPhaseIdx
                         const Icon = phaseIcons[tp.key] || Sprout
                         const pc = phaseColors[tp.key] || phaseColors.debut

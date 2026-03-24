@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
 import * as ds from '../services/dataService'
+import { Sprout, Search, Target, Award, UserPlus } from 'lucide-react'
 import {
   therapyPhases as defaultPhases, defaultTherapyConfig as defaultTherapyCfg,
   recruitmentSources as defaultSources,
@@ -204,11 +205,31 @@ export function DataProvider({ user, children }) {
   ) || defaultSources
   const therapyPhases = settings?.therapy_phases || defaultPhases
   const defaultTherapyConfig = settings?.default_therapy_config || defaultTherapyCfg
+  const defaultPhaseKey = therapyPhases[0]?.key || 'debut'
+
+  // Centralized phase icons & colors — single source of truth
+  const defaultPhaseIcons = { prospect: UserPlus, debut: Sprout, analyse: Search, integration: Target, bilan_final: Award }
+  const defaultPhaseColorMap = {
+    prospect: { bg: '#E8D8FE', color: '#6B46C1' },
+    debut: { bg: '#EBF8FF', color: '#2B6CB0' },
+    analyse: { bg: '#FFF3E0', color: '#E67E22' },
+    integration: { bg: '#F0FFF4', color: '#276749' },
+    bilan_final: { bg: '#FAF5FF', color: '#6B46C1' }
+  }
+  const phaseIcons = { ...defaultPhaseIcons }
+  const phaseColors = { ...defaultPhaseColorMap }
+  // Ensure every custom phase has at least a fallback color/icon
+  const fallbackColors = ['#2B6CB0', '#E67E22', '#276749', '#6B46C1', '#D69E2E', '#38A169', '#E53E3E']
+  therapyPhases.forEach((tp, i) => {
+    if (!phaseColors[tp.key]) phaseColors[tp.key] = { bg: '#F7FAFC', color: fallbackColors[i % fallbackColors.length] }
+    if (!phaseIcons[tp.key]) phaseIcons[tp.key] = Sprout
+  })
 
   const value = {
     // Adapted data (pages use these as drop-in replacements for mockCouples/mockSessions)
     clients, sessions, reports, settings, loading, professionals,
     sessionRates, recruitmentSources, therapyPhases, defaultTherapyConfig,
+    phaseIcons, phaseColors, defaultPhaseKey,
     // Static helpers
     prospectStages,
     getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel,
@@ -237,7 +258,7 @@ export function DataProvider({ user, children }) {
         if (updates.status === 'completed' && result.client_id) {
           const client = rawClients.find(c => c.id === result.client_id)
           if (client && client.phase === 'prospect') {
-            await ds.updateClient(client.id, { phase: 'debut' })
+            await ds.updateClient(client.id, { phase: defaultPhaseKey })
           }
         }
         await loadData()
