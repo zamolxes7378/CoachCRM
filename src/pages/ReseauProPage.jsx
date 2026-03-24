@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Briefcase, Phone, Mail, Calendar, Users, Search, Plus, X, Edit3, Trash2, Award, MapPin, Globe, Building2, FileText, Save, ChevronDown, ChevronUp, ArrowUpAZ, ArrowDownUp, LayoutGrid, List, ChevronsUpDown, UserPlus } from 'lucide-react'
-import { mockProfessionals } from '../data/mockData'
+// mockProfessionals removed — now from DataContext
 import { useData } from '../context/DataContext'
 
 // Field component defined OUTSIDE to avoid re-creation on each render
@@ -46,7 +46,7 @@ export default function ReseauProPage() {
 
   const navigate = useNavigate()
 
-  const { clients: mockCouples } = useData()
+  const { clients: mockCouples, professionals: mockProfessionals, createProfessional, updateProfessional: updatePro } = useData()
 
   let filtered = mockProfessionals.filter(p => {
     if (!search) return true
@@ -80,37 +80,11 @@ export default function ReseauProPage() {
     setExpandedIds(prev => new Set(prev).add(pro.id))
   }
 
-  const saveEdit = () => {
-    const idx = mockProfessionals.findIndex(p => p.id === editingId)
-    if (idx !== -1) {
-      const oldPro = mockProfessionals[idx]
-      Object.assign(mockProfessionals[idx], editForm)
-      const newName = `${editForm.firstName || ''} ${editForm.lastName || ''}`.trim()
-      // Sync to all couples that reference this professional
-      mockCouples.forEach(c => {
-        if (c.externalReferrer && c.externalReferrer.referrerType === 'professionnel') {
-          const oldRefName = `${c.externalReferrer.firstName || ''} ${c.externalReferrer.lastName || ''}`.trim()
-          const matchName = `${oldPro.firstName || ''} ${oldPro.lastName || ''}`.trim()
-          if (oldRefName === matchName) {
-            c.externalReferrer.firstName = editForm.firstName || ''
-            c.externalReferrer.lastName = editForm.lastName || ''
-            c.externalReferrer.email = editForm.email || ''
-            c.externalReferrer.phone = editForm.phone || ''
-          }
-        }
-        // Also update proName in clientLinks
-        if (c.clientLinks) {
-          c.clientLinks.forEach(l => {
-            if (l.type === 'parrainage-pro' && l.proId === editingId) {
-              l.proName = newName
-            }
-          })
-        }
-      })
-    }
+  const saveEdit = async () => {
+    const { id, ...updates } = editForm
+    await updatePro(editingId, updates)
     setEditingId(null)
     setEditForm({})
-    forceUpdate(n => n + 1)
   }
 
   const cancelEdit = () => {
@@ -118,10 +92,9 @@ export default function ReseauProPage() {
     setEditForm({})
   }
 
-  const createNewPro = () => {
+  const createNewPro = async () => {
     if (!(createForm.lastName || '').trim()) return
-    const newPro = {
-      id: `pro-${Date.now()}`,
+    await createProfessional({
       firstName: createForm.firstName || '',
       lastName: createForm.lastName || '',
       email: createForm.email || '',
@@ -133,11 +106,9 @@ export default function ReseauProPage() {
       note: createForm.note || '',
       createdAt: new Date().toISOString().split('T')[0],
       referrals: []
-    }
-    mockProfessionals.push(newPro)
+    })
     setShowCreateModal(false)
     setCreateForm({})
-    forceUpdate(n => n + 1)
   }
 
   return (

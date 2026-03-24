@@ -199,3 +199,46 @@ export async function upsertSettings(userId, settings) {
   if (error) console.error('upsertSettings error:', error.message)
   return data
 }
+
+// ============================================
+// Professionals
+// ============================================
+export async function getProfessionals(userId) {
+  const { data, error } = await supabase
+    .from('professionals')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+  if (error) console.error('getProfessionals error:', error.message)
+  return data || []
+}
+
+export async function createProfessional(professional) {
+  const { data, error } = await supabase
+    .from('professionals')
+    .insert(professional)
+    .select()
+    .single()
+  if (error) console.error('createProfessional error:', error.message)
+  return data
+}
+
+export async function updateProfessional(professionalId, updates) {
+  const { data, error } = await supabase
+    .from('professionals')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', professionalId)
+    .select()
+    .single()
+  if (error) console.error('updateProfessional error:', error.message)
+  return data
+}
+
+export async function deleteProfessional(professionalId) {
+  const { error } = await supabase
+    .from('professionals')
+    .delete()
+    .eq('id', professionalId)
+  if (error) console.error('deleteProfessional error:', error.message)
+  return !error
+}

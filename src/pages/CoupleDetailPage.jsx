@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, TrendingUp, PenTool, CheckCircle, XCircle, Clock, AlertTriangle, FileText, Sprout, Search, Target, Award, Calendar, UserPlus, Mic, MicOff, Loader, CreditCard, Landmark, Banknote, Phone, Mail, MessageSquare, Plus, Share2, Edit3, Sparkles, RefreshCw, Globe, Hourglass, Euro, X, Trash2, BookOpen, ChevronRight, Heart, AlertCircle, Crosshair, Check, HelpCircle, Link2, Users, User, Star, Baby, Briefcase } from 'lucide-react'
-import { mockProfessionals } from '../data/mockData'
+// mockProfessionals removed — now from DataContext
 import { useData } from '../context/DataContext'
 import { findDuplicateClients, findDuplicatePros } from '../utils/duplicateUtils'
 import DuplicateAlert from '../components/DuplicateAlert'
@@ -20,7 +20,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
   const params = useParams()
   const id = coupleIdProp || params.id
   const navigate = useNavigate()
-  const { clients: mockCouples, sessions: mockSessions, reports: mockReports, recruitmentSources, sessionRates, therapyPhases: therapyPhasesData, getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel, getClientType, formatDate, formatTime, updateSession } = useData()
+  const { clients: mockCouples, sessions: mockSessions, reports: mockReports, recruitmentSources, sessionRates, therapyPhases: therapyPhasesData, getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel, getClientType, formatDate, formatTime, updateSession, updateClient, professionals: mockProfessionals, createProfessional: createPro, updateProfessional: updatePro } = useData()
   const couple = mockCouples.find(c => c.id === id)
   // Sanitize: remove self-referencing clientLinks
   if (couple?.clientLinks) {
@@ -159,6 +159,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
     if (val > 0) {
       setTotalSessions(val)
       couple.totalSessions = val
+      updateClient(couple.id, { totalSessions: val })
     }
     setEditingTotal(false)
   }
@@ -175,6 +176,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
         const session = sessions.find(s => s.id === sessionId)
         if (session) { session.hasReport = true; session.summary = newSummary.slice(0, 50) }
         setSessionUpdates(prev => ({ ...prev, [sessionId]: { hasReport: true, summary: newSummary } }))
+        updateSession(sessionId, { hasReport: true, summary: newSummary.slice(0, 50) })
         setRecordingStep('done')
         setTimeout(() => { setRecordingSessionId(null); setRecordingStep('idle') }, 1500)
       }, 2000)
@@ -185,6 +187,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
     const session = sessions.find(s => s.id === sessionId)
     if (session) { session.hasReport = !!text.trim(); session.summary = text.slice(0, 50) }
     setSessionUpdates(prev => ({ ...prev, [sessionId]: { hasReport: !!text.trim(), summary: text } }))
+    updateSession(sessionId, { hasReport: !!text.trim(), summary: text.slice(0, 50) })
   }
 
   const handleAddContact = () => {
@@ -328,6 +331,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
               const newStatus = status === 'active' ? 'inactive' : 'active'
               setStatus(newStatus)
               couple.status = newStatus
+              updateClient(couple.id, { status: newStatus })
             }}
             style={{
               display: 'flex', alignItems: 'center', gap: 8,
@@ -423,7 +427,9 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                       // Also remove reverse link (only for non-pro links)
                       if (linked && linked.clientLinks) {
                         linked.clientLinks = linked.clientLinks.filter(l => l.clientId !== couple.id)
+                        updateClient(linked.id, { clientLinks: linked.clientLinks })
                       }
+                      updateClient(couple.id, { clientLinks: couple.clientLinks })
                       setShowAddLink(prev => !prev) // force re-render
                       setTimeout(() => setShowAddLink(false), 0)
                     }}
@@ -495,6 +501,8 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                               couple.clientLinks.push({ clientId: c.id, type: 'dossier' })
                               if (!c.clientLinks) c.clientLinks = []
                               c.clientLinks.push({ clientId: couple.id, type: 'dossier' })
+                              updateClient(couple.id, { clientLinks: couple.clientLinks })
+                              updateClient(c.id, { clientLinks: c.clientLinks })
                               setShowAddLink(false)
                               setAddLinkSearch('')
                             }}
@@ -1136,8 +1144,10 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                         {formatDate(session.date)} · {formatTime(session.date)}
                       </div>
                       <div style={{ fontSize: '0.714rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
-                        {session.phase && session.phase !== 'prospect' && (() => {
-                          const ppc = phaseColors[session.phase]
+                        {(() => {
+                          const effectivePhase = session.phase || couple?.phase || 'debut'
+                          if (effectivePhase === 'prospect') return null
+                          const ppc = phaseColors[effectivePhase]
                           const isPlanned = session.status === 'scheduled'
                           if (isPlanned) {
                             return (
@@ -1150,7 +1160,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                                   lineHeight: 1, padding: '0 3px'
                                 }}>{sessionNum}</span>}
                                 <span style={{ fontSize: '0.571rem', fontWeight: 600, color: ppc?.color || '#2B6CB0' }}>
-                                  {getPhaseLabel(session.phase)}
+                                  {getPhaseLabel(effectivePhase)}
                                 </span>
                               </span>
                             )
@@ -1170,7 +1180,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                                 lineHeight: 1
                               }}>{sessionNum}</span>}
-                              {getPhaseLabel(session.phase)}
+                              {getPhaseLabel(effectivePhase)}
                             </span>
                           )
                         })()}
@@ -1184,7 +1194,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                           }[session.paymentMethod]
                           if (!pmBase) return null
                           const isReceived = session.paymentReceived
-                          const displayColor = isReceived ? 'var(--success)' : pmBase.dot
+                          const displayColor = isReceived ? 'var(--success)' : 'var(--error)'
                           return (
                             <span style={{
                               display: 'inline-flex', alignItems: 'center', gap: 4,
@@ -1227,6 +1237,18 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                           ) : null
                         })()}
                       </div>
+                      {/* Payment confirmation alert — inside the card */}
+                      {session.status === 'completed' && !session.paymentMethod && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                          <AlertTriangle size={10} style={{ color: '#D97706', flexShrink: 0 }} />
+                          <span style={{ fontSize: '0.643rem', color: '#92400E', fontWeight: 600 }}>
+                            Paiement à confirmer
+                          </span>
+                          <span style={{ fontSize: '0.643rem', color: '#92400E', fontWeight: 400 }}>
+                            — Veuillez renseigner le mode de paiement.
+                          </span>
+                        </div>
+                      )}
 
                     </div>
                     <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -1258,30 +1280,10 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                           <Clock size={18} style={{ color: 'var(--text-tertiary)' }} />
                         )
                       )}
-                </div>
-              </div>
+                    </div>
+                  </div>
 
-              {/* Payment confirmation alert for completed sessions without payment method */}
-              {session.status === 'completed' && !session.paymentMethod && (
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '6px 12px', marginTop: -2,
-                  background: '#FFFBEB',
-                  borderRadius: '0 0 var(--radius-md) var(--radius-md)',
-                  border: '1px solid #FEF3C7', borderTop: 'none',
-                  animation: 'ncSlideIn 0.25s ease-out'
-                }}>
-                  <AlertTriangle size={13} style={{ color: '#D97706', flexShrink: 0 }} />
-                  <span style={{ fontSize: '0.714rem', color: '#92400E', fontWeight: 600 }}>
-                    Paiement à confirmer
-                  </span>
-                  <span style={{ fontSize: '0.714rem', color: '#92400E', fontWeight: 400 }}>
-                    — Veuillez renseigner le mode de paiement.
-                  </span>
                 </div>
-              )}
-
-            </div>
               )
             })}
           </div>
@@ -1319,6 +1321,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                   setSessionRate(newCycle.rate)
                   setTempRate(newCycle.rate)
                   couple.phase = 'debut'
+                  updateClient(couple.id, { phase: 'debut' })
                   setPhase('debut')
                 }}
               >
@@ -1622,7 +1625,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                             {isScheduled && !isPaid ? null : noPayment ? (
                               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: '0.571rem', fontWeight: 700, color: '#92400E', letterSpacing: '0.02em' }}>
-                                <HelpCircle size={9} /> CONFIRMATION
+                                <HelpCircle size={9} /> CONFIRMER
                               </span>
                             ) : (
                               <span style={{ fontSize: '0.643rem', fontWeight: isPaid ? 700 : 400, color: isPaid ? 'var(--success)' : 'var(--text-tertiary)' }}>
@@ -1907,6 +1910,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                             <div
                               onClick={() => {
                                 session.phase = tp.key
+                                updateSession(session.id, { phase: tp.key })
                                 setSessionUpdates(prev => ({ ...prev, [session.id]: { ...prev[session.id], _phase: Date.now() } }))
                               }}
                               style={{
@@ -1959,6 +1963,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                       value={session.date.slice(0, 16)}
                       onChange={e => {
                         session.date = e.target.value
+                        updateSession(session.id, { date: e.target.value })
                         setSessionUpdates(prev => ({ ...prev, [session.id]: { ...prev[session.id], _date: Date.now() } }))
                       }}
                       style={{ fontSize: '0.786rem', flex: '2 1 0' }}
@@ -1968,6 +1973,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                         onClick={() => {
                           session.status = 'scheduled'
                           session.cancellationReason = ''
+                          updateSession(session.id, { status: 'scheduled', cancellationReason: '' })
                           setSessionUpdates(prev => ({ ...prev, [session.id]: { ...prev[session.id], _status: Date.now() } }))
                         }}
                         style={{
@@ -1987,6 +1993,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                         onClick={() => {
                           if (!confirm('Annuler cette séance ?')) return
                           session.status = 'cancelled'
+                          updateSession(session.id, { status: 'cancelled' })
                           setSessionUpdates(prev => ({ ...prev, [session.id]: { ...prev[session.id], _status: Date.now() } }))
                         }}
                         style={{
@@ -2021,6 +2028,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                       value={session.cancellationReason || ''}
                       onChange={e => {
                         session.cancellationReason = e.target.value
+                        updateSession(session.id, { cancellationReason: e.target.value })
                         setSessionUpdates(prev => ({ ...prev, [session.id]: { ...prev[session.id], _reason: Date.now() } }))
                       }}
                       placeholder="Indiquez la raison de l'annulation…"
@@ -2151,6 +2159,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                           // Sync paymentAmount if not explicitly set differently
                           if (session.paymentAmount === undefined || session.paymentAmount === rate) {
                             session.paymentAmount = v
+                            updateSession(session.id, { paymentAmount: v })
                           }
                           setSessionUpdates(prev => ({ ...prev, [session.id]: { ...prev[session.id], _rate: Date.now() } }))
                         }}
@@ -2178,6 +2187,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                           <button key={pm.key}
                             onClick={() => {
                               session.paymentMethod = isActive ? null : pm.key
+                              updateSession(session.id, { paymentMethod: isActive ? null : pm.key })
                               setSessionUpdates(prev => ({ ...prev, [session.id]: { ...prev[session.id], _pay: Date.now() } }))
                             }}
                             style={{
@@ -2234,6 +2244,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                               value={session.paymentDate || session.date.slice(0, 10)}
                               onChange={e => {
                                 session.paymentDate = e.target.value
+                                updateSession(session.id, { paymentDate: e.target.value })
                                 setSessionUpdates(prev => ({ ...prev, [session.id]: { ...prev[session.id], _pd: Date.now() } }))
                               }}
                               style={{ fontSize: '0.714rem', flex: '0 0 calc(33.33% - 6px)' }}
@@ -2252,6 +2263,13 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                                       if (newStatus) {
                                         coveredSession.paymentMethod = coveredSession.paymentMethod || session.paymentMethod
                                       }
+                                    }
+                                  })
+                                  // Persist all changes
+                                  updateSession(session.id, { paymentReceived: newStatus })
+                                  coveredIds.forEach(sid => {
+                                    if (sid !== session.id) {
+                                      updateSession(sid, { paymentReceived: newStatus, ...(newStatus ? { paymentMethod: session.paymentMethod } : {}) })
                                     }
                                   })
                                   setSessionUpdates(prev => ({ ...prev, [session.id]: { ...prev[session.id], _pay: Date.now() } }))
@@ -2384,6 +2402,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                                 session.needsInvoice = false
                                 session.invoiceSent = false
                                 session.invoiceCoveredSessionIds = undefined
+                                updateSession(session.id, { needsInvoice: false, invoiceSent: false, invoiceCoveredSessionIds: null })
                               } else if (parentInvoiceSession) {
                                 // Remove this session from parent's coverage
                                 const updated = (parentInvoiceSession.invoiceCoveredSessionIds || []).filter(id => id !== session.id)
@@ -2391,9 +2410,11 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                                   parentInvoiceSession.needsInvoice = false
                                   parentInvoiceSession.invoiceSent = false
                                   parentInvoiceSession.invoiceCoveredSessionIds = undefined
+                                  updateSession(parentInvoiceSession.id, { needsInvoice: false, invoiceSent: false, invoiceCoveredSessionIds: null })
                                 } else {
                                   parentInvoiceSession.invoiceCoveredSessionIds = updated
                                   parentInvoiceSession.paymentAmount = updated.reduce((sum, sid) => sum + getRate(sid), 0)
+                                  updateSession(parentInvoiceSession.id, { invoiceCoveredSessionIds: updated, paymentAmount: parentInvoiceSession.paymentAmount })
                                 }
                               }
                               setSessionUpdates(prev => ({ ...prev, [session.id]: { ...prev[session.id], _inv: Date.now() } }))
@@ -2417,6 +2438,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                           <button
                             onClick={() => {
                               session.needsInvoice = true
+                              updateSession(session.id, { needsInvoice: true })
                               setSessionUpdates(prev => ({ ...prev, [session.id]: { ...prev[session.id], _inv: Date.now() } }))
                             }}
                             style={{
@@ -2453,6 +2475,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                               value={session.invoiceDate || session.date.slice(0, 10)}
                               onChange={e => {
                                 session.invoiceDate = e.target.value
+                                updateSession(session.id, { invoiceDate: e.target.value })
                                 setSessionUpdates(prev => ({ ...prev, [session.id]: { ...prev[session.id], _invd: Date.now() } }))
                               }}
                               style={{ fontSize: '0.714rem', flex: 1 }}
@@ -2462,17 +2485,19 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                                 onClick={() => {
                                   if (isOwnInvoice) {
                                     session.invoiceSent = true
+                                    updateSession(session.id, { invoiceSent: true })
                                     const covered = session.invoiceCoveredSessionIds || [session.id]
                                     covered.forEach(sid => {
                                       const covS = sessions.find(x => x.id === sid)
-                                      if (covS && covS.id !== session.id) { covS.invoiceSent = true }
+                                      if (covS && covS.id !== session.id) { covS.invoiceSent = true; updateSession(sid, { invoiceSent: true }) }
                                     })
                                   } else if (parentInvoiceSession) {
                                     parentInvoiceSession.invoiceSent = true
+                                    updateSession(parentInvoiceSession.id, { invoiceSent: true })
                                     const covered = parentInvoiceSession.invoiceCoveredSessionIds || [parentInvoiceSession.id]
                                     covered.forEach(sid => {
                                       const covS = sessions.find(x => x.id === sid)
-                                      if (covS) { covS.invoiceSent = true }
+                                      if (covS) { covS.invoiceSent = true; updateSession(sid, { invoiceSent: true }) }
                                     })
                                   }
                                   setSessionUpdates(prev => ({ ...prev, [session.id]: { ...prev[session.id], _inv: Date.now() } }))
@@ -2599,6 +2624,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                                                   session.invoiceSent = false
                                                   session.invoiceDate = undefined
                                                   session.invoiceCoveredSessionIds = undefined
+                                                  updateSession(session.id, { needsInvoice: false, invoiceSent: false, invoiceDate: null, invoiceCoveredSessionIds: null })
                                                 } else if (!updated.includes(session.id)) {
                                                   // Migrate invoice to the first session in the covered list
                                                   const targetSession = sessions.find(ts => ts.id === updated[0])
@@ -2607,14 +2633,17 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                                                     targetSession.invoiceSent = session.invoiceSent
                                                     targetSession.invoiceDate = session.invoiceDate
                                                     targetSession.invoiceCoveredSessionIds = updated
+                                                    updateSession(targetSession.id, { needsInvoice: true, invoiceSent: session.invoiceSent, invoiceDate: session.invoiceDate, invoiceCoveredSessionIds: updated })
                                                   }
                                                   // Clear from current session
                                                   session.needsInvoice = false
                                                   session.invoiceSent = false
                                                   session.invoiceDate = undefined
                                                   session.invoiceCoveredSessionIds = undefined
+                                                  updateSession(session.id, { needsInvoice: false, invoiceSent: false, invoiceDate: null, invoiceCoveredSessionIds: null })
                                                 } else {
                                                   session.invoiceCoveredSessionIds = updated
+                                                  updateSession(session.id, { invoiceCoveredSessionIds: updated })
                                                 }
                                                 setSessionUpdates(prev => ({ ...prev, [session.id]: { ...prev[session.id], _inv: Date.now() } }))
                                               }}
@@ -3273,7 +3302,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                     opacity: ((editSource === 'referral' || editSource === 'parrainage') && modalExternalReferrer && !(modalExternalReferrer.lastName || '').trim()) ? 0.4 : 1
                   }}
                   disabled={(editSource === 'referral' || editSource === 'parrainage') && modalExternalReferrer && !(modalExternalReferrer.lastName || '').trim()}
-                  onClick={() => {
+                  onClick={async () => {
                     // Save changes
                     couple.partnerA = { ...editPartnerA, lastName: (editPartnerA.lastName || '').toUpperCase() }
                     if (editType === 'couple' || editType === 'family') {
@@ -3329,7 +3358,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                       const todayFull = new Date().toISOString().replace(/\.\d+Z$/, '')
 
                       if (refType === 'professionnel') {
-                        // --- PROFESSIONNEL → mockProfessionals ---
+                        // --- PROFESSIONNEL → Supabase professionals ---
                         // Try to find by proId from existing link first, then by name
                         const existingProLink = (couple.clientLinks || []).find(l => l.type === 'parrainage-pro')
                         let existingPro = existingProLink ? mockProfessionals.find(p => p.id === existingProLink.proId) : null
@@ -3339,18 +3368,23 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                             (p.firstName || '') === (modalExternalReferrer.firstName || '')
                           )
                         }
+                        let proId
                         if (existingPro) {
-                          existingPro.firstName = modalExternalReferrer.firstName || existingPro.firstName
-                          existingPro.lastName = modalExternalReferrer.lastName.trim()
-                          existingPro.email = modalExternalReferrer.email || existingPro.email
-                          existingPro.phone = modalExternalReferrer.phone || existingPro.phone
-                          existingPro.note = modalExternalReferrer.role || existingPro.note
-                          if (!existingPro.referrals.some(r => r.clientId === couple.id)) {
-                            existingPro.referrals.push({ clientId: couple.id, date: today, clientName: getCoupleName(couple) })
+                          const updatedReferrals = [...(existingPro.referrals || [])]
+                          if (!updatedReferrals.some(r => r.clientId === couple.id)) {
+                            updatedReferrals.push({ clientId: couple.id, date: today, clientName: getCoupleName(couple) })
                           }
+                          updatePro(existingPro.id, {
+                            firstName: modalExternalReferrer.firstName || existingPro.firstName,
+                            lastName: modalExternalReferrer.lastName.trim(),
+                            email: modalExternalReferrer.email || existingPro.email,
+                            phone: modalExternalReferrer.phone || existingPro.phone,
+                            note: modalExternalReferrer.role || existingPro.note,
+                            referrals: updatedReferrals
+                          })
+                          proId = existingPro.id
                         } else {
-                          mockProfessionals.push({
-                            id: 'pro-' + Date.now(),
+                          const newPro = await createPro({
                             firstName: modalExternalReferrer.firstName || '',
                             lastName: modalExternalReferrer.lastName.trim(),
                             email: modalExternalReferrer.email || '',
@@ -3359,9 +3393,9 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                             createdAt: today,
                             referrals: [{ clientId: couple.id, date: today, clientName: getCoupleName(couple) }]
                           })
+                          proId = newPro?.id || ('pro-' + Date.now())
                         }
                         // Create a parrainage-pro link on the filleul so it shows in "Lier un dossier"
-                        const proId = existingPro ? existingPro.id : mockProfessionals[mockProfessionals.length - 1].id
                         const proName = refName
                         if (!couple.clientLinks) couple.clientLinks = []
                         if (!couple.clientLinks.some(l => l.type === 'parrainage-pro' && l.proId === proId)) {
@@ -3404,6 +3438,16 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                       }
                     }
                     setEditType(finalType)
+                    // Persist all identity changes to Supabase
+                    updateClient(couple.id, {
+                      partnerA: couple.partnerA,
+                      partnerB: couple.partnerB,
+                      type: couple.type,
+                      children: couple.children || null,
+                      source: couple.source,
+                      externalReferrer: couple.externalReferrer || null,
+                      clientLinks: couple.clientLinks || []
+                    })
                     setShowEditModal(false)
                   }}
                 >
@@ -3451,9 +3495,13 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                 borderRadius: 'var(--radius-md)', cursor: 'pointer', fontWeight: 600,
                 fontFamily: 'var(--font-family)', display: 'flex', alignItems: 'center', gap: 4
               }}
-                onClick={() => {
+                onClick={async () => {
+                  const now = new Date().toISOString()
                   couple.deleted = true
-                  couple.deletedAt = new Date().toISOString()
+                  couple.deletedAt = now
+                  if (updateClient) {
+                    await updateClient(couple.id, { deleted: true, deletedAt: now })
+                  }
                   setShowDeleteConfirm(false)
                   setShowEditModal(false)
                   navigate(couple.phase === 'prospect' ? '/couples?tab=prospects' : '/couples')

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Plus, Search, Users, User, Sprout, Target, TrendingUp, X, ArrowDownUp, ArrowUpAZ, UserPlus, Calendar, Globe, Phone, UserCheck, CheckCircle, XCircle, HelpCircle, Link2, Award, LayoutGrid, List, Star, Baby, Trash2, Briefcase } from 'lucide-react'
-import { mockProfessionals } from '../data/mockData'
+// mockProfessionals removed — now from DataContext
 import { useData } from '../context/DataContext'
 import { findDuplicateClients } from '../utils/duplicateUtils'
 import DuplicateAlert from '../components/DuplicateAlert'

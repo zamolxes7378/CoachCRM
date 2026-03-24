@@ -5,7 +5,9 @@ import {
   sessionRates as defaultRates, prospectStages,
   getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel,
   getComputedStatus, getProspectStageInfo, getClientType, clientTypeLabels,
-  formatDate, formatTime, formatRelativeDate, getTodaySessions
+  formatDate, formatTime, formatRelativeDate, getTodaySessions,
+  mockCouples as demoClients, mockSessions as demoSessions,
+  mockReports as demoReports, mockProfessionals as demoProfessionals
 } from '../data/mockData'
 
 const DataContext = createContext(null)
@@ -35,6 +37,7 @@ function adaptClient(c) {
     emotionalMaturityHistory: c.emotional_maturity_history || [],
     prospectStage: c.prospect_stage,
     referredBy: c.referred_by,
+    deletedAt: c.deleted_at,
     // keep id as-is (UUID)
   }
 }
@@ -54,8 +57,13 @@ function adaptSession(s) {
     paymentReceived: s.payment_received,
     paymentStatus: s.payment_status,
     paymentAmount: s.payment_amount,
+    paymentDate: s.payment_date,
+    cancellationReason: s.cancellation_reason,
     needsInvoice: s.needs_invoice,
     invoiceSent: s.invoice_sent,
+    invoiceDate: s.invoice_date,
+    invoiceCoveredSessionIds: s.invoice_covered_session_ids,
+    coveredSessionIds: s.covered_session_ids,
   }
 }
 
@@ -73,6 +81,25 @@ function adaptReport(r) {
   }
 }
 
+function adaptProfessional(p) {
+  if (!p) return p
+  return {
+    ...p,
+    firstName: p.first_name,
+    lastName: p.last_name,
+    createdAt: p.created_at,
+  }
+}
+
+// Reverse adapt: App format → Supabase format (for writes)
+function unadaptProfessional(p) {
+  const out = { ...p }
+  if ('firstName' in p) { out.first_name = p.firstName; delete out.firstName }
+  if ('lastName' in p) { out.last_name = p.lastName; delete out.lastName }
+  if ('createdAt' in p) { out.created_at = p.createdAt; delete out.createdAt }
+  return out
+}
+
 // Reverse adapt: App format → Supabase format (for writes)
 function unadaptClient(c) {
   const out = { ...c }
@@ -87,6 +114,7 @@ function unadaptClient(c) {
   if ('emotionalMaturityHistory' in c) { out.emotional_maturity_history = c.emotionalMaturityHistory; delete out.emotionalMaturityHistory }
   if ('prospectStage' in c) { out.prospect_stage = c.prospectStage; delete out.prospectStage }
   if ('referredBy' in c) { out.referred_by = c.referredBy; delete out.referredBy }
+  if ('deletedAt' in c) { out.deleted_at = c.deletedAt; delete out.deletedAt }
   return out
 }
 
@@ -99,15 +127,22 @@ function unadaptSession(s) {
   if ('paymentReceived' in s) { out.payment_received = s.paymentReceived; delete out.paymentReceived }
   if ('paymentStatus' in s) { out.payment_status = s.paymentStatus; delete out.paymentStatus }
   if ('paymentAmount' in s) { out.payment_amount = s.paymentAmount; delete out.paymentAmount }
+  if ('paymentDate' in s) { out.payment_date = s.paymentDate; delete out.paymentDate }
+  if ('cancellationReason' in s) { out.cancellation_reason = s.cancellationReason; delete out.cancellationReason }
   if ('needsInvoice' in s) { out.needs_invoice = s.needsInvoice; delete out.needsInvoice }
   if ('invoiceSent' in s) { out.invoice_sent = s.invoiceSent; delete out.invoiceSent }
+  if ('invoiceDate' in s) { out.invoice_date = s.invoiceDate; delete out.invoiceDate }
+  if ('invoiceCoveredSessionIds' in s) { out.invoice_covered_session_ids = s.invoiceCoveredSessionIds; delete out.invoiceCoveredSessionIds }
+  if ('coveredSessionIds' in s) { out.covered_session_ids = s.coveredSessionIds; delete out.coveredSessionIds }
   return out
 }
 
 export function DataProvider({ user, children }) {
+  const isDemo = user?.id === 'demo-user'
   const [rawClients, setRawClients] = useState([])
   const [rawSessions, setRawSessions] = useState([])
   const [rawReports, setRawReports] = useState([])
+  const [rawProfessionals, setRawProfessionals] = useState([])
   const [settings, setSettings] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -115,16 +150,27 @@ export function DataProvider({ user, children }) {
     if (!user?.id) return
     setLoading(true)
     try {
-      const [c, s, r, st] = await Promise.all([
+      if (isDemo) {
+        // Demo mode: use mockData arrays directly (no Supabase)
+        setRawClients(demoClients)
+        setRawSessions(demoSessions)
+        setRawReports(demoReports)
+        setRawProfessionals(demoProfessionals)
+        setSettings(null)
+      } else {
+      const [c, s, r, st, p] = await Promise.all([
         ds.getClients(user.id),
         ds.getSessions(user.id),
         ds.getReports(user.id),
-        ds.getSettings(user.id)
+        ds.getSettings(user.id),
+        ds.getProfessionals(user.id)
       ])
       setRawClients(c)
       setRawSessions(s)
       setRawReports(r)
       setSettings(st)
+      setRawProfessionals(p)
+      }
     } catch (err) {
       console.error('DataProvider load error:', err)
     } finally {
@@ -145,6 +191,7 @@ export function DataProvider({ user, children }) {
     return s
   }), [rawSessions])
   const reports = useMemo(() => rawReports.map(adaptReport), [rawReports])
+  const professionals = useMemo(() => rawProfessionals.map(adaptProfessional), [rawProfessionals])
 
   // Derived values
   const sessionRates = { ...defaultRates, ...(settings?.session_rates || {}) }
@@ -154,7 +201,7 @@ export function DataProvider({ user, children }) {
 
   const value = {
     // Adapted data (pages use these as drop-in replacements for mockCouples/mockSessions)
-    clients, sessions, reports, settings, loading,
+    clients, sessions, reports, settings, loading, professionals,
     sessionRates, recruitmentSources,
     // Static helpers
     therapyPhases, defaultTherapyConfig, prospectStages,
@@ -162,18 +209,22 @@ export function DataProvider({ user, children }) {
     getComputedStatus, getProspectStageInfo, getClientType, clientTypeLabels,
     formatDate, formatTime, formatRelativeDate, getTodaySessions,
     // Actions (handle reverse adapting automatically)
+    // In demo mode, skip Supabase calls entirely (mock data is in-memory only)
     refreshData: loadData,
     updateClient: async (id, updates) => {
+      if (isDemo) return true
       const result = await ds.updateClient(id, unadaptClient(updates))
       if (result) await loadData()
       return result
     },
     createClient: async (client) => {
+      if (isDemo) return true
       const result = await ds.createClient({ ...unadaptClient(client), user_id: user.id })
       if (result) await loadData()
       return result
     },
     updateSession: async (id, updates) => {
+      if (isDemo) return true
       const result = await ds.updateSession(id, unadaptSession(updates))
       if (result) {
         // Auto-transition: prospect → début when first session completed
@@ -188,24 +239,49 @@ export function DataProvider({ user, children }) {
       return result
     },
     createSession: async (session) => {
+      if (isDemo) return true
       const result = await ds.createSession({ ...unadaptSession(session), user_id: user.id })
       if (result) await loadData()
       return result
     },
     createContact: async (contact) => {
+      if (isDemo) return true
       const result = await ds.createContact({ ...contact, user_id: user.id })
       if (result) await loadData()
       return result
     },
-    updateContact: ds.updateContact,
+    updateContact: async (...args) => {
+      if (isDemo) return true
+      return ds.updateContact(...args)
+    },
     deleteContact: async (id) => {
+      if (isDemo) return true
       const result = await ds.deleteContact(id)
       if (result) await loadData()
       return result
     },
     upsertSettings: async (settingsData) => {
+      if (isDemo) return true
       const result = await ds.upsertSettings(user.id, settingsData)
       if (result) setSettings(result)
+      return result
+    },
+    createProfessional: async (professional) => {
+      if (isDemo) return true
+      const result = await ds.createProfessional({ ...unadaptProfessional(professional), user_id: user.id })
+      if (result) await loadData()
+      return result
+    },
+    updateProfessional: async (id, updates) => {
+      if (isDemo) return true
+      const result = await ds.updateProfessional(id, unadaptProfessional(updates))
+      if (result) await loadData()
+      return result
+    },
+    deleteProfessional: async (id) => {
+      if (isDemo) return true
+      const result = await ds.deleteProfessional(id)
+      if (result) await loadData()
       return result
     }
   }
