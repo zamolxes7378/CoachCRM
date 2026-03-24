@@ -1135,8 +1135,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                       </div>
                       <div style={{ fontSize: '0.714rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
                         {(() => {
-                          const effectivePhase = session.phase || couple?.phase || defaultPhaseKey
-                          if (effectivePhase === 'prospect') return null
+                          const effectivePhase = (session.phase === 'prospect' ? defaultPhaseKey : session.phase) || couple?.phase || defaultPhaseKey
                           const ppc = phaseColors[effectivePhase]
                           const isPlanned = session.status === 'scheduled'
                           if (isPlanned) {

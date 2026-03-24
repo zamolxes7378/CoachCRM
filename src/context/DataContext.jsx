@@ -263,7 +263,7 @@ export function DataProvider({ user, children }) {
       if (isDemo) return true
       const result = await ds.updateSession(id, unadaptSession(updates))
       if (result) {
-        // Auto-transition: prospect → début when first session completed
+        // Auto-transition: prospect → client when session completed (safety net)
         if (updates.status === 'completed' && result.client_id) {
           const client = rawClients.find(c => c.id === result.client_id)
           if (client && client.phase === 'prospect') {
@@ -277,7 +277,17 @@ export function DataProvider({ user, children }) {
     createSession: async (session) => {
       if (isDemo) return true
       const result = await ds.createSession({ ...unadaptSession(session), user_id: user.id })
-      if (result) await loadData()
+      if (result) {
+        // Auto-transition: prospect → client when first session is created
+        const clientId = session.coupleId || result.client_id
+        if (clientId) {
+          const client = rawClients.find(c => c.id === clientId)
+          if (client && client.phase === 'prospect') {
+            await ds.updateClient(client.id, { phase: defaultPhaseKey })
+          }
+        }
+        await loadData()
+      }
       return result
     },
     createContact: async (contact) => {
