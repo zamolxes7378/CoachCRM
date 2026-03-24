@@ -264,13 +264,23 @@ export function DataProvider({ user, children }) {
       if (result) {
         // Auto-transition: prospect → client when session is completed AND payment method is chosen
         // (alliance thérapeutique créée — paiement peut être en attente)
+        // Note: status and paymentMethod may come in separate updateSession calls,
+        // and auto-completed sessions may still have status='scheduled' in DB
         if (result.client_id) {
-          const session = rawSessions.find(s => s.id === id)
-          const mergedStatus = updates.status || session?.status
-          const mergedPaymentMethod = updates.paymentMethod || updates.payment_method || session?.payment_method
-          if (mergedStatus === 'completed' && mergedPaymentMethod) {
-            const client = rawClients.find(c => c.id === result.client_id)
-            if (client && client.phase === 'prospect') {
+          const client = rawClients.find(c => c.id === result.client_id)
+          if (client && client.phase === 'prospect') {
+            // Merge: DB result (snake_case) + raw session + updates
+            const dbStatus = result.status || updates.status
+            const rawSession = rawSessions.find(s => s.id === id)
+            const effectiveStatus = dbStatus || rawSession?.status
+            const effectivePM = result.payment_method || updates.paymentMethod || updates.payment_method || rawSession?.payment_method
+            // Also check computed status: sessions past end time are auto-completed client-side
+            const isAutoCompleted = effectiveStatus === 'scheduled' && rawSession?.date && (() => {
+              const endTime = new Date(new Date(rawSession.date).getTime() + (rawSession.duration || 60) * 60000)
+              return endTime <= new Date()
+            })()
+            const isCompleted = effectiveStatus === 'completed' || isAutoCompleted
+            if (isCompleted && effectivePM) {
               await ds.updateClient(client.id, { phase: defaultPhaseKey })
             }
           }
