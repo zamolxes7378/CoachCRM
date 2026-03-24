@@ -225,14 +225,13 @@ export function DataProvider({ user, children }) {
     if (!phaseIcons[tp.key]) phaseIcons[tp.key] = Sprout
   })
 
-  // Robust prospect check: phase === 'prospect' AND no sessions at all
+  // Prospect check: phase === 'prospect'
+  // Note: a prospect CAN have scheduled sessions — they remain prospect until
+  // a session is completed with a payment method chosen (alliance thérapeutique)
   const isProspect = useCallback((couple) => {
     if (!couple) return false
-    if (couple.phase !== 'prospect') return false
-    // Double-check: no sessions (scheduled, in-progress, or completed)
-    const hasSessions = sessions.some(s => s.coupleId === couple.id && s.status !== 'cancelled')
-    return !hasSessions
-  }, [sessions])
+    return couple.phase === 'prospect'
+  }, [])
 
   const value = {
     // Adapted data (pages use these as drop-in replacements for mockCouples/mockSessions)
@@ -263,11 +262,17 @@ export function DataProvider({ user, children }) {
       if (isDemo) return true
       const result = await ds.updateSession(id, unadaptSession(updates))
       if (result) {
-        // Auto-transition: prospect → client when session completed (safety net)
-        if (updates.status === 'completed' && result.client_id) {
-          const client = rawClients.find(c => c.id === result.client_id)
-          if (client && client.phase === 'prospect') {
-            await ds.updateClient(client.id, { phase: defaultPhaseKey })
+        // Auto-transition: prospect → client when session is completed AND payment method is chosen
+        // (alliance thérapeutique créée — paiement peut être en attente)
+        if (result.client_id) {
+          const session = rawSessions.find(s => s.id === id)
+          const mergedStatus = updates.status || session?.status
+          const mergedPaymentMethod = updates.paymentMethod || updates.payment_method || session?.payment_method
+          if (mergedStatus === 'completed' && mergedPaymentMethod) {
+            const client = rawClients.find(c => c.id === result.client_id)
+            if (client && client.phase === 'prospect') {
+              await ds.updateClient(client.id, { phase: defaultPhaseKey })
+            }
           }
         }
         // Reverse transition: client → prospect when last session is cancelled
@@ -289,17 +294,7 @@ export function DataProvider({ user, children }) {
     createSession: async (session) => {
       if (isDemo) return true
       const result = await ds.createSession({ ...unadaptSession(session), user_id: user.id })
-      if (result) {
-        // Auto-transition: prospect → client when first session is created
-        const clientId = session.coupleId || result.client_id
-        if (clientId) {
-          const client = rawClients.find(c => c.id === clientId)
-          if (client && client.phase === 'prospect') {
-            await ds.updateClient(client.id, { phase: defaultPhaseKey })
-          }
-        }
-        await loadData()
-      }
+      if (result) await loadData()
       return result
     },
     createContact: async (contact) => {

@@ -127,18 +127,30 @@ Un prospect est un client dont `couple.phase === 'prospect'`. C'est le **seul in
 | Indicateur | Valeur |
 |---|---|
 | `couple.phase` | `=== 'prospect'` |
-| Séances | Aucune (ni programmée, ni en cours, ni passée) |
+| Séances | Peut avoir des séances planifiées, mais aucune complétée avec moyen de paiement |
 | Contacts | Peut en avoir (appels, emails, SMS, etc.) |
 | Parrainage | Peut parrainer d'autres clients |
 
 #### Règles métier
 
 - **`prospect` n'est PAS une phase de thérapie** — c'est un **stade** du client
-- Un prospect **n'a pas de séances** planifiées, en cours, ni passées
+- Un prospect **peut avoir des séances planifiées** (RDV pris) mais reste prospect tant que la séance n'est pas confirmée
 - Un prospect **peut avoir des contacts** et **peut parrainer**
 - Un prospect **peut se voir attribuer n'importe quelle phase de thérapie** dès sa création (dropdown "Phase de la thérapie") ou via le stepper dans la modale identité
 - **Le stepper de phase est visible pour TOUS les clients**, y compris les prospects
-- **Conversion automatique** : un prospect devient client lorsque sa **première séance est marquée "complétée"**. Sa phase passe de `'prospect'` à `defaultPhaseKey` (première phase de `therapyPhasesData`)
+
+#### Conversion prospect → client
+
+> Un prospect devient client **à la fin de sa première séance**, au moment où se crée l'**alliance thérapeutique** :
+> - La séance doit avoir le statut **`completed`**
+> - **ET** un **moyen de paiement** doit avoir été choisi (`paymentMethod` renseigné)
+> - Le paiement peut être **en attente** — seul le choix du moyen de paiement compte
+> - Sa phase passe de `'prospect'` à `defaultPhaseKey` (première phase de `therapyPhasesData`)
+
+#### Transition inverse : client → prospect
+
+> Si la **dernière séance non-annulée** d'un client est **annulée** et qu'il ne reste plus aucune séance active, le client **redevient prospect** (avatar mauve, stade prospect).
+
 - La source de recrutement est renseignée à la création
 - Le parrainage (`referredBy`) permet de lier un prospect à un client existant
 - L'affichage se fait dans un onglet séparé "Prospects" (vs "Clients")
