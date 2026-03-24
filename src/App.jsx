@@ -159,6 +159,38 @@ export default function App() {
     )
   }
 
+  // Demo mode: bypass auth + onboarding
+  if (!user && localStorage.getItem('coachcrm_demo') === '1') {
+    const demoUser = {
+      id: 'demo-user',
+      name: 'Utilisateur Démo',
+      email: 'demo@coachcrm.fr',
+      role: 'admin',
+      photo_url: null
+    }
+    return (
+      <DataProvider user={demoUser}>
+        <BrowserRouter>
+          <Layout user={demoUser} onLogout={() => { localStorage.removeItem('coachcrm_demo'); window.location.href = '/' }}>
+            <Routes>
+              <Route path="/" element={<DashboardPage user={demoUser} />} />
+              <Route path="/couples" element={<CouplesPage />} />
+              <Route path="/couples/:id" element={<CoupleDetailPage />} />
+              <Route path="/sessions" element={<SessionsPage />} />
+              <Route path="/finances" element={<FinancesPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/help" element={<HelpPage />} />
+              <Route path="/admin" element={<AdminPage />} />
+              <Route path="/admin/deleted-clients" element={<DeletedClientsPage />} />
+              <Route path="/admin/reseau-pro" element={<ReseauProPage />} />
+              <Route path="*" element={<Navigate to="/" />} />
+            </Routes>
+          </Layout>
+        </BrowserRouter>
+      </DataProvider>
+    )
+  }
+
   if (!user) {
     return <LoginPage />
   }

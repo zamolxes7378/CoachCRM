@@ -1,4 +1,4 @@
-import { Heart, Shield, Sparkles, Users, Euro, Calendar, ArrowRight, CheckCircle, Star, Zap, BarChart3, FileText, Repeat } from 'lucide-react'
+import { Heart, Shield, Sparkles, Users, Euro, Calendar, ArrowRight, CheckCircle, Star, Zap, BarChart3, FileText, Repeat, Upload } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useState } from 'react'
 
@@ -114,6 +114,25 @@ export default function LoginPage() {
               </div>
             )
           })}
+        </div>
+
+        {/* Migration reassurance */}
+        <div style={{
+          display: 'flex', alignItems: 'flex-start', gap: 14,
+          padding: '16px 20px', marginBottom: 40,
+          background: 'rgba(218,165,32,0.08)',
+          borderRadius: 14, border: '1px solid rgba(218,165,32,0.15)',
+          position: 'relative', zIndex: 1
+        }}>
+          <Upload size={22} style={{ color: '#DAA520', flexShrink: 0, marginTop: 2 }} />
+          <div>
+            <div style={{ fontSize: '0.929rem', fontWeight: 700, color: 'white', marginBottom: 4 }}>
+              Transfert garanti de votre fichier client
+            </div>
+            <p style={{ fontSize: '0.786rem', color: 'rgba(255,255,255,0.55)', lineHeight: 1.6, margin: 0 }}>
+              Vous utilisez Excel, Google Sheets ou un autre outil ? Nous importons vos données existantes gratuitement. Aucune saisie manuelle — votre historique client est préservé.
+            </p>
+          </div>
         </div>
 
         {/* Testimonials */}
@@ -270,6 +289,23 @@ export default function LoginPage() {
           <p style={{ marginTop: 20, fontSize: '0.643rem', color: 'rgba(255,255,255,0.25)', lineHeight: 1.5 }}>
             En vous connectant, vous acceptez nos <span style={{ color: 'rgba(218,165,32,0.6)', cursor: 'pointer' }}>conditions d'utilisation</span> et notre <span style={{ color: 'rgba(218,165,32,0.6)', cursor: 'pointer' }}>politique de confidentialité</span>.
           </p>
+
+          {/* Quick access — dev/demo shortcut */}
+          <div style={{ marginTop: 16, textAlign: 'center' }}>
+            <a
+              href="/demo"
+              onClick={(e) => {
+                e.preventDefault()
+                localStorage.setItem('coachcrm_demo', '1')
+                window.location.href = '/'
+              }}
+              style={{ fontSize: '0.643rem', color: 'rgba(255,255,255,0.2)', textDecoration: 'none', cursor: 'pointer', transition: 'color 0.2s' }}
+              onMouseEnter={e => e.currentTarget.style.color = 'rgba(218,165,32,0.5)'}
+              onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.2)'}
+            >
+              Accès rapide →
+            </a>
+          </div>
         </div>
       </div>
     </div>
