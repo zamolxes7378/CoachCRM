@@ -20,7 +20,7 @@ export default function DeletedClientsPage() {
   const typeConfig = {
     individual: { icon: User, label: 'Individuel' },
     couple: { icon: Users, label: 'Couple' },
-    family: { icon: Family, label: 'Famille' }
+    family: { icon: null, label: 'Famille' }
   }
 
   return (
