@@ -259,7 +259,35 @@ export function DataProvider({ user, children }) {
       return result
     },
     updateSession: async (id, updates) => {
-      if (isDemo) return true
+      if (isDemo) {
+        // Demo mode: mutate in-memory data
+        const sessionIdx = rawSessions.findIndex(s => s.id === id)
+        if (sessionIdx === -1) return true
+        const session = rawSessions[sessionIdx]
+        const merged = { ...session, ...updates }
+        // Auto-persist completion for past sessions
+        if (!updates.status && session.status === 'scheduled' && session.date) {
+          const endTime = new Date(new Date(session.date).getTime() + (session.duration || 60) * 60000)
+          if (endTime <= new Date()) merged.status = 'completed'
+        }
+        rawSessions[sessionIdx] = merged
+        // Auto-transition: prospect → client
+        const clientIdx = rawClients.findIndex(c => c.id === (session.client_id || session.coupleId))
+        if (clientIdx >= 0) {
+          const client = rawClients[clientIdx]
+          if (client.phase === 'prospect' && merged.status === 'completed' && (merged.payment_method || merged.paymentMethod)) {
+            rawClients[clientIdx] = { ...client, phase: defaultPhaseKey }
+          }
+          // Reverse: client → prospect if last session cancelled
+          if (merged.status === 'cancelled' && client.phase !== 'prospect') {
+            const remaining = rawSessions.filter(s => (s.client_id || s.coupleId) === client.id && s.id !== id && s.status !== 'cancelled')
+            if (remaining.length === 0) rawClients[clientIdx] = { ...client, phase: 'prospect' }
+          }
+        }
+        setRawSessions([...rawSessions])
+        setRawClients([...rawClients])
+        return true
+      }
       // Auto-persist completion: if the session is past its end time and still 'scheduled',
       // automatically mark it as 'completed' in the DB alongside the requested update
       if (!updates.status) {
