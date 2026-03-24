@@ -32,6 +32,8 @@ export default function CouplesPage() {
   const [newFamilyAdults, setNewFamilyAdults] = useState([{}])
   const [newLastName, setNewLastName] = useState('')
   const [newFirstName, setNewFirstName] = useState('')
+  const [newLastNameB, setNewLastNameB] = useState('')
+  const [newFirstNameB, setNewFirstNameB] = useState('')
   const [newReferents, setNewReferents] = useState([0])
   const [duplicateDismissed, setDuplicateDismissed] = useState(false)
   const [billingAddress, setBillingAddress] = useState('')
@@ -527,14 +529,14 @@ export default function CouplesPage() {
             <div className="grid-2">
               <div className="input-group">
                 <label>Prénom</label>
-                <input className="input" placeholder="Prénom" value={idx === 0 ? newFirstName : undefined} onChange={idx === 0 ? e => { setNewFirstName(e.target.value); setDuplicateDismissed(false) } : undefined} />
+                <input className="input" placeholder="Prénom" value={idx === 0 ? newFirstName : newFirstNameB} onChange={idx === 0 ? e => { setNewFirstName(e.target.value); setDuplicateDismissed(false) } : e => setNewFirstNameB(e.target.value)} />
               </div>
               <div className="input-group">
                 <label>Nom <span style={{ color: 'var(--error)' }}>*</span></label>
                 {idx === 0 ? (
                   <input className="input" placeholder="Nom" value={newLastName} onChange={e => { setNewLastName(e.target.value); setDuplicateDismissed(false) }} style={ !newLastName.trim() ? { borderColor: 'var(--error)', borderWidth: 1 } : {}} />
                 ) : (
-                  <input className="input" placeholder="Nom" />
+                  <input className="input" placeholder="Nom" value={newLastNameB} onChange={e => setNewLastNameB(e.target.value)} style={ !newLastNameB.trim() ? { borderColor: 'var(--error)', borderWidth: 1 } : {}} />
                 )}
               </div>
             </div>
@@ -1083,6 +1085,12 @@ export default function CouplesPage() {
                           firstName: newFirstName || '',
                           lastName: newLastName.trim().toUpperCase(),
                         },
+                        ...(newClientType !== 'individual' && newLastNameB.trim() ? {
+                          partnerB: {
+                            firstName: newFirstNameB || '',
+                            lastName: newLastNameB.trim().toUpperCase(),
+                          }
+                        } : {}),
                         phase: 'prospect',
                         source: newSource || null,
                         billingAddress: billingAddress.trim() || null,

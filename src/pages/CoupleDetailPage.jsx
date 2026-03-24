@@ -2693,12 +2693,20 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
             if ((eb.firstName || '') !== (b.firstName || '') || (eb.lastName || '') !== (b.lastName || '') || (eb.email || '') !== (b.email || '') || (eb.phone || '') !== (b.phone || '')) return true
           }
           if ((editSource || '') !== (couple.source || '')) return true
+          if ((editBillingAddress || '') !== (couple.billingAddress || '')) return true
           return false
         }
         const handleClose = () => {
           if (hasChanges()) {
             if (!window.confirm('Des modifications non enregistrées seront perdues. Voulez-vous vraiment quitter ?')) return
           }
+          // Reset all edit fields to original values
+          setEditPartnerA({ ...couple.partnerA })
+          setEditPartnerB(couple.partnerB ? { ...couple.partnerB } : {})
+          setEditChildren(couple.children || [])
+          setEditType(couple ? getClientType(couple) : 'individual')
+          setEditSource(couple?.source || '')
+          setEditBillingAddress(couple?.billingAddress || '')
           setShowEditModal(false); setShowDeleteConfirm(false)
         }
         return (
