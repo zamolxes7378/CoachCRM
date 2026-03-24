@@ -1277,7 +1277,13 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                           fontSize: '0.643rem', padding: '3px 10px', fontWeight: 600,
                           background: 'transparent', color: 'var(--success)', border: '1px solid var(--success)', borderRadius: 'var(--radius-sm)'
                         }}
-                        onClick={async (e) => { e.stopPropagation(); await updateSession(session.id, { status: 'completed' }) }}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          session.status = 'completed'
+                          updateSession(session.id, { status: 'completed' })
+                          setSessionUpdates(prev => ({ ...prev, [session.id]: { ...prev[session.id], _status: Date.now() } }))
+                          setExpandedSessionId(session.id)
+                        }}
                       >
                         ✓ Réalisée
                       </button>
@@ -1287,7 +1293,14 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                           fontSize: '0.643rem', padding: '3px 10px', fontWeight: 600,
                           background: 'transparent', color: 'var(--text-tertiary)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)'
                         }}
-                        onClick={async (e) => { e.stopPropagation(); await updateSession(session.id, { status: 'cancelled' }) }}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (!confirm('Annuler cette séance ?')) return
+                          session.status = 'cancelled'
+                          setRateOverrides(prev => ({ ...prev, [session.id]: 0 }))
+                          setSessionUpdates(prev => ({ ...prev, [session.id]: { ...prev[session.id], _status: Date.now() } }))
+                          updateSession(session.id, { status: 'cancelled' })
+                        }}
                       >
                         Annulée
                       </button>
