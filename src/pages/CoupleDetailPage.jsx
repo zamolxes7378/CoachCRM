@@ -27,7 +27,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
     couple.clientLinks = couple.clientLinks.filter(l => l.clientId !== couple.id)
   }
   const [status, setStatus] = useState(couple?.status || 'active')
-  const [phase, setPhase] = useState(couple?.phase || 'debut')
+  const [phase, setPhase] = useState(couple?.phase || 'prospect')
   const [totalSessions, setTotalSessions] = useState(couple?.totalSessions || 20)
   const [editingTotal, setEditingTotal] = useState(false)
   const [tempTotal, setTempTotal] = useState(totalSessions)
