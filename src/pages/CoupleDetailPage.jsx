@@ -99,7 +99,6 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
   const [editType, setEditType] = useState(couple ? getClientType(couple) : 'individual')
   const [editReferents, setEditReferents] = useState(['A'])
   const [editSource, setEditSource] = useState(couple?.source || '')
-  const [editBillingAddress, setEditBillingAddress] = useState(couple?.billingAddress || '')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showAddLink, setShowAddLink] = useState(false)
   const [addLinkType, setAddLinkType] = useState('dossier')
@@ -2693,7 +2692,8 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
             if ((eb.firstName || '') !== (b.firstName || '') || (eb.lastName || '') !== (b.lastName || '') || (eb.email || '') !== (b.email || '') || (eb.phone || '') !== (b.phone || '')) return true
           }
           if ((editSource || '') !== (couple.source || '')) return true
-          if ((editBillingAddress || '') !== (couple.billingAddress || '')) return true
+          if ((editPartnerA.billingAddress || '') !== (couple.partnerA?.billingAddress || '')) return true
+          if (couple.partnerB && (editPartnerB.billingAddress || '') !== (couple.partnerB?.billingAddress || '')) return true
           return false
         }
         const handleClose = () => {
@@ -2706,7 +2706,6 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
           setEditChildren(couple.children || [])
           setEditType(couple ? getClientType(couple) : 'individual')
           setEditSource(couple?.source || '')
-          setEditBillingAddress(couple?.billingAddress || '')
           setShowEditModal(false); setShowDeleteConfirm(false)
         }
         return (
@@ -2825,6 +2824,13 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                       value={editPartnerA.birthYear || ''} onChange={e => setEditPartnerA({ ...editPartnerA, birthYear: e.target.value })} />
                   </div>
                 </div>
+                <div className="input-group" style={{ marginTop: 'var(--space-xs)' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    Adresse de facturation
+                    <span style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)', fontWeight: 400, fontStyle: 'italic' }}>optionnel</span>
+                  </label>
+                  <textarea className="input" rows={2} placeholder="Adresse complète pour la facturation…" value={editPartnerA.billingAddress || ''} onChange={e => setEditPartnerA({ ...editPartnerA, billingAddress: e.target.value })} style={{ resize: 'vertical' }} />
+                </div>
               </div>
 
               {/* Partner B (couple & family) */}
@@ -2898,6 +2904,13 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                       <input className="input" type="number" min="1920" max={new Date().getFullYear()} placeholder={`ex. ${new Date().getFullYear() - 35}`}
                         value={editPartnerB.birthYear || ''} onChange={e => setEditPartnerB({ ...editPartnerB, birthYear: e.target.value })} />
                     </div>
+                  </div>
+                  <div className="input-group" style={{ marginTop: 'var(--space-xs)' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      Adresse de facturation
+                      <span style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)', fontWeight: 400, fontStyle: 'italic' }}>optionnel</span>
+                    </label>
+                    <textarea className="input" rows={2} placeholder="Adresse complète pour la facturation…" value={editPartnerB.billingAddress || ''} onChange={e => setEditPartnerB({ ...editPartnerB, billingAddress: e.target.value })} style={{ resize: 'vertical' }} />
                   </div>
                 </div>
               )}
@@ -3287,13 +3300,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
               </div>
             </div>
 
-              {/* Adresse de facturation */}
-              <div style={{ marginBottom: 'var(--space-md)' }}>
-                <div style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-sm)' }}>Adresse de facturation</div>
-                <textarea className="input" rows={2} placeholder="Adresse complète pour la facturation…" value={editBillingAddress} onChange={e => setEditBillingAddress(e.target.value)} style={{ resize: 'vertical', width: '100%' }} />
-              </div>
 
-            {/* Footer */}
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               padding: '12px 32px 18px', borderTop: '1px solid var(--border-light)'
@@ -3311,7 +3318,6 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                   setEditChildren(couple.children || [])
                   setEditType(couple ? getClientType(couple) : 'individual')
                   setEditSource(couple?.source || '')
-                  setEditBillingAddress(couple?.billingAddress || '')
                   setShowEditModal(false)
                   setShowDeleteConfirm(false)
                 }}
@@ -3331,7 +3337,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                       finalType = 'couple'
                     }
                     const updatedChildren = editType === 'family' ? [...editChildren] : undefined
-                    const updatedBillingAddress = editBillingAddress.trim() || null
+
                     // Auto-force source to 'parrainage' if a referrer is configured
                     if (modalSelectedReferrer || (modalExternalReferrer && modalExternalReferrer.lastName?.trim())) {
                       couple.source = 'parrainage'
@@ -3460,7 +3466,6 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                     couple.partnerB = updatedPartnerB
                     couple.type = finalType
                     couple.children = updatedChildren
-                    couple.billingAddress = updatedBillingAddress
                     // Persist all identity changes to Supabase
                     updateClient(couple.id, {
                       partnerA: updatedPartnerA,
@@ -3468,7 +3473,6 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                       type: finalType,
                       children: updatedChildren || null,
                       source: couple.source,
-                      billingAddress: updatedBillingAddress,
                       externalReferrer: couple.externalReferrer || null,
                       clientLinks: couple.clientLinks || []
                     })

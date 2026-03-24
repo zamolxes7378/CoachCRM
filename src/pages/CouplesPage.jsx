@@ -37,6 +37,7 @@ export default function CouplesPage() {
   const [newReferents, setNewReferents] = useState([0])
   const [duplicateDismissed, setDuplicateDismissed] = useState(false)
   const [billingAddress, setBillingAddress] = useState('')
+  const [billingAddressB, setBillingAddressB] = useState('')
   const [extRefDuplicateDismissed, setExtRefDuplicateDismissed] = useState(false)
   const [createError, setCreateError] = useState(null)
 
@@ -575,6 +576,13 @@ export default function CouplesPage() {
                 />
               </div>
             </div>
+            <div className="input-group" style={{ marginTop: 'var(--space-xs)' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                Adresse de facturation
+                <span style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)', fontWeight: 400, fontStyle: 'italic' }}>optionnel</span>
+              </label>
+              <textarea className="input" rows={2} placeholder="Adresse complète pour la facturation…" value={idx === 0 ? billingAddress : billingAddressB} onChange={idx === 0 ? e => setBillingAddress(e.target.value) : e => setBillingAddressB(e.target.value)} style={{ resize: 'vertical' }} />
+            </div>
           </div>
         )
 
@@ -1009,10 +1017,7 @@ export default function CouplesPage() {
                     </div>
                   )}
 
-                  <div className="input-group" style={{ marginTop: 'var(--space-md)' }}>
-                    <label>Adresse de facturation (optionnel)</label>
-                    <textarea className="input" rows={2} placeholder="Adresse complète pour la facturation…" value={billingAddress} onChange={e => setBillingAddress(e.target.value)} style={{ resize: 'vertical' }} />
-                  </div>
+
 
                   <div className="input-group" style={{ marginTop: 'var(--space-md)' }}>
                     <label>Notes (optionnel)</label>
@@ -1084,16 +1089,17 @@ export default function CouplesPage() {
                         partnerA: {
                           firstName: newFirstName || '',
                           lastName: newLastName.trim().toUpperCase(),
+                          billingAddress: billingAddress.trim() || null,
                         },
                         ...(newClientType !== 'individual' && newLastNameB.trim() ? {
                           partnerB: {
                             firstName: newFirstNameB || '',
                             lastName: newLastNameB.trim().toUpperCase(),
+                            billingAddress: billingAddressB.trim() || null,
                           }
                         } : {}),
                         phase: 'prospect',
                         source: newSource || null,
-                        billingAddress: billingAddress.trim() || null,
                         status: 'active',
                         startDate: today,
                       }
