@@ -206,8 +206,9 @@ export default function CouplesPage() {
                 if (cType === 'individual') return <User size={20} style={{ position: 'absolute', top: 12, right: 12, color: 'var(--text-tertiary)', opacity: 0.5 }} title="Individuel" />
                 if (cType === 'family') return (
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'absolute', top: 12, right: 12, opacity: 0.5 }} title="Famille">
-                    <circle cx="9" cy="7" r="3"/><circle cx="17" cy="7" r="2.5"/>
-                    <path d="M2 21v-2a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v2"/><path d="M17 14a4 4 0 0 1 4 4v3"/>
+                    <circle cx="7" cy="6" r="2.5"/><circle cx="17" cy="6" r="2.5"/><circle cx="12" cy="9" r="2"/>
+                    <path d="M1 20v-1.5a4.5 4.5 0 0 1 4.5-4.5h3a4.5 4.5 0 0 1 4.5 4.5V20"/>
+                    <path d="M15.5 14h3a4.5 4.5 0 0 1 4.5 4.5V20"/>
                   </svg>
                 )
                 return <Users size={20} style={{ position: 'absolute', top: 12, right: 12, color: 'var(--text-tertiary)', opacity: 0.5 }} title="Couple" />
