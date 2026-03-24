@@ -123,6 +123,13 @@ export default function DashboardPage({ user }) {
             >
               <Plus size={18} style={{ color: 'white' }} /> Ajouter une séance
             </button>
+            <button
+              className="btn"
+              style={{ background: 'var(--primary-100)', color: 'var(--primary-700)', fontWeight: 600, border: '1px solid var(--primary-200)' }}
+              onClick={() => navigate('/couples?newClient=1')}
+            >
+              <UserPlus size={18} /> Nouveau client
+            </button>
           </div>
 
           <div className="tabs" style={{ marginBottom: 'var(--space-sm)' }}>
@@ -468,9 +475,15 @@ export default function DashboardPage({ user }) {
       {/* Modal Nouvelle séance */}
       {showNewSession && (() => {
         const isNewClient = newSessionClient === 'new'
-        const duplicate = newSessionClient && newSessionClient !== 'new' && newSessionDate
+        // Check duplicate for same client on same date
+        const duplicateSameClient = newSessionClient && newSessionClient !== 'new' && newSessionDate
           ? mockSessions.find(s => s.coupleId === newSessionClient && s.date.startsWith(newSessionDate))
           : null
+        // Check all sessions on the same date (any client)
+        const otherSessionsSameDay = newSessionDate
+          ? mockSessions.filter(s => s.date.startsWith(newSessionDate) && s.coupleId !== newSessionClient)
+          : []
+        const duplicate = duplicateSameClient
         return (
           <div className="modal-overlay" onClick={() => setShowNewSession(false)}>
             <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: isNewClient ? 600 : 440 }}>
@@ -775,6 +788,26 @@ export default function DashboardPage({ user }) {
                     <AlertTriangle size={18} style={{ color: '#C05621', flexShrink: 0 }} />
                     <div style={{ fontSize: '0.786rem', color: '#C05621' }}>
                       <strong>Doublon potentiel :</strong> une séance existe déjà pour ce client le {formatDate(duplicate.date)} ({duplicate.title})
+                    </div>
+                  </div>
+                )}
+                {otherSessionsSameDay.length > 0 && !duplicate && (
+                  <div style={{
+                    display: 'flex', alignItems: 'flex-start', gap: 'var(--space-sm)',
+                    padding: 'var(--space-sm) var(--space-md)',
+                    background: '#EBF8FF', borderRadius: 'var(--radius-md)',
+                    border: '1px solid #BEE3F8', marginTop: 'var(--space-md)'
+                  }}>
+                    <Calendar size={16} style={{ color: '#2B6CB0', flexShrink: 0, marginTop: 2 }} />
+                    <div style={{ fontSize: '0.786rem', color: '#2B6CB0' }}>
+                      <strong>{otherSessionsSameDay.length} séance{otherSessionsSameDay.length > 1 ? 's' : ''} déjà prévue{otherSessionsSameDay.length > 1 ? 's' : ''} ce jour :</strong>
+                      <div style={{ marginTop: 4 }}>
+                        {otherSessionsSameDay.slice(0, 3).map((s, i) => {
+                          const c = mockCouples.find(cl => cl.id === s.coupleId)
+                          return <div key={i} style={{ fontSize: '0.714rem', opacity: 0.85 }}>• {c ? getCoupleName(c) : 'Client'} à {formatTime(s.date)}</div>
+                        })}
+                        {otherSessionsSameDay.length > 3 && <div style={{ fontSize: '0.714rem', opacity: 0.7 }}>...et {otherSessionsSameDay.length - 3} autre(s)</div>}
+                      </div>
                     </div>
                   </div>
                 )}

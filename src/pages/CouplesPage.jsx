@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Plus, Search, Users, User, Sprout, Target, TrendingUp, X, ArrowDownUp, ArrowUpAZ, UserPlus, Calendar, Globe, Phone, UserCheck, CheckCircle, XCircle, HelpCircle, Link2, Award, LayoutGrid, List, Star, Baby, Trash2, Briefcase } from 'lucide-react'
 import { mockProfessionals } from '../data/mockData'
@@ -39,6 +39,13 @@ export default function CouplesPage() {
     if (duplicateDismissed || !newLastName.trim()) return []
     return findDuplicateClients({ firstName: newFirstName, lastName: newLastName }, mockCouples, getCoupleName)
   }, [newFirstName, newLastName, mockCouples, duplicateDismissed])
+
+  // Auto-open new client modal from URL param
+  useEffect(() => {
+    if (searchParams.get('newClient') === '1') {
+      setShowModal(true)
+    }
+  }, [searchParams])
 
   const activeClients = mockCouples.filter(c => !c.deleted)
   const prospectCount = activeClients.filter(c => c.phase === 'prospect').length
