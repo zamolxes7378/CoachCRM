@@ -38,6 +38,7 @@ function adaptClient(c) {
     prospectStage: c.prospect_stage,
     referredBy: c.referred_by,
     deletedAt: c.deleted_at,
+    deleted: !!c.deleted_at,
     // keep id as-is (UUID)
   }
 }

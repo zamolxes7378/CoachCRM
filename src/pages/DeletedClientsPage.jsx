@@ -5,16 +5,17 @@ import { useData } from '../context/DataContext'
 
 export default function DeletedClientsPage() {
   const navigate = useNavigate()
-  const { clients: mockCouples, getCoupleName, formatDate } = useData()
+  const { clients: mockCouples, getCoupleName, formatDate, updateClient } = useData()
 
   const deletedClients = mockCouples.filter(c => c.deleted)
 
-  const handleRestore = (client) => {
+  const handleRestore = async (client) => {
     client.deleted = false
     client.deletedAt = null
+    if (updateClient) {
+      await updateClient(client.id, { deletedAt: null })
+    }
     navigate('/admin/deleted-clients')
-    // Force re-render
-    window.dispatchEvent(new Event('storage'))
   }
 
   const typeConfig = {
