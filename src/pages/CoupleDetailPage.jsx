@@ -2594,6 +2594,8 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                                         if (s.status !== 'completed' && s.status !== 'scheduled') return false
                                         // Always show sessions already in this invoice
                                         if (invoiceSessions.includes(s.id)) return true
+                                        // Future sessions: only allow if payment is received
+                                        if (s.status === 'scheduled' && !s.paymentReceived) return false
                                         // Only exclude sessions whose invoice has been EMITTED (sent)
                                         if (s.needsInvoice && s.invoiceSent && s.id !== session.id) return false
                                         // Only exclude sessions covered by another EMITTED invoice
