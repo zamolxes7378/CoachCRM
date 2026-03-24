@@ -1085,7 +1085,7 @@ export default function CouplesPage() {
                             billingAddress: billingAddressB.trim() || null,
                           }
                         } : {}),
-                        phase: newPhase || therapyPhasesData[0]?.key || 'debut',
+                        phase: 'prospect',
                         source: newSource || null,
                         status: 'active',
                         startDate: today,
