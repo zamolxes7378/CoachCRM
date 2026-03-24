@@ -251,7 +251,7 @@ export default function CouplesPage() {
                 return <Users size={20} style={{ position: 'absolute', top: 12, right: 12, color: 'var(--text-tertiary)', opacity: 0.5 }} title="Couple" />
               })()}
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
-                <div className="couple-avatar" style={{ width: 48, height: 48, fontSize: '1rem', ...(getComputedStatus(couple) === 'inactive' || couple.phase === 'completed' ? { background: 'var(--primary-200)', color: 'var(--text-inverse)' } : couple.phase === 'prospect' ? { background: '#E9D8FD', color: '#6B46C1' } : {}) }}>
+                <div className="couple-avatar" style={{ width: 48, height: 48, fontSize: '1rem', ...(getComputedStatus(couple) === 'inactive' || couple.phase === 'completed' ? { background: 'var(--primary-200)', color: 'var(--text-inverse)' } : couple.phase === 'prospect' ? { background: '#E8D8FE', color: '#6B46C1' } : {}) }}>
                   {getCoupleInitials(couple)}
                 </div>
                 <div style={{ flex: 1 }}>
@@ -440,7 +440,7 @@ export default function CouplesPage() {
                 >
                   <td style={{ padding: '10px 14px', fontWeight: 600 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <div className="couple-avatar" style={{ width: 32, height: 32, fontSize: '0.714rem', ...(couple.phase === 'prospect' ? { background: '#E9D8FD', color: '#6B46C1' } : couple.phase === 'completed' ? { background: 'var(--primary-100)', color: 'var(--text-tertiary)' } : {}) }}>
+                      <div className="couple-avatar" style={{ width: 32, height: 32, fontSize: '0.714rem', ...(couple.phase === 'prospect' ? { background: '#E8D8FE', color: '#6B46C1' } : couple.phase === 'completed' ? { background: 'var(--primary-100)', color: 'var(--text-tertiary)' } : {}) }}>
                         {getCoupleInitials(couple)}
                       </div>
                       {getCoupleName(couple)}

@@ -902,7 +902,7 @@ export default function FinancesPage() {
                     {c.referredNames.length > 0 && (
                       <div style={{ marginLeft: 34, marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                         {c.referredNames.map((name, idx) => (
-                          <span key={idx} style={{ fontSize: '0.643rem', fontWeight: 600, color: '#6B46C1', background: '#FAF5FF', padding: '1px 8px', borderRadius: 'var(--radius-full)', border: '1px solid #E9D8FD' }}>
+                          <span key={idx} style={{ fontSize: '0.643rem', fontWeight: 600, color: '#6B46C1', background: '#FAF5FF', padding: '1px 8px', borderRadius: 'var(--radius-full)', border: '1px solid #E8D8FE' }}>
                             {name}
                           </span>
                         ))}

@@ -228,7 +228,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
   const contactColors = { phone: { bg: '#E8F5E9', color: '#2E7D32' }, email: { bg: '#E3F2FD', color: '#1565C0' }, sms: { bg: '#FFF3E0', color: '#E65100' }, social: { bg: '#F3E5F5', color: '#7B1FA2' }, web: { bg: '#E0F2F1', color: '#00695C' }, parrainage: { bg: '#F5F0FF', color: '#8B5CF6' } }
 
   const phaseColors = {
-    prospect: { bg: '#E9D8FD', color: '#6B46C1' },
+    prospect: { bg: '#E8D8FE', color: '#6B46C1' },
     debut: { bg: '#EBF8FF', color: '#2B6CB0' },
     analyse: { bg: '#FFF3E0', color: '#E67E22' },
     integration: { bg: '#F0FFF4', color: '#276749' },
@@ -297,9 +297,9 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
 
       {/* Header */}
       <div className="couple-header">
-        <div className="couple-avatar" onClick={() => { setEditPartnerA({ ...couple.partnerA }); setEditPartnerB(couple.partnerB ? { ...couple.partnerB } : {}); setEditChildren(couple.children || []); setEditType(getClientType(couple)); setShowEditModal(true) }} style={{ background: couple.phase === 'prospect' ? '#6B46C1' : 'var(--accent-main)', color: 'white', cursor: 'pointer' }} title="Modifier l'identité">{getCoupleInitials(couple)}</div>
+        <div className="couple-avatar" onClick={() => { setEditPartnerA({ ...couple.partnerA }); setEditPartnerB(couple.partnerB ? { ...couple.partnerB } : {}); setEditChildren(couple.children || []); setEditType(getClientType(couple)); setShowEditModal(true) }} style={{ background: couple.phase === 'prospect' ? '#E8D8FE' : 'var(--accent-main)', color: couple.phase === 'prospect' ? '#6B46C1' : 'white', cursor: 'pointer' }} title="Modifier l'identité">{getCoupleInitials(couple)}</div>
         <div className="couple-info">
-          <div style={{ fontSize: '0.857rem', color: couple.phase === 'prospect' ? '#6B46C1' : 'var(--text-secondary)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
+          <div style={{ fontSize: '0.857rem', color: 'var(--text-secondary)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
             {getClientType(couple) === 'individual' && <><User size={18} /> <span>Individuel</span></>}
             {getClientType(couple) === 'couple' && <><Users size={18} /> <span>Couple</span></>}
             {getClientType(couple) === 'family' && (
@@ -2753,7 +2753,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
           }}>
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', padding: '20px 28px', borderBottom: '1px solid var(--border-light)', flexShrink: 0 }}>
-              <div className="couple-avatar" style={{ width: 40, height: 40, fontSize: '0.857rem', background: couple.phase === 'prospect' ? '#6B46C1' : 'var(--accent-main)', color: 'white', flexShrink: 0 }}>{getCoupleInitials(couple)}</div>
+              <div className="couple-avatar" style={{ width: 40, height: 40, fontSize: '0.857rem', background: couple.phase === 'prospect' ? '#E8D8FE' : 'var(--accent-main)', color: couple.phase === 'prospect' ? '#6B46C1' : 'white', flexShrink: 0 }}>{getCoupleInitials(couple)}</div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>{getCoupleName(couple)}</div>
                 <div style={{ fontSize: '0.786rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 5, fontWeight: 500 }}>
@@ -2778,6 +2778,46 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
 
             {/* Content — scrollable */}
             <div style={{ padding: '20px 28px', flex: 1, overflowY: 'auto' }}>
+              {/* Phase stepper in modal */}
+              {couple.phase !== 'prospect' && (() => {
+                const steps = ['debut', 'analyse', 'integration', 'bilan_final']
+                const stepLabels = { debut: 'Début', analyse: 'Analyse', integration: 'Intégration', bilan_final: 'Bilan final' }
+                const stepColors = { debut: '#2B6CB0', analyse: '#38A169', integration: '#D69E2E', bilan_final: '#6B46C1' }
+                const currentIdx = steps.indexOf(phase)
+                return (
+                  <div style={{ marginBottom: 'var(--space-md)', padding: '10px 14px', background: '#FAFBFC', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
+                    <div style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>Phase de la thérapie</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+                      {steps.map((s, i) => {
+                        const isCompleted = i < currentIdx
+                        const isCurrent = i === currentIdx
+                        const color = stepColors[s]
+                        return (
+                          <React.Fragment key={s}>
+                            {i > 0 && <span style={{ width: 18, height: 1, background: isCompleted || isCurrent ? '#CBD5E0' : '#E2E8F0', display: 'inline-block', flexShrink: 0, margin: '0 2px' }} />}
+                            <span
+                              onClick={() => { setPhase(s); couple.phase = s; updateClient(couple.id, { phase: s }) }}
+                              style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 3,
+                                fontSize: '0.714rem', fontWeight: isCurrent ? 700 : 500,
+                                color: isCompleted ? color : isCurrent ? color : 'var(--text-tertiary)',
+                                opacity: isCompleted || isCurrent ? 1 : 0.5,
+                                borderBottom: isCurrent ? `2px solid ${color}` : '2px solid transparent',
+                                paddingBottom: 2,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s'
+                              }}
+                            >
+                              {isCompleted ? <CheckCircle size={13} style={{ color: color }} /> : isCurrent ? <span style={{ width: 10, height: 10, borderRadius: '50%', border: `2px solid ${color}`, background: 'white', display: 'inline-block' }} /> : <span style={{ width: 10, height: 10, borderRadius: '50%', border: '2px solid #CBD5E0', background: 'white', display: 'inline-block' }} />}
+                              {stepLabels[s]}
+                            </span>
+                          </React.Fragment>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })()}
               {/* Section title */}
               <div style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-sm)' }}>Modifier l'identité</div>
               {editType !== 'individual' && (
@@ -2999,7 +3039,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                   <div style={{
                     display: 'flex', alignItems: 'center', gap: 6,
                     padding: '8px 12px', borderRadius: 'var(--radius-md)',
-                    background: '#F5F0FF', border: '1px solid #E9D8FD',
+                    background: '#F5F0FF', border: '1px solid #E8D8FE',
                     fontSize: '0.857rem', fontWeight: 600, color: '#8B5CF6'
                   }}>
                     <Award size={16} />
