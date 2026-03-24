@@ -1,7 +1,8 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
 import * as ds from '../services/dataService'
 import {
-  therapyPhases, defaultTherapyConfig, recruitmentSources as defaultSources,
+  therapyPhases as defaultPhases, defaultTherapyConfig as defaultTherapyCfg,
+  recruitmentSources as defaultSources,
   sessionRates as defaultRates, prospectStages,
   getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel,
   getComputedStatus, getProspectStageInfo, getClientType, clientTypeLabels,
@@ -196,18 +197,20 @@ export function DataProvider({ user, children }) {
   const reports = useMemo(() => rawReports.map(adaptReport), [rawReports])
   const professionals = useMemo(() => rawProfessionals.map(adaptProfessional), [rawProfessionals])
 
-  // Derived values
+  // Derived values — merge DB settings over defaults
   const sessionRates = { ...defaultRates, ...(settings?.session_rates || {}) }
   const recruitmentSources = settings?.recruitment_sources?.map(
     (label) => ({ key: label.toLowerCase().replace(/\s+/g, '_'), label })
   ) || defaultSources
+  const therapyPhases = settings?.therapy_phases || defaultPhases
+  const defaultTherapyConfig = settings?.default_therapy_config || defaultTherapyCfg
 
   const value = {
     // Adapted data (pages use these as drop-in replacements for mockCouples/mockSessions)
     clients, sessions, reports, settings, loading, professionals,
-    sessionRates, recruitmentSources,
+    sessionRates, recruitmentSources, therapyPhases, defaultTherapyConfig,
     // Static helpers
-    therapyPhases, defaultTherapyConfig, prospectStages,
+    prospectStages,
     getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel,
     getComputedStatus, getProspectStageInfo, getClientType, clientTypeLabels,
     formatDate, formatTime, formatRelativeDate, getTodaySessions,

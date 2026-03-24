@@ -1,25 +1,53 @@
 import { useState } from 'react'
 import { Settings, Calendar, RefreshCw, CheckCircle, Bell, Shield, Euro, Layers, Plus, Trash2, GripVertical } from 'lucide-react'
-import { recruitmentSources, sessionRates, therapyPhases, defaultTherapyConfig } from '../data/mockData'
+import { useData } from '../context/DataContext'
 
 export default function SettingsPage() {
+  const {
+    sessionRates, recruitmentSources, therapyPhases, defaultTherapyConfig,
+    upsertSettings
+  } = useData()
+
   const [googleSync, setGoogleSync] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [notifications, setNotifications] = useState({ reminder: true, report: true, invoice: false })
-  const [sourcesVersion, setSourcesVersion] = useState(0)
+  const [localSources, setLocalSources] = useState(recruitmentSources)
+  const [localPhases, setLocalPhases] = useState(therapyPhases)
+  const [localRates, setLocalRates] = useState(sessionRates)
+  const [localTotalSessions, setLocalTotalSessions] = useState(defaultTherapyConfig.totalSessions)
   const [newSourceLabel, setNewSourceLabel] = useState('')
-  const [phasesVersion, setPhasesVersion] = useState(0)
   const [newPhaseLabel, setNewPhaseLabel] = useState('')
   const [newPhaseColor, setNewPhaseColor] = useState('#718096')
+
+  // Persist helpers
+  const persistRates = (rates) => {
+    setLocalRates(rates)
+    upsertSettings({ session_rates: rates })
+  }
+
+  const persistSources = (sources) => {
+    setLocalSources(sources)
+    upsertSettings({ recruitment_sources: sources.map(s => s.label) })
+  }
+
+  const persistPhases = (phases) => {
+    setLocalPhases(phases)
+    upsertSettings({ therapy_phases: phases })
+  }
+
+  const persistTotalSessions = (total) => {
+    setLocalTotalSessions(total)
+    upsertSettings({ default_therapy_config: { totalSessions: total } })
+  }
 
   const addSource = () => {
     const label = newSourceLabel.trim()
     if (!label) return
     const key = label.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
-    if (recruitmentSources.some(s => s.key === key)) return
-    recruitmentSources.push({ key, label })
+    if (localSources.some(s => s.key === key)) return
+    const updated = [...localSources, { key, label }]
     setNewSourceLabel('')
-    setSourcesVersion(n => n + 1)
+    persistSources(updated)
   }
 
   const handleGoogleSync = () => {
@@ -186,16 +214,15 @@ export default function SettingsPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   <input
                     type="number"
-                    defaultValue={sessionRates[item.key]}
+                    defaultValue={localRates[item.key]}
                     min={0}
                     step={5}
                     onBlur={e => {
                       const v = parseFloat(e.target.value)
                       if (!isNaN(v) && v >= 0) {
-                        sessionRates[item.key] = v
-                        setSourcesVersion(n => n + 1)
+                        persistRates({ ...localRates, [item.key]: v })
                       } else {
-                        e.target.value = sessionRates[item.key]
+                        e.target.value = localRates[item.key]
                       }
                     }}
                     style={{
@@ -237,16 +264,15 @@ export default function SettingsPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <input
               type="number"
-              defaultValue={defaultTherapyConfig.totalSessions}
+              defaultValue={localTotalSessions}
               min={1}
               max={100}
               onBlur={e => {
                 const v = parseInt(e.target.value)
                 if (!isNaN(v) && v > 0) {
-                  defaultTherapyConfig.totalSessions = v
-                  setPhasesVersion(n => n + 1)
+                  persistTotalSessions(v)
                 } else {
-                  e.target.value = defaultTherapyConfig.totalSessions
+                  e.target.value = localTotalSessions
                 }
               }}
               style={{
@@ -263,8 +289,8 @@ export default function SettingsPage() {
         {/* Phases list */}
         <div style={{ fontSize: '0.714rem', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 6 }}>Étapes du parcours</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {therapyPhases.map((phase, idx) => (
-            <div key={phase.key + idx + phasesVersion}
+          {localPhases.map((phase, idx) => (
+            <div key={phase.key + idx}
               draggable
               onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', idx); e.currentTarget.style.opacity = '0.4' }}
               onDragEnd={e => { e.currentTarget.style.opacity = '1'; document.querySelectorAll('[data-phase-drop]').forEach(el => { el.style.borderTop = 'none'; el.style.borderBottom = 'none' }) }}
@@ -283,10 +309,11 @@ export default function SettingsPage() {
                 const mid = rect.top + rect.height / 2
                 let to = e.clientY < mid ? idx : idx + 1
                 if (from === to || from + 1 === to) { document.querySelectorAll('[data-phase-drop]').forEach(el => { el.style.borderTop = 'none'; el.style.borderBottom = 'none' }); return }
-                const [moved] = therapyPhases.splice(from, 1)
+                const updated = [...localPhases]
+                const [moved] = updated.splice(from, 1)
                 if (from < to) to--
-                therapyPhases.splice(to, 0, moved)
-                setPhasesVersion(n => n + 1)
+                updated.splice(to, 0, moved)
+                persistPhases(updated)
               }}
               data-phase-drop
               style={{
@@ -306,9 +333,8 @@ export default function SettingsPage() {
                   type="color"
                   defaultValue={phase.color}
                   onChange={e => {
-                    phase.color = e.target.value
-                    phase.bg = e.target.value + '18'
-                    setPhasesVersion(n => n + 1)
+                    const updated = localPhases.map((p, i) => i === idx ? { ...p, color: e.target.value, bg: e.target.value + '18' } : p)
+                    persistPhases(updated)
                   }}
                   style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
                   title="Changer la couleur"
@@ -319,8 +345,8 @@ export default function SettingsPage() {
                 onBlur={e => {
                   const v = e.target.value.trim()
                   if (v && v !== phase.label) {
-                    phase.label = v
-                    setPhasesVersion(n => n + 1)
+                    const updated = localPhases.map((p, i) => i === idx ? { ...p, label: v } : p)
+                    persistPhases(updated)
                   } else {
                     e.target.value = phase.label
                   }
@@ -337,19 +363,19 @@ export default function SettingsPage() {
               <span style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)', fontFamily: 'monospace' }}>{phase.key}</span>
               <button
                 onClick={() => {
-                  if (therapyPhases.length <= 1) return
-                  therapyPhases.splice(idx, 1)
-                  setPhasesVersion(n => n + 1)
+                  if (localPhases.length <= 1) return
+                  const updated = localPhases.filter((_, i) => i !== idx)
+                  persistPhases(updated)
                 }}
                 style={{
-                  background: 'none', border: 'none', cursor: therapyPhases.length <= 1 ? 'not-allowed' : 'pointer',
-                  color: therapyPhases.length <= 1 ? 'var(--text-tertiary)' : 'var(--error)',
+                  background: 'none', border: 'none', cursor: localPhases.length <= 1 ? 'not-allowed' : 'pointer',
+                  color: localPhases.length <= 1 ? 'var(--text-tertiary)' : 'var(--error)',
                   padding: '2px 6px', borderRadius: 'var(--radius-sm)',
-                  opacity: therapyPhases.length <= 1 ? 0.3 : 0.6,
+                  opacity: localPhases.length <= 1 ? 0.3 : 0.6,
                   transition: 'opacity 0.15s', display: 'flex', alignItems: 'center'
                 }}
-                onMouseEnter={e => { if (therapyPhases.length > 1) e.currentTarget.style.opacity = 1 }}
-                onMouseLeave={e => e.currentTarget.style.opacity = therapyPhases.length <= 1 ? 0.3 : 0.6}
+                onMouseEnter={e => { if (localPhases.length > 1) e.currentTarget.style.opacity = 1 }}
+                onMouseLeave={e => e.currentTarget.style.opacity = localPhases.length <= 1 ? 0.3 : 0.6}
                 title="Supprimer"
               >
                 <Trash2 size={13} />
@@ -374,11 +400,11 @@ export default function SettingsPage() {
                 const label = newPhaseLabel.trim()
                 if (!label) return
                 const key = label.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
-                if (therapyPhases.some(p => p.key === key)) return
-                therapyPhases.push({ key, label, color: newPhaseColor, bg: newPhaseColor + '18' })
+                if (localPhases.some(p => p.key === key)) return
+                const updated = [...localPhases, { key, label, color: newPhaseColor, bg: newPhaseColor + '18' }]
                 setNewPhaseLabel('')
                 setNewPhaseColor('#718096')
-                setPhasesVersion(n => n + 1)
+                persistPhases(updated)
               }
             }}
             style={{
@@ -392,11 +418,11 @@ export default function SettingsPage() {
               const label = newPhaseLabel.trim()
               if (!label) return
               const key = label.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
-              if (therapyPhases.some(p => p.key === key)) return
-              therapyPhases.push({ key, label, color: newPhaseColor, bg: newPhaseColor + '18' })
+              if (localPhases.some(p => p.key === key)) return
+              const updated = [...localPhases, { key, label, color: newPhaseColor, bg: newPhaseColor + '18' }]
               setNewPhaseLabel('')
               setNewPhaseColor('#718096')
-              setPhasesVersion(n => n + 1)
+              persistPhases(updated)
             }}
             disabled={!newPhaseLabel.trim()}
             className="btn btn-primary"
@@ -406,6 +432,8 @@ export default function SettingsPage() {
           </button>
         </div>
       </div>
+
+      {/* Recruitment Sources */}
       <div className="card" style={{ marginBottom: 'var(--space-lg)' }}>
         <div className="card-header">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
@@ -415,7 +443,7 @@ export default function SettingsPage() {
           Gérez les sources de prospection disponibles pour vos fiches clients.
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {recruitmentSources.map((src, idx) => (
+          {localSources.map((src, idx) => (
             <div key={src.key + idx}
               draggable
               onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', idx); e.currentTarget.style.opacity = '0.4' }}
@@ -435,10 +463,11 @@ export default function SettingsPage() {
                 const mid = rect.top + rect.height / 2
                 let to = e.clientY < mid ? idx : idx + 1
                 if (from === to || from + 1 === to) { document.querySelectorAll('[data-src-drop]').forEach(el => { el.style.borderTop = 'none'; el.style.borderBottom = 'none' }); return }
-                const [moved] = recruitmentSources.splice(from, 1)
+                const updated = [...localSources]
+                const [moved] = updated.splice(from, 1)
                 if (from < to) to--
-                recruitmentSources.splice(to, 0, moved)
-                setSourcesVersion(n => n + 1)
+                updated.splice(to, 0, moved)
+                persistSources(updated)
               }}
               data-src-drop
               style={{
@@ -455,8 +484,8 @@ export default function SettingsPage() {
                   onBlur={e => {
                     const v = e.target.value.trim()
                     if (v && v !== src.label) {
-                      src.label = v
-                      setSourcesVersion(n => n + 1)
+                      const updated = localSources.map((s, i) => i === idx ? { ...s, label: v } : s)
+                      persistSources(updated)
                     } else {
                       e.target.value = src.label
                     }
@@ -474,19 +503,19 @@ export default function SettingsPage() {
               </div>
               <button
                 onClick={() => {
-                  if (recruitmentSources.length <= 1) return
-                  recruitmentSources.splice(idx, 1)
-                  setSourcesVersion(n => n + 1)
+                  if (localSources.length <= 1) return
+                  const updated = localSources.filter((_, i) => i !== idx)
+                  persistSources(updated)
                 }}
                 style={{
-                  background: 'none', border: 'none', cursor: recruitmentSources.length <= 1 ? 'not-allowed' : 'pointer',
-                  color: recruitmentSources.length <= 1 ? 'var(--text-tertiary)' : 'var(--error)',
+                  background: 'none', border: 'none', cursor: localSources.length <= 1 ? 'not-allowed' : 'pointer',
+                  color: localSources.length <= 1 ? 'var(--text-tertiary)' : 'var(--error)',
                   fontSize: '0.786rem', padding: '2px 6px', borderRadius: 'var(--radius-sm)',
-                  opacity: recruitmentSources.length <= 1 ? 0.3 : 0.6,
+                  opacity: localSources.length <= 1 ? 0.3 : 0.6,
                   transition: 'opacity 0.15s'
                 }}
-                onMouseEnter={e => { if (recruitmentSources.length > 1) e.target.style.opacity = 1 }}
-                onMouseLeave={e => e.target.style.opacity = recruitmentSources.length <= 1 ? 0.3 : 0.6}
+                onMouseEnter={e => { if (localSources.length > 1) e.target.style.opacity = 1 }}
+                onMouseLeave={e => e.target.style.opacity = localSources.length <= 1 ? 0.3 : 0.6}
                 title="Supprimer"
               >✕</button>
             </div>
