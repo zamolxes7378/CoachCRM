@@ -122,9 +122,9 @@ export default function CouplesPage() {
   }
 
   if (sortMode === 'alpha-asc') {
-    filtered = [...filtered].sort((a, b) => a.partnerA.lastName.localeCompare(b.partnerA.lastName, 'fr'))
+    filtered = [...filtered].sort((a, b) => (a.partnerA?.lastName || '').localeCompare(b.partnerA?.lastName || '', 'fr'))
   } else if (sortMode === 'alpha-desc') {
-    filtered = [...filtered].sort((a, b) => b.partnerA.lastName.localeCompare(a.partnerA.lastName, 'fr'))
+    filtered = [...filtered].sort((a, b) => (b.partnerA?.lastName || '').localeCompare(a.partnerA?.lastName || '', 'fr'))
   } else if (sortMode === 'recent') {
     filtered = [...filtered].sort((a, b) => {
       const dateA = activeTab === 'prospects' ? (a.startDate || '') : (a.lastSession || '')

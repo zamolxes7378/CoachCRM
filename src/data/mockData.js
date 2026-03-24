@@ -530,8 +530,9 @@ export const mockTherapists = [
 ];
 
 export function getCoupleName(couple) {
+  if (!couple?.partnerA) return 'Client inconnu';
   const fnA = (couple.partnerA.firstName || '').trim() || '...';
-  if (!couple.partnerB) return `${fnA} ${couple.partnerA.lastName.toUpperCase()}`;
+  if (!couple.partnerB) return `${fnA} ${(couple.partnerA.lastName || '').toUpperCase()}`;
   const fnB = (couple.partnerB.firstName || '').trim() || '...';
   if (couple.partnerA.lastName.toLowerCase() !== couple.partnerB.lastName.toLowerCase()) {
     return `${fnA} ${couple.partnerA.lastName.toUpperCase()} et ${fnB} ${couple.partnerB.lastName.toUpperCase()}`;
