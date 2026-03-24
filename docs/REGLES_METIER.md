@@ -96,12 +96,14 @@
 - **Sélecteur de phase en stepper** : dans le détail d'une séance ET dans le modal d'édition d'identité, la sélection de phase utilise un indicateur horizontal de type stepper (icônes + labels + traits de connexion + soulignement coloré pour la phase active + checkmarks pour les phases précédentes). Le style est **identique** dans les deux modales.
 - **Clé générée automatiquement** : `label.lowercase().normalize().replace(accents+spéciaux → '_')`
 
-### 2.2 Phases spéciales (hors parcours)
+### 2.2 Stades spéciaux du client (hors parcours thérapeutique)
 
-| Clé | Label | Usage |
-|---|---|---|
-| `prospect` | Prospect | Client potentiel, pas encore en thérapie |
-| `completed` | Terminé | Suivi thérapeutique terminé |
+| Clé | Label | Nature | Description |
+|---|---|---|---|
+| `prospect` | Prospect | **Stade** | Client potentiel, pas encore en thérapie. **N'est pas une phase de thérapie.** |
+| `completed` | Terminé | **Statut** | Suivi thérapeutique terminé |
+
+> **`prospect` est un stade du client**, pas une phase de thérapie. Un prospect peut avoir n'importe quelle phase de thérapie attribuée (ex : "Début", "Intégration") pour anticiper le parcours. `therapyPhasesData` ne contient **jamais** `prospect`.
 
 ---
 
@@ -118,13 +120,25 @@
 
 ### 3.2 Règles prospects
 
-- **`prospect` n'est PAS une phase de thérapie** — c'est un statut spécial (`couple.phase === 'prospect'`)
-- Un prospect **n'a pas** de séances planifiées ni complétées
-- Un prospect **peut avoir des contacts** (appels, emails, SMS, etc.)
-- Un prospect **peut parrainer** d'autres clients
-- Un prospect **peut se voir attribuer n'importe quelle phase de thérapie** (ex : "Début", "Intégration") dès sa création via le dropdown "Phase de la thérapie" ou via le stepper dans la modale identité
+#### Définition technique
+
+Un prospect est un client dont `couple.phase === 'prospect'`. C'est le **seul indicateur technique**.
+
+| Indicateur | Valeur |
+|---|---|
+| `couple.phase` | `=== 'prospect'` |
+| Séances | Aucune (ni programmée, ni en cours, ni passée) |
+| Contacts | Peut en avoir (appels, emails, SMS, etc.) |
+| Parrainage | Peut parrainer d'autres clients |
+
+#### Règles métier
+
+- **`prospect` n'est PAS une phase de thérapie** — c'est un **stade** du client
+- Un prospect **n'a pas de séances** planifiées, en cours, ni passées
+- Un prospect **peut avoir des contacts** et **peut parrainer**
+- Un prospect **peut se voir attribuer n'importe quelle phase de thérapie** dès sa création (dropdown "Phase de la thérapie") ou via le stepper dans la modale identité
 - **Le stepper de phase est visible pour TOUS les clients**, y compris les prospects
-- **Conversion automatique** : un prospect devient automatiquement client lorsque sa **première séance est marquée "complétée"**. Sa phase passe de `'prospect'` à `defaultPhaseKey` (première phase de `therapyPhasesData`)
+- **Conversion automatique** : un prospect devient client lorsque sa **première séance est marquée "complétée"**. Sa phase passe de `'prospect'` à `defaultPhaseKey` (première phase de `therapyPhasesData`)
 - La source de recrutement est renseignée à la création
 - Le parrainage (`referredBy`) permet de lier un prospect à un client existant
 - L'affichage se fait dans un onglet séparé "Prospects" (vs "Clients")
