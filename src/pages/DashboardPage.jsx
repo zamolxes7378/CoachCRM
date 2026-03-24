@@ -6,7 +6,7 @@ import { useData } from '../context/DataContext'
 
 export default function DashboardPage({ user }) {
   const navigate = useNavigate()
-  const { clients: mockCouples, sessions: mockSessions, reports: mockReports, phaseIcons, phaseColors, getCoupleName, formatTime, formatDate, formatRelativeDate, getPhaseLabel, getComputedStatus, createSession } = useData()
+  const { clients: mockCouples, sessions: mockSessions, reports: mockReports, phaseIcons, phaseColors, isProspect, getCoupleName, formatTime, formatDate, formatRelativeDate, getPhaseLabel, getComputedStatus, createSession } = useData()
   const [visibleCount, setVisibleCount] = useState(10)
   const [sessionView, setSessionView] = useState('future') // 'past' | 'future'
   const [searchQuery, setSearchQuery] = useState('')
@@ -64,7 +64,7 @@ export default function DashboardPage({ user }) {
   }, {})
 
   const activeCouples = mockCouples.filter(c => c.phase !== 'prospect' && getComputedStatus(c) === 'active').length
-  const activeProspects = mockCouples.filter(c => c.phase === 'prospect' && getComputedStatus(c) === 'active').length
+  const activeProspects = mockCouples.filter(c => isProspect(c) && getComputedStatus(c) === 'active').length
   const pendingReports = mockSessions.filter(s => s.status === 'completed' && !s.hasReport).length
   const pendingInvoices = mockSessions.filter(s => s.needsInvoice && !s.invoiceSent).length
   const pendingPayments = mockSessions.filter(s => s.status === 'completed' && (!s.paymentMethod || (s.paymentMethod !== 'especes' && !s.paymentReceived))).length

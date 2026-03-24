@@ -225,11 +225,20 @@ export function DataProvider({ user, children }) {
     if (!phaseIcons[tp.key]) phaseIcons[tp.key] = Sprout
   })
 
+  // Robust prospect check: phase === 'prospect' AND no sessions at all
+  const isProspect = useCallback((couple) => {
+    if (!couple) return false
+    if (couple.phase !== 'prospect') return false
+    // Double-check: no sessions (scheduled, in-progress, or completed)
+    const hasSessions = sessions.some(s => s.coupleId === couple.id && s.status !== 'cancelled')
+    return !hasSessions
+  }, [sessions])
+
   const value = {
     // Adapted data (pages use these as drop-in replacements for mockCouples/mockSessions)
     clients, sessions, reports, settings, loading, professionals,
     sessionRates, recruitmentSources, therapyPhases, defaultTherapyConfig,
-    phaseIcons, phaseColors, defaultPhaseKey,
+    phaseIcons, phaseColors, defaultPhaseKey, isProspect,
     // Static helpers
     prospectStages,
     getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel,

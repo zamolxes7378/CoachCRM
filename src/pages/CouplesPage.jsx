@@ -13,7 +13,7 @@ const sourceIcons = { website: Globe, phone: Phone, referral: UserCheck }
 export default function CouplesPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { clients: mockCouples, sessions: mockSessions, recruitmentSources, therapyPhases: therapyPhasesData, phaseIcons, phaseColors: centralPhaseColors, defaultPhaseKey, getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel, getComputedStatus, getProspectStageInfo, formatDate, getClientType, createClient } = useData()
+  const { clients: mockCouples, sessions: mockSessions, recruitmentSources, therapyPhases: therapyPhasesData, phaseIcons, phaseColors: centralPhaseColors, defaultPhaseKey, isProspect, getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel, getComputedStatus, getProspectStageInfo, formatDate, getClientType, createClient } = useData()
   const [search, setSearch] = useState('')
   const [sortMode, setSortMode] = useState('none')
   const [showModal, setShowModal] = useState(false)
@@ -79,7 +79,7 @@ export default function CouplesPage() {
   }, [searchParams])
 
   const activeClients = mockCouples.filter(c => !c.deleted)
-  const prospectCount = activeClients.filter(c => c.phase === 'prospect').length
+  const prospectCount = activeClients.filter(c => isProspect(c)).length
   const clientCount = activeClients.filter(c => c.phase !== 'prospect').length
 
   // Compute next/last session from real session data
@@ -104,7 +104,7 @@ export default function CouplesPage() {
   }
 
   let filtered = activeClients
-    .filter(c => activeTab === 'prospects' ? c.phase === 'prospect' : c.phase !== 'prospect')
+    .filter(c => activeTab === 'prospects' ? isProspect(c) : !isProspect(c))
     .filter(c => getCoupleName(c).toLowerCase().includes(search.toLowerCase()))
 
   if (statusFilter === 'individual') {
