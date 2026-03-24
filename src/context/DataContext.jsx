@@ -116,6 +116,8 @@ function unadaptClient(c) {
   if ('prospectStage' in c) { out.prospect_stage = c.prospectStage; delete out.prospectStage }
   if ('referredBy' in c) { out.referred_by = c.referredBy; delete out.referredBy }
   if ('deletedAt' in c) { out.deleted_at = c.deletedAt; delete out.deletedAt }
+  // Strip frontend-only fields that don't exist as DB columns
+  delete out.deleted
   return out
 }
 
