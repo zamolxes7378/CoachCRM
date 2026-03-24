@@ -1268,42 +1268,9 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                       border: '1px solid #FEEBC8'
                     }}>
                       <AlertTriangle size={16} style={{ color: '#C05621', flexShrink: 0 }} />
-                      <span style={{ fontSize: '0.714rem', color: '#C05621', fontWeight: 600, flex: 1 }}>
-                        Cette séance est passée — confirmez son statut
+                      <span style={{ fontSize: '0.714rem', color: '#C05621', fontWeight: 600 }}>
+                        Cette séance est passée — merci de confirmer si elle a été réalisée
                       </span>
-                      <button
-                        className="btn"
-                        style={{
-                          fontSize: '0.643rem', padding: '3px 10px', fontWeight: 600,
-                          background: 'transparent', color: 'var(--success)', border: '1px solid var(--success)', borderRadius: 'var(--radius-sm)'
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          session.status = 'completed'
-                          updateSession(session.id, { status: 'completed' })
-                          setSessionUpdates(prev => ({ ...prev, [session.id]: { ...prev[session.id], _status: Date.now() } }))
-                          setExpandedSessionId(session.id)
-                        }}
-                      >
-                        ✓ Réalisée
-                      </button>
-                      <button
-                        className="btn"
-                        style={{
-                          fontSize: '0.643rem', padding: '3px 10px', fontWeight: 600,
-                          background: 'transparent', color: 'var(--text-tertiary)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)'
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          if (!confirm('Annuler cette séance ?')) return
-                          session.status = 'cancelled'
-                          setRateOverrides(prev => ({ ...prev, [session.id]: 0 }))
-                          setSessionUpdates(prev => ({ ...prev, [session.id]: { ...prev[session.id], _status: Date.now() } }))
-                          updateSession(session.id, { status: 'cancelled' })
-                        }}
-                      >
-                        Annulée
-                      </button>
                     </div>
                   )}
                 </div>
