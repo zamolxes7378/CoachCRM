@@ -540,13 +540,17 @@ export function getCoupleName(couple) {
 }
 
 export function getCoupleInitials(couple) {
-  const hasA = (couple.partnerA.firstName || '').trim();
+  if (!couple?.partnerA) return '?';
+  const fnA = (couple.partnerA.firstName || '').trim();
+  const lnA = (couple.partnerA.lastName || '').trim();
   if (!couple.partnerB) {
-    return (hasA ? `${couple.partnerA.firstName[0]}${couple.partnerA.lastName[0]}` : couple.partnerA.lastName[0]).toUpperCase();
+    const init = fnA && lnA ? `${fnA[0]}${lnA[0]}` : lnA ? lnA[0] : fnA ? fnA[0] : '?';
+    return init.toUpperCase();
   }
-  const hasB = (couple.partnerB.firstName || '').trim();
-  const initA = hasA ? couple.partnerA.firstName[0] : couple.partnerA.lastName[0];
-  const initB = hasB ? couple.partnerB.firstName[0] : couple.partnerB.lastName[0];
+  const fnB = (couple.partnerB.firstName || '').trim();
+  const lnB = (couple.partnerB.lastName || '').trim();
+  const initA = fnA ? fnA[0] : lnA ? lnA[0] : '?';
+  const initB = fnB ? fnB[0] : lnB ? lnB[0] : '?';
   return `${initA}${initB}`.toUpperCase();
 }
 
