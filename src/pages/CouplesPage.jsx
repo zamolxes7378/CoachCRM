@@ -13,11 +13,12 @@ const sourceIcons = { website: Globe, phone: Phone, referral: UserCheck }
 export default function CouplesPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { clients: mockCouples, sessions: mockSessions, recruitmentSources, getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel, getComputedStatus, getProspectStageInfo, formatDate, getClientType, createClient } = useData()
+  const { clients: mockCouples, sessions: mockSessions, recruitmentSources, therapyPhases: therapyPhasesData, getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel, getComputedStatus, getProspectStageInfo, formatDate, getClientType, createClient } = useData()
   const [search, setSearch] = useState('')
   const [sortMode, setSortMode] = useState('none')
   const [showModal, setShowModal] = useState(false)
   const [newSource, setNewSource] = useState('')
+  const [newPhase, setNewPhase] = useState('prospect')
 
   const [referrerSearch, setReferrerSearch] = useState('')
   const [selectedReferrer, setSelectedReferrer] = useState(null)
@@ -854,12 +855,11 @@ export default function CouplesPage() {
                   <div className="grid-2">
                     <div className="input-group">
                       <label>Phase de thérapie</label>
-                      <select className="input" style={{ cursor: 'pointer' }}>
+                      <select className="input" style={{ cursor: 'pointer' }} value={newPhase} onChange={e => setNewPhase(e.target.value)}>
                         <option value="prospect">Prospect</option>
-                        <option value="debut">Début</option>
-                        <option value="analyse">Analyse</option>
-                        <option value="integration">Intégration</option>
-                        <option value="bilan_final">Bilan final</option>
+                        {therapyPhasesData.map(tp => (
+                          <option key={tp.key} value={tp.key}>{tp.label}</option>
+                        ))}
                       </select>
                     </div>
                     <div className="input-group">
@@ -1098,7 +1098,7 @@ export default function CouplesPage() {
                             billingAddress: billingAddressB.trim() || null,
                           }
                         } : {}),
-                        phase: 'prospect',
+                        phase: newPhase || 'prospect',
                         source: newSource || null,
                         status: 'active',
                         startDate: today,
@@ -1132,7 +1132,7 @@ export default function CouplesPage() {
                         }
                       }
                       
-                      setShowModal(false); setWizardStep(0); setNewClientType(''); setNewChildren([]); setNewFamilyAdults([{}]); setNewLastName(''); setNewFirstName(''); setNewReferents([0]); setSelectedReferrer(null); setReferrerSearch(''); setExternalReferrer(null); setCreateError(null); setExtRefDuplicateDismissed(false)
+                      setShowModal(false); setWizardStep(0); setNewClientType(''); setNewChildren([]); setNewFamilyAdults([{}]); setNewLastName(''); setNewFirstName(''); setNewReferents([0]); setSelectedReferrer(null); setReferrerSearch(''); setExternalReferrer(null); setCreateError(null); setExtRefDuplicateDismissed(false); setNewPhase('prospect')
                       navigate(`/couples/${created.id}`)
                     } catch (err) {
                       console.error('Client creation error:', err)

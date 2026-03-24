@@ -2748,7 +2748,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
               {couple.phase !== 'prospect' && (() => {
                 const currentPhaseIdx = therapyPhasesData.findIndex(t => t.key === phase)
                 return (
-                  <div style={{ marginBottom: 'var(--space-md)', padding: '10px 14px', background: '#FAFBFC', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
+                  <div style={{ marginBottom: 'var(--space-md)' }}>
                     <div style={{ fontSize: '0.571rem', color: 'var(--text-tertiary)', fontWeight: 600, marginBottom: 6 }}>Phase de la thérapie</div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 0 }}>
                       {therapyPhasesData.map((tp, i) => {
