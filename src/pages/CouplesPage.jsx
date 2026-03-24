@@ -18,7 +18,7 @@ export default function CouplesPage() {
   const [sortMode, setSortMode] = useState('none')
   const [showModal, setShowModal] = useState(false)
   const [newSource, setNewSource] = useState('')
-  const [newPhase, setNewPhase] = useState('prospect')
+  const [newPhase, setNewPhase] = useState('')
 
   const [referrerSearch, setReferrerSearch] = useState('')
   const [selectedReferrer, setSelectedReferrer] = useState(null)
@@ -854,9 +854,9 @@ export default function CouplesPage() {
 
                   <div className="grid-2">
                     <div className="input-group">
-                      <label>Phase de thérapie</label>
+                      <label>Phase de la thérapie</label>
                       <select className="input" style={{ cursor: 'pointer' }} value={newPhase} onChange={e => setNewPhase(e.target.value)}>
-                        <option value="prospect">Prospect</option>
+                        <option value="">Sélectionner…</option>
                         {therapyPhasesData.map(tp => (
                           <option key={tp.key} value={tp.key}>{tp.label}</option>
                         ))}
@@ -1098,7 +1098,7 @@ export default function CouplesPage() {
                             billingAddress: billingAddressB.trim() || null,
                           }
                         } : {}),
-                        phase: newPhase || 'prospect',
+                        phase: newPhase || therapyPhasesData[0]?.key || 'debut',
                         source: newSource || null,
                         status: 'active',
                         startDate: today,
@@ -1132,7 +1132,7 @@ export default function CouplesPage() {
                         }
                       }
                       
-                      setShowModal(false); setWizardStep(0); setNewClientType(''); setNewChildren([]); setNewFamilyAdults([{}]); setNewLastName(''); setNewFirstName(''); setNewReferents([0]); setSelectedReferrer(null); setReferrerSearch(''); setExternalReferrer(null); setCreateError(null); setExtRefDuplicateDismissed(false); setNewPhase('prospect')
+                      setShowModal(false); setWizardStep(0); setNewClientType(''); setNewChildren([]); setNewFamilyAdults([{}]); setNewLastName(''); setNewFirstName(''); setNewReferents([0]); setSelectedReferrer(null); setReferrerSearch(''); setExternalReferrer(null); setCreateError(null); setExtRefDuplicateDismissed(false); setNewPhase('')
                       navigate(`/couples/${created.id}`)
                     } catch (err) {
                       console.error('Client creation error:', err)
