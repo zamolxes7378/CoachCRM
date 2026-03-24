@@ -99,6 +99,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
   const [editType, setEditType] = useState(couple ? getClientType(couple) : 'individual')
   const [editReferents, setEditReferents] = useState(['A'])
   const [editSource, setEditSource] = useState(couple?.source || '')
+  const [editBillingAddress, setEditBillingAddress] = useState(couple?.billingAddress || '')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showAddLink, setShowAddLink] = useState(false)
   const [addLinkType, setAddLinkType] = useState('dossier')
@@ -3286,6 +3287,12 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
               </div>
             </div>
 
+              {/* Adresse de facturation */}
+              <div style={{ marginBottom: 'var(--space-md)' }}>
+                <div style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-sm)' }}>Adresse de facturation</div>
+                <textarea className="input" rows={2} placeholder="Adresse complète pour la facturation…" value={editBillingAddress} onChange={e => setEditBillingAddress(e.target.value)} style={{ resize: 'vertical', width: '100%' }} />
+              </div>
+
             {/* Footer */}
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -3440,6 +3447,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                       }
                     }
                     setEditType(finalType)
+                    couple.billingAddress = editBillingAddress.trim() || null
                     // Persist all identity changes to Supabase
                     updateClient(couple.id, {
                       partnerA: couple.partnerA,
@@ -3447,6 +3455,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                       type: couple.type,
                       children: couple.children || null,
                       source: couple.source,
+                      billingAddress: couple.billingAddress,
                       externalReferrer: couple.externalReferrer || null,
                       clientLinks: couple.clientLinks || []
                     })
