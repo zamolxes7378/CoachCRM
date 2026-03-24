@@ -18,7 +18,7 @@ export default function CouplesPage() {
   const [sortMode, setSortMode] = useState('none')
   const [showModal, setShowModal] = useState(false)
   const [newSource, setNewSource] = useState('')
-  const [newPhase, setNewPhase] = useState('')
+  const [newPhase, setNewPhase] = useState(therapyPhasesData[0]?.key || 'debut')
 
   const [referrerSearch, setReferrerSearch] = useState('')
   const [selectedReferrer, setSelectedReferrer] = useState(null)
@@ -856,7 +856,6 @@ export default function CouplesPage() {
                     <div className="input-group">
                       <label>Phase de la thérapie</label>
                       <select className="input" style={{ cursor: 'pointer' }} value={newPhase} onChange={e => setNewPhase(e.target.value)}>
-                        <option value="">Sélectionner…</option>
                         {therapyPhasesData.map(tp => (
                           <option key={tp.key} value={tp.key}>{tp.label}</option>
                         ))}
@@ -1132,7 +1131,7 @@ export default function CouplesPage() {
                         }
                       }
                       
-                      setShowModal(false); setWizardStep(0); setNewClientType(''); setNewChildren([]); setNewFamilyAdults([{}]); setNewLastName(''); setNewFirstName(''); setNewReferents([0]); setSelectedReferrer(null); setReferrerSearch(''); setExternalReferrer(null); setCreateError(null); setExtRefDuplicateDismissed(false); setNewPhase('')
+                      setShowModal(false); setWizardStep(0); setNewClientType(''); setNewChildren([]); setNewFamilyAdults([{}]); setNewLastName(''); setNewFirstName(''); setNewReferents([0]); setSelectedReferrer(null); setReferrerSearch(''); setExternalReferrer(null); setCreateError(null); setExtRefDuplicateDismissed(false); setNewPhase(therapyPhasesData[0]?.key || 'debut')
                       navigate(`/couples/${created.id}`)
                     } catch (err) {
                       console.error('Client creation error:', err)
