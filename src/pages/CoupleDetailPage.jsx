@@ -20,7 +20,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
   const params = useParams()
   const id = coupleIdProp || params.id
   const navigate = useNavigate()
-  const { clients: mockCouples, sessions: mockSessions, reports: mockReports, recruitmentSources, sessionRates, therapyPhases: therapyPhasesData, getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel, getClientType, formatDate, formatTime } = useData()
+  const { clients: mockCouples, sessions: mockSessions, reports: mockReports, recruitmentSources, sessionRates, therapyPhases: therapyPhasesData, getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel, getClientType, formatDate, formatTime, updateSession } = useData()
   const couple = mockCouples.find(c => c.id === id)
   // Sanitize: remove self-referencing clientLinks
   if (couple?.clientLinks) {
@@ -1251,10 +1251,48 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                           <Mic size={11} /> Rédiger CR
                         </span>
                       ) : (
-                        <Clock size={18} style={{ color: 'var(--text-tertiary)' }} />
+                        isPast && session.status === 'scheduled' ? (
+                          <AlertTriangle size={18} style={{ color: '#C05621' }} />
+                        ) : (
+                          <Clock size={18} style={{ color: 'var(--text-tertiary)' }} />
+                        )
                       )}
                     </div>
                   </div>
+                  {/* Alert: past session still marked as scheduled */}
+                  {isPast && session.status === 'scheduled' && (
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 'var(--space-sm)',
+                      padding: '8px 12px', margin: '0 var(--space-sm) var(--space-xs)',
+                      background: '#FFFAF0', borderRadius: 'var(--radius-md)',
+                      border: '1px solid #FEEBC8'
+                    }}>
+                      <AlertTriangle size={16} style={{ color: '#C05621', flexShrink: 0 }} />
+                      <span style={{ fontSize: '0.714rem', color: '#C05621', fontWeight: 600, flex: 1 }}>
+                        Cette séance est passée — confirmez son statut
+                      </span>
+                      <button
+                        className="btn"
+                        style={{
+                          fontSize: '0.643rem', padding: '3px 10px', fontWeight: 700,
+                          background: 'var(--success)', color: 'white', border: 'none', borderRadius: 'var(--radius-sm)'
+                        }}
+                        onClick={async (e) => { e.stopPropagation(); await updateSession(session.id, { status: 'completed' }) }}
+                      >
+                        ✓ Réalisée
+                      </button>
+                      <button
+                        className="btn"
+                        style={{
+                          fontSize: '0.643rem', padding: '3px 10px', fontWeight: 700,
+                          background: 'var(--error)', color: 'white', border: 'none', borderRadius: 'var(--radius-sm)'
+                        }}
+                        onClick={async (e) => { e.stopPropagation(); await updateSession(session.id, { status: 'cancelled' }) }}
+                      >
+                        ✗ Annulée
+                      </button>
+                    </div>
+                  )}
                 </div>
               )
             })}
