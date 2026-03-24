@@ -75,10 +75,8 @@ export default function App() {
     let mounted = true
 
     // Only show loading spinner if we're processing an OAuth callback
-    // (URL contains access_token hash from Google redirect)
     const isOAuthCallback = window.location.hash.includes('access_token')
     if (!isOAuthCallback) {
-      // No callback = check session quickly, but don't block rendering
       setLoading(false)
     }
 
@@ -90,16 +88,20 @@ export default function App() {
       }
     }, 3000)
 
-    // Auth state listener
+    // Single auth state listener — handles both initial session and sign-in
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('[Auth] onAuthStateChange:', event, session?.user?.email)
       if (!mounted) return
 
-      if (event === 'SIGNED_IN' && session?.user) {
+      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
         const dbUser = await syncUser(session.user)
         if (mounted) {
           setUser(dbUser)
-          setShowOnboarding(true)
+          // Only show onboarding for genuinely new users
+          const onboardingDone = localStorage.getItem('coachcrm_onboarding_done')
+          if (!onboardingDone) {
+            setShowOnboarding(true)
+          }
           setLoading(false)
         }
       } else if (event === 'SIGNED_OUT') {
@@ -107,30 +109,10 @@ export default function App() {
           setUser(null)
           setShowOnboarding(false)
         }
-      } else if (event === 'INITIAL_SESSION') {
-        console.log('[Auth] INITIAL_SESSION:', session?.user?.email || 'no session')
-        if (session?.user) {
-          const dbUser = await syncUser(session.user)
-          if (mounted) setUser(dbUser)
-        }
+      } else if (event === 'INITIAL_SESSION' && !session) {
+        // No session — just stop loading
         if (mounted) setLoading(false)
       }
-    })
-
-    // Also check session for returning users (already logged in)
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      console.log('[Auth] getSession result:', session?.user?.email || 'no session')
-      if (!mounted) return
-      if (session?.user) {
-        const dbUser = await syncUser(session.user)
-        if (mounted) {
-          setUser(dbUser)
-          setLoading(false)
-        }
-      }
-    }).catch(err => {
-      console.error('[Auth] getSession error:', err)
-      if (mounted) setLoading(false)
     })
 
     return () => {
