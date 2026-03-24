@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Briefcase, Phone, Mail, Calendar, Users, Search, Plus, X, Edit3, Trash2, Award, MapPin, Globe, Building2, FileText, Save, ChevronDown, ChevronUp, ArrowUpAZ, ArrowDownUp, LayoutGrid, List, ChevronsUpDown } from 'lucide-react'
+import { Briefcase, Phone, Mail, Calendar, Users, Search, Plus, X, Edit3, Trash2, Award, MapPin, Globe, Building2, FileText, Save, ChevronDown, ChevronUp, ArrowUpAZ, ArrowDownUp, LayoutGrid, List, ChevronsUpDown, UserPlus } from 'lucide-react'
 import { mockProfessionals } from '../data/mockData'
 import { useData } from '../context/DataContext'
 
@@ -314,6 +314,20 @@ export default function ReseauProPage() {
                   <span style={{ fontSize: '0.571rem', color: 'var(--text-tertiary)' }}>
                     {new Date(pro.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </span>
+                  <button
+                    onClick={e => { e.stopPropagation(); navigate(`/couples?newClient=1&proRef=${encodeURIComponent(JSON.stringify({ proId: pro.id, firstName: pro.firstName, lastName: pro.lastName }))}`) }}
+                    style={{
+                      background: 'none', border: '1px dashed #C4B5FD', borderRadius: 'var(--radius-sm)',
+                      cursor: 'pointer', color: '#8B5CF6', padding: '3px 8px',
+                      fontSize: '0.643rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3,
+                      transition: 'all 0.15s'
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#F5F0FF'; e.currentTarget.style.borderColor = '#8B5CF6' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.borderColor = '#C4B5FD' }}
+                    title={`Créer un client recommandé par ${pro.firstName} ${pro.lastName}`}
+                  >
+                    <UserPlus size={11} /> + Client
+                  </button>
                 </div>
 
                 {/* Expanded referrals */}
@@ -449,6 +463,19 @@ export default function ReseauProPage() {
                         </div>
                       )}
                     </div>
+                    <button
+                      onClick={() => navigate(`/couples?newClient=1&proRef=${encodeURIComponent(JSON.stringify({ proId: pro.id, firstName: pro.firstName, lastName: pro.lastName }))}`)}
+                      style={{
+                        marginTop: 10, background: 'none', border: '1px dashed #C4B5FD', borderRadius: 'var(--radius-md)',
+                        cursor: 'pointer', color: '#8B5CF6', padding: '6px 12px',
+                        fontSize: '0.714rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6,
+                        transition: 'all 0.15s', width: '100%', justifyContent: 'center'
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = '#F5F0FF'; e.currentTarget.style.borderColor = '#8B5CF6' }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.borderColor = '#C4B5FD' }}
+                    >
+                      <UserPlus size={14} /> Nouveau client recommandé
+                    </button>
                   </div>
                 )}
                 {isEditing && (

@@ -1,13 +1,12 @@
 import { useState, useMemo } from 'react'
-import { Calendar, Heart, Clock, PenTool, FileText, ArrowRight, Sprout, Search, Target, UserPlus, Mic, CheckCircle, XCircle, ChevronDown, CreditCard, Landmark, Banknote, Plus, AlertTriangle, X, Hourglass, Receipt, Award, User, Users, Star, Baby } from 'lucide-react'
+import { Calendar, Heart, Clock, PenTool, FileText, ArrowRight, Sprout, Search, Target, UserPlus, Mic, CheckCircle, XCircle, ChevronDown, CreditCard, Landmark, Banknote, Plus, AlertTriangle, X, Hourglass, Receipt, Award } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useData } from '../context/DataContext'
-import { findDuplicateClients } from '../utils/duplicateUtils'
-import DuplicateAlert from '../components/DuplicateAlert'
+
 
 export default function DashboardPage({ user }) {
   const navigate = useNavigate()
-  const { clients: mockCouples, sessions: mockSessions, reports: mockReports, getCoupleName, formatTime, formatDate, formatRelativeDate, getPhaseLabel, getComputedStatus, createClient, createSession } = useData()
+  const { clients: mockCouples, sessions: mockSessions, reports: mockReports, getCoupleName, formatTime, formatDate, formatRelativeDate, getPhaseLabel, getComputedStatus, createSession } = useData()
   const [visibleCount, setVisibleCount] = useState(10)
   const [sessionView, setSessionView] = useState('future') // 'past' | 'future'
   const [searchQuery, setSearchQuery] = useState('')
@@ -21,22 +20,7 @@ export default function DashboardPage({ user }) {
   const [showClientDropdown, setShowClientDropdown] = useState(false)
   const [filterInvoice, setFilterInvoice] = useState(false)
   const [filterPayment, setFilterPayment] = useState(false)
-  // New client wizard states
-  const [wizardStep, setWizardStep] = useState(0)
-  const [ncType, setNcType] = useState('')
-  const [ncLastName, setNcLastName] = useState('')
-  const [ncFirstName, setNcFirstName] = useState('')
-  const [ncFamilyAdults, setNcFamilyAdults] = useState([{}])
-  const [ncChildren, setNcChildren] = useState([])
-  const [ncReferents, setNcReferents] = useState([0])
-  const [ncDupDismissed, setNcDupDismissed] = useState(false)
 
-  const ncDuplicates = useMemo(() => {
-    if (ncDupDismissed || !ncLastName.trim()) return []
-    return findDuplicateClients({ firstName: ncFirstName, lastName: ncLastName }, mockCouples, getCoupleName)
-  }, [ncFirstName, ncLastName, mockCouples, ncDupDismissed])
-
-  const resetWizard = () => { setWizardStep(0); setNcType(''); setNcLastName(''); setNcFirstName(''); setNcFamilyAdults([{}]); setNcChildren([]); setNcReferents([0]); setNcDupDismissed(false) }
 
   // All sessions with couple info
   const allSessionsWithCouple = mockSessions
@@ -474,9 +458,8 @@ export default function DashboardPage({ user }) {
 
       {/* Modal Nouvelle séance */}
       {showNewSession && (() => {
-        const isNewClient = newSessionClient === 'new'
         // Check duplicate for same client on same date
-        const duplicateSameClient = newSessionClient && newSessionClient !== 'new' && newSessionDate
+        const duplicateSameClient = newSessionClient && newSessionDate
           ? mockSessions.find(s => s.coupleId === newSessionClient && s.date.startsWith(newSessionDate))
           : null
         // Check all sessions on the same date (any client)
@@ -486,7 +469,7 @@ export default function DashboardPage({ user }) {
         const duplicate = duplicateSameClient
         return (
           <div className="modal-overlay" onClick={() => setShowNewSession(false)}>
-            <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: isNewClient ? 600 : 440 }}>
+            <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 440 }}>
               <div className="modal-header">
                 <h2>Ajouter une séance</h2>
                 <button className="modal-close" onClick={() => setShowNewSession(false)}>
@@ -496,22 +479,12 @@ export default function DashboardPage({ user }) {
               <div className="modal-body">
                 <div className="input-group">
                   <label>Client</label>
-                  {newSessionClient && newSessionClient !== 'new' ? (
+                  {newSessionClient ? (
                     <div style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                       padding: '8px 12px', background: 'var(--primary-50)', borderRadius: 'var(--radius-md)', fontSize: '0.857rem'
                     }}>
                       <span style={{ fontWeight: 500 }}>{getCoupleName(mockCouples.find(c => c.id === newSessionClient))}</span>
-                      <button onClick={() => { setNewSessionClient(''); setClientSearch('') }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 2 }}>
-                        <X size={14} />
-                      </button>
-                    </div>
-                  ) : newSessionClient === 'new' ? (
-                    <div style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '8px 12px', background: 'var(--success-bg)', borderRadius: 'var(--radius-md)', fontSize: '0.857rem'
-                    }}>
-                      <span style={{ fontWeight: 500, color: 'var(--accent-main)' }}>＋ Nouveau client</span>
                       <button onClick={() => { setNewSessionClient(''); setClientSearch('') }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 2 }}>
                         <X size={14} />
                       </button>
@@ -534,16 +507,6 @@ export default function DashboardPage({ user }) {
                           borderRadius: 'var(--radius-md)', boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
                           maxHeight: 200, overflowY: 'auto', marginTop: 4
                         }}>
-                          <div
-                            onClick={() => { setNewSessionClient('new'); setShowClientDropdown(false); setClientSearch(''); resetWizard() }}
-                            style={{
-                              padding: '8px 12px', cursor: 'pointer', fontSize: '0.857rem',
-                              color: 'var(--accent-main)', fontWeight: 600,
-                              borderBottom: '1px solid var(--border-light)'
-                            }}
-                            onMouseEnter={e => e.currentTarget.style.background = 'var(--primary-50)'}
-                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                          >＋ Nouveau client</div>
                           {mockCouples
                             .filter(c => c.phase !== 'prospect')
                             .filter(c => !clientSearch || getCoupleName(c).toLowerCase().includes(clientSearch.toLowerCase()))
@@ -562,188 +525,6 @@ export default function DashboardPage({ user }) {
                     </div>
                   )}
                 </div>
-
-                {/* Inline new client wizard */}
-                {isNewClient && (() => {
-                  const STEPS = ['Type', 'Identité', 'Suivi']
-                  const currentYear = new Date().getFullYear()
-
-                  const renderAdultBlock = (title, idx) => (
-                    <div style={{ padding: 'var(--space-sm) var(--space-md)', borderRadius: 'var(--radius-md)', background: 'white', marginBottom: 'var(--space-sm)', border: '1px solid var(--border-light)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-xs)' }}>
-                        <h4 style={{ fontSize: '0.714rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <User size={12} /> {title}
-                        </h4>
-                        {ncType !== 'individual' && (() => {
-                          const isRef = ncReferents.includes(idx)
-                          return (
-                            <button type="button" onClick={() => { if (isRef) { if (ncReferents.length > 1) setNcReferents(ncReferents.filter(r => r !== idx)) } else { setNcReferents([...ncReferents, idx]) } }}
-                              style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: '0.571rem', fontWeight: 600, padding: 0, background: 'none', border: 'none', color: isRef ? '#D97706' : 'var(--text-tertiary)', cursor: 'pointer' }}>
-                              <Star size={10} fill={isRef ? '#F59E0B' : 'none'} color={isRef ? '#F59E0B' : 'var(--text-tertiary)'} /> Réf.
-                            </button>
-                          )
-                        })()}
-                      </div>
-                      <div className="grid-2">
-                        <div className="input-group">
-                          <input className="input" placeholder="Prénom" style={{ fontSize: '0.786rem' }}
-                            value={idx === 0 ? ncFirstName : undefined}
-                            onChange={idx === 0 ? e => { setNcFirstName(e.target.value); setNcDupDismissed(false) } : undefined} />
-                        </div>
-                        <div className="input-group">
-                          {idx === 0 ? (
-                            <input className="input" placeholder="Nom *" value={ncLastName}
-                              onChange={e => { setNcLastName(e.target.value); setNcDupDismissed(false) }}
-                              style={{ fontSize: '0.786rem', ...(!ncLastName.trim() ? { borderColor: 'var(--error)', borderWidth: 1 } : {}) }} />
-                          ) : (
-                            <input className="input" placeholder="Nom" style={{ fontSize: '0.786rem' }} />
-                          )}
-                        </div>
-                      </div>
-                      {idx === 0 && ncDuplicates.length > 0 && (
-                        <DuplicateAlert matches={ncDuplicates}
-                          onView={(id) => { setShowNewSession(false); navigate(`/couples/${id}`) }}
-                          onDismiss={() => setNcDupDismissed(true)} />
-                      )}
-                      <div className="grid-2">
-                        <input className="input" type="email" placeholder="Email" style={{ fontSize: '0.786rem' }} />
-                        <input className="input" type="tel" placeholder="Téléphone" style={{ fontSize: '0.786rem' }} />
-                      </div>
-                    </div>
-                  )
-
-                  return (
-                    <div style={{ marginTop: 'var(--space-sm)', padding: 'var(--space-md)', background: 'var(--primary-50)', borderRadius: 'var(--radius-lg)', animation: 'fadeIn 0.2s ease-out' }}>
-                      {/* Stepper */}
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0, marginBottom: 'var(--space-md)' }}>
-                        {STEPS.map((label, i) => (
-                          <div key={i} style={{ display: 'flex', alignItems: 'center' }}>
-                            <div onClick={() => { if (i < wizardStep || (i === 1 && ncType)) setWizardStep(i) }}
-                              style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px',
-                                borderBottom: i === wizardStep ? '2px solid var(--accent-main)' : '2px solid transparent',
-                                cursor: (i < wizardStep || (i === 1 && ncType)) ? 'pointer' : 'default',
-                                opacity: (i <= wizardStep || ncType) ? 1 : 0.4, transition: 'all 0.2s' }}>
-                              <div style={{ width: 18, height: 18, borderRadius: 'var(--radius-sm)',
-                                background: i < wizardStep ? 'var(--accent-main)' : i === wizardStep ? 'var(--accent-bg)' : 'white',
-                                color: i < wizardStep ? 'white' : i === wizardStep ? 'var(--accent-main)' : 'var(--text-tertiary)',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.571rem', fontWeight: 700 }}>
-                                {i < wizardStep ? '✓' : i + 1}
-                              </div>
-                              <span style={{ fontSize: '0.714rem', fontWeight: 600,
-                                color: i === wizardStep ? 'var(--accent-main)' : i < wizardStep ? 'var(--accent-dark)' : 'var(--text-tertiary)' }}>{label}</span>
-                            </div>
-                            {i < STEPS.length - 1 && <div style={{ width: 16, height: 1, background: i < wizardStep ? 'var(--accent-main)' : 'var(--border-light)' }} />}
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Step 0 — Type */}
-                      {wizardStep === 0 && (
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-sm)' }}>
-                          {[
-                            { key: 'individual', label: 'Individuel', desc: '1 personne', color: '#6366F1', bg: '#EEF2FF', Icon: User },
-                            { key: 'couple', label: 'Couple', desc: '2 partenaires', color: '#EC4899', bg: '#FDF2F8', Icon: Users },
-                            { key: 'family', label: 'Famille', desc: 'Adultes + enfants', color: '#F59E0B', bg: '#FFFBEB', Icon: Users }
-                          ].map(t => (
-                            <div key={t.key} onClick={() => { setNcType(t.key); setWizardStep(1) }}
-                              style={{ padding: 'var(--space-md) var(--space-sm)', borderRadius: 'var(--radius-lg)',
-                                border: `2px solid ${ncType === t.key ? t.color : 'var(--border-light)'}`,
-                                background: ncType === t.key ? t.bg : 'white', cursor: 'pointer',
-                                textAlign: 'center', transition: 'all 0.2s' }}
-                              onMouseEnter={e => { if (ncType !== t.key) { e.currentTarget.style.borderColor = t.color + '60'; e.currentTarget.style.background = t.bg + '80' } }}
-                              onMouseLeave={e => { if (ncType !== t.key) { e.currentTarget.style.borderColor = 'var(--border-light)'; e.currentTarget.style.background = 'white' } }}>
-                              <t.Icon size={28} color={t.color} style={{ marginBottom: 6 }} />
-                              <div style={{ fontSize: '0.857rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2 }}>{t.label}</div>
-                              <div style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)' }}>{t.desc}</div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Step 1 — Identité */}
-                      {wizardStep === 1 && (
-                        <div>
-                          {ncType === 'individual' && renderAdultBlock('Client', 0)}
-                          {ncType === 'couple' && (<>{renderAdultBlock('Partenaire A', 0)}{renderAdultBlock('Partenaire B', 1)}</>)}
-                          {ncType === 'family' && (
-                            <>
-                              {ncFamilyAdults.map((_, idx) => (
-                                <div key={`fam-${idx}`} style={{ position: 'relative' }}>
-                                  {renderAdultBlock(`Adulte ${idx + 1}`, idx)}
-                                  {ncFamilyAdults.length > 1 && (
-                                    <button onClick={() => { if (ncReferents.includes(idx) && ncReferents.length <= 1) return; setNcFamilyAdults(ncFamilyAdults.filter((_, i) => i !== idx)); setNcReferents(ncReferents.filter(r => r !== idx).map(r => r > idx ? r - 1 : r)) }}
-                                      style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: '0.571rem', fontWeight: 500, padding: '2px 0', marginTop: -4, marginBottom: 4, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--error)', opacity: 0.7 }}>
-                                      <X size={10} /> Retirer
-                                    </button>
-                                  )}
-                                </div>
-                              ))}
-                              <button className="btn btn-ghost" style={{ fontSize: '0.643rem', padding: '3px 8px', marginBottom: 'var(--space-sm)' }}
-                                onClick={() => setNcFamilyAdults([...ncFamilyAdults, {}])}>
-                                <Plus size={11} /> Ajouter un adulte
-                              </button>
-                              {/* Children */}
-                              <div style={{ padding: 'var(--space-sm)', borderRadius: 'var(--radius-md)', background: '#FFFBEB', border: '1px solid #FDE68A' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                                  <h4 style={{ fontSize: '0.714rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 4 }}><Baby size={12} /> Enfants</h4>
-                                  <button className="btn btn-ghost" style={{ fontSize: '0.571rem', padding: '2px 6px' }}
-                                    onClick={() => setNcChildren([...ncChildren, { name: '', birthYear: '' }])}><Plus size={10} /> Ajouter</button>
-                                </div>
-                                {ncChildren.length === 0 && <p style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)', fontStyle: 'italic', textAlign: 'center', padding: '4px 0' }}>Cliquez "Ajouter"</p>}
-                                {ncChildren.map((child, idx) => (
-                                  <div key={idx} style={{ display: 'flex', gap: 4, alignItems: 'center', marginBottom: 3 }}>
-                                    <input className="input" placeholder="Prénom" style={{ flex: 2, fontSize: '0.714rem' }} value={child.name}
-                                      onChange={e => { const c = [...ncChildren]; c[idx] = { ...c[idx], name: e.target.value }; setNcChildren(c) }} />
-                                    <input className="input" placeholder="Année" type="number" min="1990" max={currentYear} style={{ flex: 1, maxWidth: 60, fontSize: '0.714rem' }} value={child.birthYear}
-                                      onChange={e => { const c = [...ncChildren]; c[idx] = { ...c[idx], birthYear: e.target.value }; setNcChildren(c) }} />
-                                    <button onClick={() => setNcChildren(ncChildren.filter((_, i) => i !== idx))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--error)', padding: 2 }}><X size={12} /></button>
-                                  </div>
-                                ))}
-                              </div>
-                            </>
-                          )}
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--space-sm)' }}>
-                            <button className="btn btn-ghost" style={{ fontSize: '0.786rem' }} onClick={() => setWizardStep(0)}>← Retour</button>
-                            <button className="btn btn-primary" style={{ fontSize: '0.786rem' }} disabled={!ncLastName.trim()} onClick={() => setWizardStep(2)}>Suivant →</button>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Step 2 — Suivi */}
-                      {wizardStep === 2 && (
-                        <div>
-                          <div className="grid-2">
-                            <div className="input-group">
-                              <label style={{ fontSize: '0.714rem' }}>Phase de thérapie</label>
-                              <select className="input" style={{ cursor: 'pointer', fontSize: '0.786rem' }}>
-                                <option value="debut">Début</option>
-                                <option value="analyse">Analyse</option>
-                                <option value="integration">Intégration</option>
-                              </select>
-                            </div>
-                            <div className="input-group">
-                              <label style={{ fontSize: '0.714rem' }}>Source</label>
-                              <select className="input" style={{ cursor: 'pointer', fontSize: '0.786rem' }}>
-                                <option value="">Sélectionner...</option>
-                                <option value="website">Site web</option>
-                                <option value="phone">Appel</option>
-                                <option value="referral">Recommandation</option>
-                                <option value="other">Autre</option>
-                              </select>
-                            </div>
-                          </div>
-                          <div className="input-group" style={{ marginTop: 'var(--space-sm)' }}>
-                            <label style={{ fontSize: '0.714rem' }}>Notes (optionnel)</label>
-                            <textarea className="input" rows={2} placeholder="Contexte initial…" style={{ resize: 'vertical', fontSize: '0.786rem' }} />
-                          </div>
-                          <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 'var(--space-sm)' }}>
-                            <button className="btn btn-ghost" style={{ fontSize: '0.786rem' }} onClick={() => setWizardStep(1)}>← Retour</button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })()}
 
                 <div className="grid-2" style={{ marginTop: 'var(--space-sm)' }}>
                   <div className="input-group">
@@ -816,32 +597,16 @@ export default function DashboardPage({ user }) {
                 <button className="btn btn-ghost" onClick={() => setShowNewSession(false)}>Annuler</button>
                 <button
                   className="btn btn-accent"
-                  disabled={(!newSessionClient || !newSessionDate || !newSessionTime) || (isNewClient && !ncLastName.trim())}
+                  disabled={!newSessionClient || !newSessionDate || !newSessionTime}
                   onClick={async () => {
                     const selectedDate = new Date(`${newSessionDate}T${newSessionTime}`)
                     if (selectedDate < new Date()) {
                       if (!confirm('La date choisie est dans le passé. Souhaitez-vous quand même créer cette séance ?')) return
                     }
                     
-                    let clientId = newSessionClient
-                    
-                    if (isNewClient) {
-                      // Create client in Supabase
-                      const today = new Date().toISOString().split('T')[0]
-                      const created = await createClient({
-                        type: ncType || 'couple',
-                        partnerA: { firstName: ncFirstName || '', lastName: ncLastName.trim() },
-                        phase: 'prospect',
-                        status: 'active',
-                        startDate: today,
-                      })
-                      if (!created) { alert('Erreur lors de la création du client'); return }
-                      clientId = created.id
-                    }
-                    
                     // Create session in Supabase
                     const sessionData = {
-                      coupleId: clientId,
+                      coupleId: newSessionClient,
                       date: `${newSessionDate}T${newSessionTime}:00`,
                       status: 'scheduled',
                       title: newSessionNote || null,
@@ -850,11 +615,10 @@ export default function DashboardPage({ user }) {
                     
                     setShowNewSession(false)
                     setNewSessionNote('')
-                    resetWizard()
-                    navigate(`/couples/${clientId}`)
+                    navigate(`/couples/${newSessionClient}`)
                   }}
                 >
-                  <Plus size={16} /> {isNewClient ? 'Créer client + séance' : duplicate ? 'Ajouter quand même' : 'Créer la séance'}
+                  <Plus size={16} /> {duplicate ? 'Ajouter quand même' : 'Créer la séance'}
                 </button>
               </div>
             </div>
@@ -864,3 +628,4 @@ export default function DashboardPage({ user }) {
     </div>
   )
 }
+

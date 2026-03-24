@@ -121,7 +121,7 @@ export default function Sidebar({ user, onLogout, isOpen, onToggle }) {
             <div className="sidebar-user-avatar">{initials}</div>
             <div className="sidebar-user-info">
               <div className="sidebar-user-name">{user?.name}</div>
-              <div className="sidebar-user-role">{user?.role === 'admin' ? 'Administratrice' : 'Praticien(ne)'}</div>
+              <div className="sidebar-user-role">{user?.role === 'admin' ? 'Admin' : 'Praticien(ne)'}</div>
             </div>
             <button
               onClick={onLogout}

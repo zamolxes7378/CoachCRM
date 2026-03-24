@@ -225,6 +225,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
   const contactColors = { phone: { bg: '#E8F5E9', color: '#2E7D32' }, email: { bg: '#E3F2FD', color: '#1565C0' }, sms: { bg: '#FFF3E0', color: '#E65100' }, social: { bg: '#F3E5F5', color: '#7B1FA2' }, web: { bg: '#E0F2F1', color: '#00695C' }, parrainage: { bg: '#F5F0FF', color: '#8B5CF6' } }
 
   const phaseColors = {
+    prospect: { bg: '#E9D8FD', color: '#6B46C1' },
     debut: { bg: '#EBF8FF', color: '#2B6CB0' },
     analyse: { bg: '#FFF3E0', color: '#E67E22' },
     integration: { bg: '#F0FFF4', color: '#276749' },
@@ -293,7 +294,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
 
       {/* Header */}
       <div className="couple-header">
-        <div className="couple-avatar" onClick={() => { setEditPartnerA({ ...couple.partnerA }); setEditPartnerB(couple.partnerB ? { ...couple.partnerB } : {}); setEditChildren(couple.children || []); setEditType(getClientType(couple)); setShowEditModal(true) }} style={{ background: 'var(--accent-main)', color: 'white', cursor: 'pointer' }} title="Modifier l'identité">{getCoupleInitials(couple)}</div>
+        <div className="couple-avatar" onClick={() => { setEditPartnerA({ ...couple.partnerA }); setEditPartnerB(couple.partnerB ? { ...couple.partnerB } : {}); setEditChildren(couple.children || []); setEditType(getClientType(couple)); setShowEditModal(true) }} style={{ background: couple.phase === 'prospect' ? '#6B46C1' : 'var(--accent-main)', color: 'white', cursor: 'pointer' }} title="Modifier l'identité">{getCoupleInitials(couple)}</div>
         <div className="couple-info">
           <div style={{ fontSize: '0.857rem', color: 'var(--text-secondary)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
             {getClientType(couple) === 'individual' && <><User size={18} /> <span>Individuel</span></>}
@@ -1257,23 +1258,30 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                           <Clock size={18} style={{ color: 'var(--text-tertiary)' }} />
                         )
                       )}
-                    </div>
-                  </div>
-                  {/* Alert: past session still marked as scheduled */}
-                  {isPast && session.status === 'scheduled' && (
-                    <div style={{
-                      display: 'flex', alignItems: 'center', gap: 'var(--space-sm)',
-                      padding: '8px 12px', margin: '0 var(--space-sm) var(--space-xs)',
-                      background: '#FFFAF0', borderRadius: 'var(--radius-md)',
-                      border: '1px solid #FEEBC8'
-                    }}>
-                      <AlertTriangle size={16} style={{ color: '#C05621', flexShrink: 0 }} />
-                      <span style={{ fontSize: '0.714rem', color: '#C05621', fontWeight: 600 }}>
-                        Cette séance est passée — merci de confirmer si elle a été réalisée
-                      </span>
-                    </div>
-                  )}
                 </div>
+              </div>
+
+              {/* Payment confirmation alert for completed sessions without payment method */}
+              {session.status === 'completed' && !session.paymentMethod && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '6px 12px', marginTop: -2,
+                  background: '#FFFBEB',
+                  borderRadius: '0 0 var(--radius-md) var(--radius-md)',
+                  border: '1px solid #FEF3C7', borderTop: 'none',
+                  animation: 'ncSlideIn 0.25s ease-out'
+                }}>
+                  <AlertTriangle size={13} style={{ color: '#D97706', flexShrink: 0 }} />
+                  <span style={{ fontSize: '0.714rem', color: '#92400E', fontWeight: 600 }}>
+                    Paiement à confirmer
+                  </span>
+                  <span style={{ fontSize: '0.714rem', color: '#92400E', fontWeight: 400 }}>
+                    — Veuillez renseigner le mode de paiement.
+                  </span>
+                </div>
+              )}
+
+            </div>
               )
             })}
           </div>
@@ -1614,7 +1622,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                             {isScheduled && !isPaid ? null : noPayment ? (
                               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: '0.571rem', fontWeight: 700, color: '#92400E', letterSpacing: '0.02em' }}>
-                                <HelpCircle size={9} /> CONFIRMER
+                                <HelpCircle size={9} /> CONFIRMATION
                               </span>
                             ) : (
                               <span style={{ fontSize: '0.643rem', fontWeight: isPaid ? 700 : 400, color: isPaid ? 'var(--success)' : 'var(--text-tertiary)' }}>
@@ -1638,7 +1646,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                             fontSize: '0.714rem', fontWeight: 700, minWidth: 40, textAlign: 'right',
                             color: isScheduled && !isPaid ? 'var(--text-tertiary)' : (isPaid ? 'var(--success)' : 'var(--error)')
                           }}>
-                            {getRate(s.id)}€
+                            {isCancelled ? pAmountOf(s) : getRate(s.id)}€
                           </span>
                         </div>
                         </React.Fragment>
@@ -1979,7 +1987,6 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                         onClick={() => {
                           if (!confirm('Annuler cette séance ?')) return
                           session.status = 'cancelled'
-                          setRateOverrides(prev => ({ ...prev, [session.id]: 0 }))
                           setSessionUpdates(prev => ({ ...prev, [session.id]: { ...prev[session.id], _status: Date.now() } }))
                         }}
                         style={{
@@ -2197,9 +2204,9 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                         borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-sm)',
                         border: '1px solid #FEF3C7'
                       }}>
-                        <HelpCircle size={14} style={{ color: '#D97706', flexShrink: 0 }} />
+                        <AlertTriangle size={14} style={{ color: '#D97706', flexShrink: 0 }} />
                         <span style={{ fontSize: '0.714rem', color: '#92400E', fontWeight: 600 }}>
-                          Veuillez renseigner le mode de paiement
+                          Paiement à confirmer — Veuillez renseigner le mode de paiement.
                         </span>
                       </div>
                     )}
@@ -2675,7 +2682,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
           }}>
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', padding: '20px 28px', borderBottom: '1px solid var(--border-light)', flexShrink: 0 }}>
-              <div className="couple-avatar" style={{ width: 40, height: 40, fontSize: '0.857rem', background: 'var(--accent-main)', color: 'white', flexShrink: 0 }}>{getCoupleInitials(couple)}</div>
+              <div className="couple-avatar" style={{ width: 40, height: 40, fontSize: '0.857rem', background: couple.phase === 'prospect' ? '#6B46C1' : 'var(--accent-main)', color: 'white', flexShrink: 0 }}>{getCoupleInitials(couple)}</div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>{getCoupleName(couple)}</div>
                 <div style={{ fontSize: '0.786rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 5, fontWeight: 500 }}>
@@ -3268,9 +3275,9 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                   disabled={(editSource === 'referral' || editSource === 'parrainage') && modalExternalReferrer && !(modalExternalReferrer.lastName || '').trim()}
                   onClick={() => {
                     // Save changes
-                    couple.partnerA = { ...editPartnerA }
+                    couple.partnerA = { ...editPartnerA, lastName: (editPartnerA.lastName || '').toUpperCase() }
                     if (editType === 'couple' || editType === 'family') {
-                      couple.partnerB = { ...editPartnerB }
+                      couple.partnerB = { ...editPartnerB, lastName: (editPartnerB.lastName || '').toUpperCase() }
                     }
                     // Handle family → couple transition
                     let finalType = editType

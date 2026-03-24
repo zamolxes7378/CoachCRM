@@ -41,8 +41,12 @@ function adaptClient(c) {
 
 function adaptSession(s) {
   if (!s) return s
+  // Strip timezone suffix from dates (Supabase returns timestamptz as UTC,
+  // but datetime-local input is local time — treat stored dates as local)
+  const stripTz = (d) => d ? d.replace(/([+-]\d{2}:\d{2}|Z)$/, '') : d
   return {
     ...s,
+    date: stripTz(s.date),
     coupleId: s.client_id,
     audioFile: s.audio_file,
     hasReport: s.has_report,
@@ -132,7 +136,14 @@ export function DataProvider({ user, children }) {
 
   // Adapted data (camelCase, compatible with existing pages)
   const clients = useMemo(() => rawClients.map(adaptClient), [rawClients])
-  const sessions = useMemo(() => rawSessions.map(adaptSession), [rawSessions])
+  const sessions = useMemo(() => rawSessions.map(adaptSession).map(s => {
+    // Auto-complete: sessions whose end time has passed become 'completed'
+    if (s.status === 'scheduled') {
+      const endTime = new Date(new Date(s.date).getTime() + (s.duration || 60) * 60000)
+      if (endTime <= new Date()) return { ...s, status: 'completed' }
+    }
+    return s
+  }), [rawSessions])
   const reports = useMemo(() => rawReports.map(adaptReport), [rawReports])
 
   // Derived values

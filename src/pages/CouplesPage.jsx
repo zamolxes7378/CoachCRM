@@ -34,16 +34,43 @@ export default function CouplesPage() {
   const [newFirstName, setNewFirstName] = useState('')
   const [newReferents, setNewReferents] = useState([0])
   const [duplicateDismissed, setDuplicateDismissed] = useState(false)
+  const [billingAddress, setBillingAddress] = useState('')
+  const [extRefDuplicateDismissed, setExtRefDuplicateDismissed] = useState(false)
+  const [createError, setCreateError] = useState(null)
 
   const duplicateMatches = useMemo(() => {
     if (duplicateDismissed || !newLastName.trim()) return []
     return findDuplicateClients({ firstName: newFirstName, lastName: newLastName }, mockCouples, getCoupleName)
   }, [newFirstName, newLastName, mockCouples, duplicateDismissed])
 
+  // Deduplication for external individual referrers against client DB
+  const extRefDuplicateMatches = useMemo(() => {
+    if (extRefDuplicateDismissed || !externalReferrer || (externalReferrer.referrerType || 'particulier') !== 'particulier') return []
+    if (!(externalReferrer.lastName || '').trim()) return []
+    return findDuplicateClients(
+      { firstName: externalReferrer.firstName || '', lastName: externalReferrer.lastName || '', email: externalReferrer.email || '', phone: externalReferrer.phone || '' },
+      mockCouples, getCoupleName
+    )
+  }, [externalReferrer, mockCouples, extRefDuplicateDismissed])
+
   // Auto-open new client modal from URL param
   useEffect(() => {
     if (searchParams.get('newClient') === '1') {
       setShowModal(true)
+      // Pre-fill from proRef if coming from Réseau Pro
+      const proRefParam = searchParams.get('proRef')
+      if (proRefParam) {
+        try {
+          const proRef = JSON.parse(decodeURIComponent(proRefParam))
+          setNewSource('parrainage')
+          setExternalReferrer({
+            referrerType: 'professionnel',
+            firstName: proRef.firstName || '',
+            lastName: proRef.lastName || '',
+            proId: proRef.proId || null
+          })
+        } catch (e) { /* ignore parse error */ }
+      }
     }
   }, [searchParams])
 
@@ -891,6 +918,16 @@ export default function CouplesPage() {
                           </div>
                           <input className="input" placeholder="Note (ex: confrère, ami, médecin…)" value={externalReferrer.role || ''}
                             onChange={e => setExternalReferrer({ ...externalReferrer, role: e.target.value })} style={{ fontSize: '0.786rem', width: '100%' }} />
+                          {/* Deduplication alert for external individual referrers */}
+                          {(externalReferrer.referrerType || 'particulier') === 'particulier' && extRefDuplicateMatches.length > 0 && (
+                            <div style={{ marginTop: 8 }}>
+                              <DuplicateAlert
+                                matches={extRefDuplicateMatches}
+                                onView={(id) => { setShowModal(false); navigate(`/couples/${id}`) }}
+                                onDismiss={() => setExtRefDuplicateDismissed(true)}
+                              />
+                            </div>
+                          )}
                         </div>
                       ) : selectedReferrer ? (
                         <div style={{
@@ -971,6 +1008,11 @@ export default function CouplesPage() {
                   )}
 
                   <div className="input-group" style={{ marginTop: 'var(--space-md)' }}>
+                    <label>Adresse de facturation (optionnel)</label>
+                    <textarea className="input" rows={2} placeholder="Adresse complète pour la facturation…" value={billingAddress} onChange={e => setBillingAddress(e.target.value)} style={{ resize: 'vertical' }} />
+                  </div>
+
+                  <div className="input-group" style={{ marginTop: 'var(--space-md)' }}>
                     <label>Notes (optionnel)</label>
                     <textarea className="input" rows={3} placeholder="Contexte initial, motif de consultation..." style={{ resize: 'vertical' }} />
                   </div>
@@ -979,6 +1021,15 @@ export default function CouplesPage() {
 
               </div>
             </div>
+
+            {/* Creation error message */}
+            {createError && (
+              <div style={{ padding: '8px 32px 0', animation: 'ncSlideIn 0.25s ease-out' }}>
+                <div style={{ padding: '8px 12px', background: '#FFF5F5', borderRadius: 'var(--radius-md)', border: '1px solid #FED7D7', fontSize: '0.786rem', color: 'var(--error)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  ⚠ {createError}
+                </div>
+              </div>
+            )}
 
             {/* Footer */}
             <div style={{
@@ -1022,46 +1073,56 @@ export default function CouplesPage() {
                   }}
                   disabled={(newSource === 'referral' || newSource === 'parrainage') && externalReferrer && !(externalReferrer.lastName || '').trim()}
                   onClick={async () => {
-                    const today = new Date().toISOString().split('T')[0]
-                    // Build new client object
-                    const newClient = {
-                      type: newClientType || 'couple',
-                      partnerA: {
-                        firstName: newFirstName || '',
-                        lastName: newLastName.trim(),
-                      },
-                      phase: 'prospect',
-                      source: newSource || null,
-                      status: 'active',
-                      startDate: today,
-                    }
-                    // Save to Supabase
-                    const created = await createClient(newClient)
-                    
-                    // Handle external referrer parrainage link
-                    if (created && externalReferrer && externalReferrer.lastName && externalReferrer.lastName.trim()) {
-                      const refType = externalReferrer.referrerType || 'particulier'
-                      if (refType === 'particulier') {
-                        // Create the external referrer as a prospect client too
-                        await createClient({
-                          type: 'individual',
-                          partnerA: {
-                            firstName: externalReferrer.firstName || '',
-                            lastName: externalReferrer.lastName.trim(),
-                            email: externalReferrer.email || '',
-                            phone: externalReferrer.phone || ''
-                          },
-                          phase: 'prospect',
-                          status: 'active',
-                          startDate: today,
-                          referrerType: 'particulier',
-                        })
+                    setCreateError(null)
+                    try {
+                      const today = new Date().toISOString().split('T')[0]
+                      // Build new client object
+                      const newClient = {
+                        type: newClientType || 'couple',
+                        partnerA: {
+                          firstName: newFirstName || '',
+                          lastName: newLastName.trim().toUpperCase(),
+                        },
+                        phase: 'prospect',
+                        source: newSource || null,
+                        billingAddress: billingAddress.trim() || null,
+                        status: 'active',
+                        startDate: today,
                       }
-                    }
-                    
-                    setShowModal(false); setWizardStep(0); setNewClientType(''); setNewChildren([]); setNewFamilyAdults([{}]); setNewLastName(''); setNewFirstName(''); setNewReferents([0]); setSelectedReferrer(null); setReferrerSearch(''); setExternalReferrer(null)
-                    if (created) {
+                      // Save to Supabase
+                      const created = await createClient(newClient)
+                      
+                      if (!created) {
+                        setCreateError('Erreur lors de la création du client. Vérifiez votre connexion et réessayez.')
+                        return
+                      }
+                      
+                      // Handle external referrer parrainage link
+                      if (externalReferrer && externalReferrer.lastName && externalReferrer.lastName.trim()) {
+                        const refType = externalReferrer.referrerType || 'particulier'
+                        if (refType === 'particulier') {
+                          // Create the external referrer as a prospect client too
+                          await createClient({
+                            type: 'individual',
+                            partnerA: {
+                              firstName: externalReferrer.firstName || '',
+                              lastName: externalReferrer.lastName.trim().toUpperCase(),
+                              email: externalReferrer.email || '',
+                              phone: externalReferrer.phone || ''
+                            },
+                            phase: 'prospect',
+                            status: 'active',
+                            startDate: today,
+                            referrerType: 'particulier',
+                          })
+                        }
+                      }
+                      
+                      setShowModal(false); setWizardStep(0); setNewClientType(''); setNewChildren([]); setNewFamilyAdults([{}]); setNewLastName(''); setNewFirstName(''); setNewReferents([0]); setSelectedReferrer(null); setReferrerSearch(''); setExternalReferrer(null); setCreateError(null); setExtRefDuplicateDismissed(false)
                       navigate(`/couples/${created.id}`)
+                    } catch (err) {
+                      console.error('Client creation error:', err)
+                      setCreateError('Erreur inattendue : ' + (err.message || 'veuillez réessayer.'))
                     }
                   }}
                 >
