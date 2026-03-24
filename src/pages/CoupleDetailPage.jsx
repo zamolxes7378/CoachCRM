@@ -296,10 +296,10 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
       </button>
 
       {/* Header */}
-      <div className="couple-header">
+      <div className="couple-header" style={couple.phase === 'prospect' ? { background: '#FAF5FF', borderRadius: 'var(--radius-lg)', padding: 'var(--space-md) var(--space-lg)', borderLeft: '4px solid #6B46C1' } : {}}>
         <div className="couple-avatar" onClick={() => { setEditPartnerA({ ...couple.partnerA }); setEditPartnerB(couple.partnerB ? { ...couple.partnerB } : {}); setEditChildren(couple.children || []); setEditType(getClientType(couple)); setShowEditModal(true) }} style={{ background: couple.phase === 'prospect' ? '#6B46C1' : 'var(--accent-main)', color: 'white', cursor: 'pointer' }} title="Modifier l'identité">{getCoupleInitials(couple)}</div>
         <div className="couple-info">
-          <div style={{ fontSize: '0.857rem', color: 'var(--text-secondary)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
+          <div style={{ fontSize: '0.857rem', color: couple.phase === 'prospect' ? '#6B46C1' : 'var(--text-secondary)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
             {getClientType(couple) === 'individual' && <><User size={18} /> <span>Individuel</span></>}
             {getClientType(couple) === 'couple' && <><Users size={18} /> <span>Couple</span></>}
             {getClientType(couple) === 'family' && (
@@ -375,13 +375,13 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
           >
             <span style={{
               fontSize: '0.857rem', fontWeight: 600,
-              color: status === 'active' ? '#276749' : 'var(--text-tertiary)'
+              color: status === 'active' ? (couple.phase === 'prospect' ? '#6B46C1' : '#276749') : 'var(--text-tertiary)'
             }}>
               {status === 'active' ? 'Actif' : 'Inactif'}
             </span>
             <div style={{
               width: 48, height: 26, borderRadius: 13,
-              background: status === 'active' ? '#C6F6D5' : '#D1D5DB',
+              background: status === 'active' ? (couple.phase === 'prospect' ? '#E9D8FD' : '#C6F6D5') : '#D1D5DB',
               position: 'relative', transition: 'background 0.3s ease',
               flexShrink: 0,
               boxShadow: status === 'active'
