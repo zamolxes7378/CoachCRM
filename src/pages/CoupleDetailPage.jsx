@@ -1173,7 +1173,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                             </span>
                           )
                         })()}
-                        {session.status === 'scheduled' && <span style={{ color: 'var(--text-tertiary)', display: 'inline-flex', alignItems: 'center', gap: 2 }}><Clock size={10} /> Planifiée</span>}
+                        {session.status === 'scheduled' && !isPast && <span style={{ color: 'var(--text-tertiary)', display: 'inline-flex', alignItems: 'center', gap: 2 }}><Clock size={10} /> Planifiée</span>}
                         {session.status === 'cancelled' && <span style={{ color: 'var(--error)', display: 'inline-flex', alignItems: 'center', gap: 2 }}><XCircle size={10} /> Annulée</span>}
                         {session.paymentMethod && (() => {
                           const pmBase = {
@@ -1274,8 +1274,8 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                       <button
                         className="btn"
                         style={{
-                          fontSize: '0.643rem', padding: '3px 10px', fontWeight: 700,
-                          background: 'var(--success)', color: 'white', border: 'none', borderRadius: 'var(--radius-sm)'
+                          fontSize: '0.643rem', padding: '3px 10px', fontWeight: 600,
+                          background: 'transparent', color: 'var(--success)', border: '1px solid var(--success)', borderRadius: 'var(--radius-sm)'
                         }}
                         onClick={async (e) => { e.stopPropagation(); await updateSession(session.id, { status: 'completed' }) }}
                       >
@@ -1284,12 +1284,12 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                       <button
                         className="btn"
                         style={{
-                          fontSize: '0.643rem', padding: '3px 10px', fontWeight: 700,
-                          background: 'var(--error)', color: 'white', border: 'none', borderRadius: 'var(--radius-sm)'
+                          fontSize: '0.643rem', padding: '3px 10px', fontWeight: 600,
+                          background: 'transparent', color: 'var(--text-tertiary)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)'
                         }}
                         onClick={async (e) => { e.stopPropagation(); await updateSession(session.id, { status: 'cancelled' }) }}
                       >
-                        ✗ Annulée
+                        Annulée
                       </button>
                     </div>
                   )}
