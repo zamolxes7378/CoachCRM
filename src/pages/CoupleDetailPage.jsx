@@ -2746,38 +2746,53 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
             <div style={{ padding: '20px 28px', flex: 1, overflowY: 'auto' }}>
               {/* Phase stepper in modal */}
               {couple.phase !== 'prospect' && (() => {
-                const steps = ['debut', 'analyse', 'integration', 'bilan_final']
-                const stepLabels = { debut: 'Début', analyse: 'Analyse', integration: 'Intégration', bilan_final: 'Bilan final' }
-                const stepColors = { debut: '#2B6CB0', analyse: '#38A169', integration: '#D69E2E', bilan_final: '#6B46C1' }
-                const currentIdx = steps.indexOf(phase)
+                const currentPhaseIdx = therapyPhasesData.findIndex(t => t.key === phase)
                 return (
                   <div style={{ marginBottom: 'var(--space-md)', padding: '10px 14px', background: '#FAFBFC', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
-                    <div style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>Phase de la thérapie</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
-                      {steps.map((s, i) => {
-                        const isCompleted = i < currentIdx
-                        const isCurrent = i === currentIdx
-                        const color = stepColors[s]
+                    <div style={{ fontSize: '0.571rem', color: 'var(--text-tertiary)', fontWeight: 600, marginBottom: 6 }}>Phase de la thérapie</div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 0 }}>
+                      {therapyPhasesData.map((tp, i) => {
+                        const isActive = tp.key === phase
+                        const isCompleted = i < currentPhaseIdx
+                        const Icon = phaseIcons[tp.key] || Sprout
+                        const pc = phaseColors[tp.key] || phaseColors.debut
                         return (
-                          <React.Fragment key={s}>
-                            {i > 0 && <span style={{ width: 18, height: 1, background: isCompleted || isCurrent ? '#CBD5E0' : '#E2E8F0', display: 'inline-block', flexShrink: 0, margin: '0 2px' }} />}
-                            <span
-                              onClick={() => { setPhase(s); couple.phase = s; updateClient(couple.id, { phase: s }) }}
+                          <div key={tp.key} style={{ display: 'flex', alignItems: 'center' }}>
+                            <div
+                              onClick={() => { setPhase(tp.key); couple.phase = tp.key; updateClient(couple.id, { phase: tp.key }) }}
                               style={{
-                                display: 'inline-flex', alignItems: 'center', gap: 3,
-                                fontSize: '0.714rem', fontWeight: isCurrent ? 700 : 500,
-                                color: isCompleted ? color : isCurrent ? color : 'var(--text-tertiary)',
-                                opacity: isCompleted || isCurrent ? 1 : 0.5,
-                                borderBottom: isCurrent ? `2px solid ${color}` : '2px solid transparent',
-                                paddingBottom: 2,
-                                cursor: 'pointer',
-                                transition: 'all 0.2s'
+                                display: 'flex', alignItems: 'center', gap: 4,
+                                padding: '4px 8px',
+                                borderBottom: isActive ? `2px solid ${pc.color}` : '2px solid transparent',
+                                cursor: 'pointer', transition: 'all 0.2s',
+                                borderRadius: '4px 4px 0 0'
                               }}
+                              onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'var(--primary-50)' }}
+                              onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
                             >
-                              {isCompleted ? <CheckCircle size={13} style={{ color: color }} /> : isCurrent ? <span style={{ width: 10, height: 10, borderRadius: '50%', border: `2px solid ${color}`, background: 'white', display: 'inline-block' }} /> : <span style={{ width: 10, height: 10, borderRadius: '50%', border: '2px solid #CBD5E0', background: 'white', display: 'inline-block' }} />}
-                              {stepLabels[s]}
-                            </span>
-                          </React.Fragment>
+                              <div style={{
+                                width: 18, height: 18, borderRadius: 'var(--radius-sm)',
+                                background: isCompleted ? pc.color : isActive ? pc.bg : 'var(--primary-50)',
+                                color: isCompleted ? 'white' : isActive ? pc.color : 'var(--text-tertiary)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                transition: 'all 0.2s'
+                              }}>
+                                {isCompleted ? <Check size={10} strokeWidth={3} /> : <Icon size={10} />}
+                              </div>
+                              <span style={{
+                                fontSize: '0.643rem', fontWeight: 600,
+                                color: isActive ? pc.color : isCompleted ? pc.color : 'var(--text-tertiary)',
+                                transition: 'color 0.2s', whiteSpace: 'nowrap'
+                              }}>{tp.label}</span>
+                            </div>
+                            {i < therapyPhasesData.length - 1 && (
+                              <div style={{
+                                width: 12, height: 1,
+                                background: isCompleted ? pc.color : 'var(--border-light)',
+                                transition: 'background 0.3s'
+                              }} />
+                            )}
+                          </div>
                         )
                       })}
                     </div>
