@@ -1,7 +1,7 @@
 # CoachCRM — Règles Métier & Techniques
 
 > Document de référence consolidant toutes les règles métier et techniques actuellement implémentées dans CoachCRM.
-> Dernière mise à jour : 22 mars 2026
+> Dernière mise à jour : 24 mars 2026
 
 ---
 
@@ -28,11 +28,16 @@
 | `referredBy` | string \| undefined | ID du client parrain (parrainage) |
 | `prospectStage` | string | Étape dans le pipeline prospect |
 | `sessionFrequency` | number | Fréquence des séances (en séances/mois, défaut : 2) |
+| `clientLinks` | array | Liens vers d'autres dossiers (parrainage, dossier lié) |
+| `externalReferrer` | objet \| `null` | Référent externe (particulier ou professionnel) |
 
 #### Règles :
 - **Partenaire B optionnel** : si `partnerB` est `null`, c'est un suivi individuel
 - **Nom d'affichage** : `Prénom_A et Prénom_B NomFamille` (couple) ou `Prénom Nom` (individuel)
-- **Initiales** : `A[0]B[0]` (couple) ou `P[0]N[0]` (individuel)
+- **Initiales** : `A[0]B[0]` (couple) ou `P[0]N[0]` (individuel), toujours en **MAJUSCULE**
+- **Initiales null-safe** : si `partnerA`, `lastName` ou `firstName` est null/undefined/vide, fallback à `'?'` — ne jamais crasher
+- **Adresse de facturation** : stockée dans chaque partenaire (`partnerA.billingAddress`, `partnerB.billingAddress`), pas au niveau client
+- **Type famille** : si `type === 'family'` et `children.length === 0`, auto-rétrogradé en `'couple'`
 
 ### 1.2 Séance (Session)
 
@@ -88,7 +93,7 @@
 - **Personnalisable** : les phases peuvent être renommées, ajoutées ou supprimées dans les Paramètres et l'Onboarding
 - **Minimum 1 phase** : impossible de supprimer la dernière phase restante
 - **Chaque séance a sa propre phase**, indépendante de la phase globale du client
-- **Sélecteur de phase en stepper** : dans le détail d'une séance, la sélection de phase utilise un indicateur horizontal de type stepper (icônes + labels + traits de connexion + soulignement coloré pour la phase active + checkmarks pour les phases précédentes)
+- **Sélecteur de phase en stepper** : dans le détail d'une séance ET dans le modal d'édition d'identité, la sélection de phase utilise un indicateur horizontal de type stepper (icônes + labels + traits de connexion + soulignement coloré pour la phase active + checkmarks pour les phases précédentes). Le style est **identique** dans les deux modales.
 - **Clé générée automatiquement** : `label.lowercase().normalize().replace(accents+spéciaux → '_')`
 
 ### 2.2 Phases spéciales (hors parcours)
@@ -446,3 +451,63 @@
 
 - Champ texte dans le détail de la séance
 - Permet au thérapeute de préparer les thèmes avant la séance
+
+---
+
+## 19. Règles visuelles et UX
+
+### 19.1 Avatars clients
+
+| Statut / Phase | Fond | Texte |
+|---|---|---|
+| Client actif (non-prospect) | `var(--accent-main)` | Blanc |
+| **Client inactif** | **`var(--primary-200)` (gris clair)** | **`var(--text-tertiary)`** |
+| Prospect | `#E8D8FE` (mauve clair) | `#6B46C1` (violet) |
+| Terminé / Complété | `var(--primary-200)` | `var(--text-tertiary)` |
+
+> **Règle : un client inactif a TOUJOURS un avatar gris clair**, quelle que soit sa phase. La vérification inactive a priorité sur la phase.
+
+### 19.2 Couleur prospect `#E8D8FE`
+
+- Appliquée à **tous** les avatars prospects dans l'application :
+  - Cartes clients (`CouplesPage`, vue cartes ET vue liste)
+  - Fiche détaillée (`CoupleDetailPage`, page ET modal d'édition)
+  - Badges et bordures liés aux prospects
+- Assure la **continuité graphique** entre les vues
+
+### 19.3 Icône d'édition
+
+- Le crayon (`Edit3`) est **toujours visible** (opacité 50%) à côté du nom du client sur la fiche détaillée
+- Pas besoin de survol pour le voir
+
+### 19.4 Champs obligatoires
+
+- Les champs obligatoires (ex : Nom) ont un **liseret rouge** (`borderColor: var(--error)`) quand ils sont vides
+- Le bouton Enregistrer est **désactivé** (opacity 0.4 + disabled) si un champ obligatoire est vide :
+  - Nom du partenaire A (toujours)
+  - Nom du partenaire B (si couple ou famille)
+  - Nom du référent (si source parrainage)
+
+### 19.5 Comportement modal d'édition d'identité
+
+- **Annuler** : réinitialise TOUS les champs aux valeurs originales du couple
+- **Clic extérieur (backdrop)** : affiche `window.confirm('Des modifications non enregistrées seront perdues...')` si des modifications ont été détectées, puis réinitialise les champs
+- **Détection des modifications** (`hasChanges`) : compare prénom, nom, email, téléphone (partenaires A et B), source, et adresse de facturation par partenaire
+- **Enregistrer** : utilise des variables locales (`updatedPartnerA`, `updatedPartnerB`) puis applique au couple en mémoire + `updateClient()` vers Supabase
+
+---
+
+## 20. Programmation défensive
+
+### 20.1 Règles anti-crash
+
+- **`getCoupleInitials()`** : null-safe — gère `partnerA === null`, `lastName === ''`, `firstName === undefined` avec fallback `'?'`
+- **`getCoupleName()`** : null-safe — même protection
+- **Toutes les fonctions data-driven** : doivent gérer les cas où les données Supabase sont incomplètes (champs null, objets manquants)
+- **`.toUpperCase()`** ne doit JAMAIS être appelé sur `undefined` — toujours vérifier en amont
+
+### 20.2 Création de client
+
+- Le formulaire de création envoie **partnerA ET partnerB** (si couple/famille) avec tous les champs contrôlés (état React)
+- L'adresse de facturation est incluse **dans chaque partenaire** (`partnerA.billingAddress`, `partnerB.billingAddress`)
+- Le Nom est toujours converti en **MAJUSCULES** via `.toUpperCase()` avant l'envoi
