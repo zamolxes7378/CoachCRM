@@ -601,8 +601,10 @@ export function getStatusLabel(status) {
 export function getClientType(client) {
   const hasChildren = client.children && client.children.length > 0;
   const hasPartnerB = !!client.partnerB;
-  // If type is explicitly set, respect it — but auto-transition couple↔family based on children
+  // Respect explicitly set type first
+  if (client.type === 'family') return 'family';
   if (client.type === 'individual' && !hasPartnerB) return 'individual';
+  // Auto-detect from data
   if (hasChildren) return 'family';
   if (hasPartnerB) return 'couple';
   return client.type || 'individual';
