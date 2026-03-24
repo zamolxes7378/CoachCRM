@@ -3296,26 +3296,34 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                 <Trash2 size={14} /> Supprimer
               </button>
               <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
-                <button className="btn btn-ghost" onClick={() => { setShowEditModal(false); setShowDeleteConfirm(false) }}
+                <button className="btn btn-ghost" onClick={() => {
+                  // Reset all edit fields to original values
+                  setEditPartnerA({ ...couple.partnerA })
+                  setEditPartnerB(couple.partnerB ? { ...couple.partnerB } : {})
+                  setEditChildren(couple.children || [])
+                  setEditType(couple ? getClientType(couple) : 'individual')
+                  setEditSource(couple?.source || '')
+                  setEditBillingAddress(couple?.billingAddress || '')
+                  setShowEditModal(false)
+                  setShowDeleteConfirm(false)
+                }}
                   style={{ fontSize: '0.857rem' }}
                 >Annuler</button>
                 <button className="btn btn-accent" style={{ fontSize: '0.857rem', padding: '8px 20px',
-                    opacity: ((editSource === 'referral' || editSource === 'parrainage') && modalExternalReferrer && !(modalExternalReferrer.lastName || '').trim()) ? 0.4 : 1
+                    opacity: (!(editPartnerA.lastName || '').trim() || ((editType === 'couple' || editType === 'family') && !(editPartnerB.lastName || '').trim()) || ((editSource === 'referral' || editSource === 'parrainage') && modalExternalReferrer && !(modalExternalReferrer.lastName || '').trim())) ? 0.4 : 1
                   }}
-                  disabled={(editSource === 'referral' || editSource === 'parrainage') && modalExternalReferrer && !(modalExternalReferrer.lastName || '').trim()}
+                  disabled={!(editPartnerA.lastName || '').trim() || ((editType === 'couple' || editType === 'family') && !(editPartnerB.lastName || '').trim()) || ((editSource === 'referral' || editSource === 'parrainage') && modalExternalReferrer && !(modalExternalReferrer.lastName || '').trim())}
                   onClick={async () => {
-                    // Save changes
-                    couple.partnerA = { ...editPartnerA, lastName: (editPartnerA.lastName || '').toUpperCase() }
-                    if (editType === 'couple' || editType === 'family') {
-                      couple.partnerB = { ...editPartnerB, lastName: (editPartnerB.lastName || '').toUpperCase() }
-                    }
+                    // Build updated values without mutating couple directly
+                    const updatedPartnerA = { ...editPartnerA, lastName: (editPartnerA.lastName || '').toUpperCase() }
+                    const updatedPartnerB = (editType === 'couple' || editType === 'family') ? { ...editPartnerB, lastName: (editPartnerB.lastName || '').toUpperCase() } : couple.partnerB
                     // Handle family → couple transition
                     let finalType = editType
                     if (editType === 'family' && editChildren.length === 0) {
                       finalType = 'couple'
                     }
-                    couple.type = finalType
-                    couple.children = editType === 'family' ? [...editChildren] : undefined
+                    const updatedChildren = editType === 'family' ? [...editChildren] : undefined
+                    const updatedBillingAddress = editBillingAddress.trim() || null
                     // Auto-force source to 'parrainage' if a referrer is configured
                     if (modalSelectedReferrer || (modalExternalReferrer && modalExternalReferrer.lastName?.trim())) {
                       couple.source = 'parrainage'
@@ -3439,15 +3447,20 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                       }
                     }
                     setEditType(finalType)
-                    couple.billingAddress = editBillingAddress.trim() || null
+                    // Apply to in-memory couple for immediate UI update
+                    couple.partnerA = updatedPartnerA
+                    couple.partnerB = updatedPartnerB
+                    couple.type = finalType
+                    couple.children = updatedChildren
+                    couple.billingAddress = updatedBillingAddress
                     // Persist all identity changes to Supabase
                     updateClient(couple.id, {
-                      partnerA: couple.partnerA,
-                      partnerB: couple.partnerB,
-                      type: couple.type,
-                      children: couple.children || null,
+                      partnerA: updatedPartnerA,
+                      partnerB: updatedPartnerB,
+                      type: finalType,
+                      children: updatedChildren || null,
                       source: couple.source,
-                      billingAddress: couple.billingAddress,
+                      billingAddress: updatedBillingAddress,
                       externalReferrer: couple.externalReferrer || null,
                       clientLinks: couple.clientLinks || []
                     })
