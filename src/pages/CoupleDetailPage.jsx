@@ -321,40 +321,6 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
             {getCoupleName(couple)}
             <Edit3 size={14} style={{ color: 'var(--text-tertiary)', opacity: 0.5, transition: 'opacity 0.2s' }} />
           </h1>
-          {/* Therapy phase stepper */}
-          {couple.phase !== 'prospect' && (() => {
-            const steps = ['debut', 'analyse', 'integration', 'bilan_final']
-            const stepLabels = { debut: 'Début', analyse: 'Analyse', integration: 'Intégration', bilan_final: 'Bilan final' }
-            const stepColors = { debut: '#2B6CB0', analyse: '#38A169', integration: '#D69E2E', bilan_final: '#6B46C1' }
-            const currentIdx = steps.indexOf(phase)
-            return (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 0, marginTop: 4 }}>
-                <span style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginRight: 8 }}>Phase de la thérapie</span>
-                {steps.map((s, i) => {
-                  const isCompleted = i < currentIdx
-                  const isCurrent = i === currentIdx
-                  const color = stepColors[s]
-                  return (
-                    <React.Fragment key={s}>
-                      {i > 0 && <span style={{ width: 18, height: 1, background: isCompleted || isCurrent ? '#CBD5E0' : '#E2E8F0', display: 'inline-block', flexShrink: 0, margin: '0 2px' }} />}
-                      <span style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 3,
-                        fontSize: '0.714rem', fontWeight: isCurrent ? 700 : 500,
-                        color: isCompleted ? color : isCurrent ? color : 'var(--text-tertiary)',
-                        opacity: isCompleted || isCurrent ? 1 : 0.5,
-                        borderBottom: isCurrent ? `2px solid ${color}` : '2px solid transparent',
-                        paddingBottom: 2
-                      }}>
-                        {isCompleted ? <CheckCircle size={13} style={{ color: color }} /> : isCurrent ? <span style={{ width: 10, height: 10, borderRadius: '50%', border: `2px solid ${color}`, background: 'white', display: 'inline-block' }} /> : <span style={{ width: 10, height: 10, borderRadius: '50%', border: '2px solid #CBD5E0', background: 'white', display: 'inline-block' }} />}
-                        {stepLabels[s]}
-                      </span>
-                    </React.Fragment>
-                  )
-                })}
-                <span style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-secondary)', marginLeft: 12 }}>{completedCount}/{totalSessions}</span>
-              </div>
-            )
-          })()}
 
         </div>
         <div style={{ marginLeft: 'auto' }}>
