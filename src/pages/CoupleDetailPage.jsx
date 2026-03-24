@@ -66,7 +66,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
     objectifs: couple?.noteObjectifs || ''
   })
   const defaultRate = couple?.type === 'individual' ? sessionRates.individual : sessionRates.couple
-  const [therapyCycles, setTherapyCycles] = useState([{ id: 'tc1', startDate: couple?.startDate || '2025-01-01', rate: defaultRate, totalSessions: couple?.totalSessions || 20, phase: couple?.phase || 'debut' }])
+  const [therapyCycles, setTherapyCycles] = useState([{ id: 'tc1', startDate: couple?.startDate || '2025-01-01', rate: defaultRate, totalSessions: couple?.totalSessions || 20, phase: couple?.phase || (therapyPhasesData[0]?.key || 'debut') }])
   const activeCycle = therapyCycles[therapyCycles.length - 1]
   const [sessionRate, setSessionRate] = useState(activeCycle.rate)
   const [editingRate, setEditingRate] = useState(false)
@@ -557,7 +557,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
             <span style={{ fontSize: '0.857rem', fontWeight: 600, color: 'var(--text-secondary)' }}>{completedCount}/{totalSessions} séances</span>
           </div>
           {(() => {
-            const therapyPhases = ['debut', 'analyse', 'integration', 'bilan_final']
+            const therapyPhases = therapyPhasesData.map(tp => tp.key)
             const phaseCounts = {}
             therapyPhases.forEach(p => { phaseCounts[p] = sessions.filter(s => s.phase === p && s.status !== 'cancelled').length })
             const totalPhased = therapyPhases.reduce((sum, p) => sum + (phaseCounts[p] || 0), 0)
@@ -780,9 +780,9 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                   const now = new Date()
                   now.setDate(now.getDate() + 7)
                   const newId = `s_new_${Date.now()}`
-                  // Inherit phase from most recent session, default to 'debut' if none
+                  // Inherit phase from most recent session, default to first therapy phase if none
                   const recentSessions = sessions.filter(s => s.coupleId === id && s.status !== 'cancelled').sort((a, b) => b.date.localeCompare(a.date))
-                  const inheritedPhase = recentSessions[0]?.phase || 'debut'
+                  const inheritedPhase = recentSessions[0]?.phase || couple?.phase || (therapyPhasesData[0]?.key || 'debut')
                   const newSession = {
                     id: newId, coupleId: id,
                     date: now.toISOString().slice(0, 16),
@@ -1312,15 +1312,15 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                     startDate: new Date().toISOString().slice(0, 10),
                     rate: sessionRate,
                     totalSessions: 20,
-                    phase: 'debut'
+                    phase: therapyPhasesData[0]?.key || 'debut'
                   }
                   setTherapyCycles(prev => [...prev, newCycle])
                   setTotalSessions(20)
                   setSessionRate(newCycle.rate)
                   setTempRate(newCycle.rate)
-                  couple.phase = 'debut'
-                  updateClient(couple.id, { phase: 'debut' })
-                  setPhase('debut')
+                  couple.phase = therapyPhasesData[0]?.key || 'debut'
+                  updateClient(couple.id, { phase: therapyPhasesData[0]?.key || 'debut' })
+                  setPhase(therapyPhasesData[0]?.key || 'debut')
                 }}
               >
                 <RefreshCw size={12} /> Nouvelle thérapie
