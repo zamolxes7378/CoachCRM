@@ -270,6 +270,18 @@ export function DataProvider({ user, children }) {
             await ds.updateClient(client.id, { phase: defaultPhaseKey })
           }
         }
+        // Reverse transition: client → prospect when last session is cancelled
+        if (updates.status === 'cancelled' && result.client_id) {
+          const client = rawClients.find(c => c.id === result.client_id)
+          if (client && client.phase !== 'prospect') {
+            const remainingSessions = rawSessions.filter(
+              s => s.client_id === client.id && s.id !== id && s.status !== 'cancelled'
+            )
+            if (remainingSessions.length === 0) {
+              await ds.updateClient(client.id, { phase: 'prospect' })
+            }
+          }
+        }
         await loadData()
       }
       return result
