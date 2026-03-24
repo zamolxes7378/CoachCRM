@@ -1902,6 +1902,10 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                                 session.phase = tp.key
                                 updateSession(session.id, { phase: tp.key })
                                 setSessionUpdates(prev => ({ ...prev, [session.id]: { ...prev[session.id], _phase: Date.now() } }))
+                                // Sync client global phase with session phase
+                                couple.phase = tp.key
+                                setPhase(tp.key)
+                                updateClient(couple.id, { phase: tp.key })
                               }}
                               style={{
                                 display: 'flex', alignItems: 'center', gap: 4,
