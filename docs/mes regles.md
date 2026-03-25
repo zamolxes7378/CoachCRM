@@ -27,6 +27,10 @@
 - **Interdit** si un moyen de paiement est renseigné → alerte utilisateur
 - Avant d'annuler, l'utilisateur doit d'abord supprimer le moyen de paiement
 
+## Bouton « Paiement en attente »
+- **N'apparaît pas** tant que le mode de paiement n'a pas été choisi ET que le montant du paiement est > 0
+- Conditions requises : `paymentMethod` renseigné + `paymentAmount > 0`
+
 ## Dédoublonnage
 - Alerte si même client + même jour (bloquante avec confirmation)
 - Alerte si autres clients le même jour (informationnelle, désactivée pour les prospects)

@@ -2263,7 +2263,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                               }}
                               style={{ fontSize: '0.714rem', flex: '0 0 calc(33.33% - 6px)' }}
                             />
-                            {pAmount > 0 && (
+                            {pAmount > 0 && session.paymentMethod && (
                               <button
                                 onClick={() => {
                                   const newStatus = !session.paymentReceived
