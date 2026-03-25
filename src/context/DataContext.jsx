@@ -39,6 +39,8 @@ function adaptClient(c) {
     emotionalMaturityHistory: c.emotional_maturity_history || [],
     prospectStage: c.prospect_stage,
     referredBy: c.referred_by,
+    clientLinks: c.client_links || [],
+    externalReferrer: c.external_referrer || null,
     deletedAt: c.deleted_at,
     deleted: !!c.deleted_at,
     // keep id as-is (UUID)
@@ -117,6 +119,8 @@ function unadaptClient(c) {
   if ('emotionalMaturityHistory' in c) { out.emotional_maturity_history = c.emotionalMaturityHistory; delete out.emotionalMaturityHistory }
   if ('prospectStage' in c) { out.prospect_stage = c.prospectStage; delete out.prospectStage }
   if ('referredBy' in c) { out.referred_by = c.referredBy; delete out.referredBy }
+  if ('clientLinks' in c) { out.client_links = c.clientLinks; delete out.clientLinks }
+  if ('externalReferrer' in c) { out.external_referrer = c.externalReferrer; delete out.externalReferrer }
   if ('deletedAt' in c) { out.deleted_at = c.deletedAt; delete out.deletedAt }
   // Strip frontend-only fields that don't exist as DB columns
   delete out.deleted
