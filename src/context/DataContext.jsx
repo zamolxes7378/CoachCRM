@@ -294,6 +294,11 @@ export function DataProvider({ user, children }) {
             const validated = rawSessions.filter(s => (s.client_id || s.coupleId) === client.id && s.id !== id && s.status === 'completed' && (s.payment_method || s.paymentMethod))
             if (validated.length === 0) rawClients[clientIdx] = { ...client, phase: 'prospect' }
           }
+          // Reverse: client → prospect when payment method is removed
+          if (('paymentMethod' in updates || 'payment_method' in updates) && !(merged.payment_method || merged.paymentMethod) && client.phase !== 'prospect') {
+            const validated = rawSessions.filter(s => (s.client_id || s.coupleId) === client.id && s.id !== id && s.status === 'completed' && (s.payment_method || s.paymentMethod))
+            if (validated.length === 0) rawClients[clientIdx] = { ...client, phase: 'prospect' }
+          }
         }
         setRawSessions([...rawSessions])
         setRawClients([...rawClients])
@@ -334,6 +339,21 @@ export function DataProvider({ user, children }) {
             )
             if (validatedSessions.length === 0) {
               await ds.updateClient(client.id, { phase: 'prospect' })
+            }
+          }
+        }
+        // Reverse transition: client → prospect when payment method is removed
+        if (('paymentMethod' in updates || 'payment_method' in updates) && result.client_id) {
+          const effectivePM = result.payment_method
+          if (!effectivePM) {
+            const client = rawClients.find(c => c.id === result.client_id)
+            if (client && client.phase !== 'prospect') {
+              const validatedSessions = rawSessions.filter(
+                s => s.client_id === client.id && s.id !== id && s.status === 'completed' && s.payment_method
+              )
+              if (validatedSessions.length === 0) {
+                await ds.updateClient(client.id, { phase: 'prospect' })
+              }
             }
           }
         }
