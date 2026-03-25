@@ -161,6 +161,25 @@ export function DataProvider({ user, children }) {
     try {
       if (isDemo) {
         // Demo mode: use mockData arrays directly (no Supabase)
+        // Auto-complete past scheduled sessions (same logic as production)
+        const now = new Date()
+        for (const sess of demoSessions) {
+          if (sess.status === 'scheduled' && sess.date) {
+            const endTime = new Date(new Date(sess.date).getTime() + (sess.duration || 60) * 60000)
+            if (endTime <= now) {
+              sess.status = 'completed'
+              // Auto-transition: prospect → client if session is free or has payment
+              const client = demoClients.find(cl => cl.id === (sess.client_id || sess.coupleId))
+              if (client && client.phase === 'prospect') {
+                const effectiveAmount = sess.payment_amount ?? sess.paymentAmount ?? sessionRates[client.type] ?? null
+                const isFreeOrPaid = (sess.payment_method || sess.paymentMethod) || effectiveAmount === 0
+                if (isFreeOrPaid) {
+                  client.phase = defaultPhaseKey
+                }
+              }
+            }
+          }
+        }
         setRawClients(demoClients)
         setRawSessions(demoSessions)
         setRawReports(demoReports)
