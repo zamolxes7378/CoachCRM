@@ -2004,8 +2004,9 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                     ) : (
                       <div
                         onClick={() => {
-                          // Block cancellation if payment method is set
-                          if (session.paymentMethod) {
+                          // Block cancellation if payment method is set (except free sessions)
+                          const sessionAmount = session.paymentAmount ?? getRate(session.id)
+                          if (session.paymentMethod && sessionAmount > 0) {
                             alert('Impossible d\'annuler cette séance : un moyen de paiement est renseigné.\n\nVeuillez d\'abord supprimer le moyen de paiement avant d\'annuler la séance.')
                             return
                           }

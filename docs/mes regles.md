@@ -24,8 +24,9 @@
 > **Alliance thérapeutique** = au moins 1 séance `completed` + (`paymentMethod` renseigné OU `paymentAmount = 0`)
 
 ## Annulation de séance
-- **Interdit** si un moyen de paiement est renseigné → alerte utilisateur
+- **Interdit** si un moyen de paiement est renseigné ET montant > 0 → alerte utilisateur
 - Avant d'annuler, l'utilisateur doit d'abord supprimer le moyen de paiement
+- **Exception** : les séances offertes (montant = 0) peuvent toujours être annulées
 
 ## Bouton « Paiement en attente »
 - **N'apparaît pas** tant que le mode de paiement n'a pas été choisi ET que le montant du paiement est > 0
