@@ -326,7 +326,8 @@ export function DataProvider({ user, children }) {
           if (client && client.phase === 'prospect') {
             const effectiveStatus = result.status || updates.status
             const effectivePM = result.payment_method || updates.paymentMethod || updates.payment_method
-            const effectiveAmount = result.payment_amount ?? updates.paymentAmount ?? updates.payment_amount
+            // payment_amount may be null in DB — fall back to couple's session_rate
+            const effectiveAmount = result.payment_amount ?? (client.session_rate || client.sessionRate) ?? null
             const isFreeOrPaid = effectivePM || effectiveAmount === 0
             if (effectiveStatus === 'completed' && isFreeOrPaid) {
               await ds.updateClient(client.id, { phase: defaultPhaseKey })
@@ -339,7 +340,7 @@ export function DataProvider({ user, children }) {
           const client = rawClients.find(c => c.id === result.client_id)
           if (client && client.phase !== 'prospect') {
             const validatedSessions = rawSessions.filter(
-              s => s.client_id === client.id && s.id !== id && s.status === 'completed' && (s.payment_method || s.payment_amount === 0)
+              s => s.client_id === client.id && s.id !== id && s.status === 'completed' && (s.payment_method || (s.payment_amount ?? client.session_rate) === 0)
             )
             if (validatedSessions.length === 0) {
               await ds.updateClient(client.id, { phase: 'prospect' })
@@ -353,7 +354,7 @@ export function DataProvider({ user, children }) {
             const client = rawClients.find(c => c.id === result.client_id)
             if (client && client.phase !== 'prospect') {
               const validatedSessions = rawSessions.filter(
-                s => s.client_id === client.id && s.id !== id && s.status === 'completed' && (s.payment_method || s.payment_amount === 0)
+                s => s.client_id === client.id && s.id !== id && s.status === 'completed' && (s.payment_method || (s.payment_amount ?? client.session_rate) === 0)
               )
               if (validatedSessions.length === 0) {
                 await ds.updateClient(client.id, { phase: 'prospect' })
