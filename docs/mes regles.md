@@ -37,7 +37,11 @@
   - Les boutons de mode de paiement (Espèces, Chèque, Virement) sont **remplacés** par un badge rouge « Séance offerte »
   - Le badge en en-tête de la carte séance affiche « Séance offerte » en rouge
   - Dans le suivi financier, « Séance offerte » remplace le mode de paiement
-  - L'alerte « Séance à confirmer » est masquée
+  - Les alertes « Séance à confirmer » et « CONFIRMER » sont masquées
+  - La séance **valide l'alliance** (prospect → client) même sans mode de paiement
+  - La séance peut être **annulée** librement
+
+> ⚠️ **Note technique** : `payment_amount` peut être `null` en DB. Le montant effectif est calculé par fallback : `payment_amount ?? session_rate du couple`. Toujours utiliser ce fallback pour détecter les séances offertes.
 
 ## Dédoublonnage
 - Alerte si même client + même jour (bloquante avec confirmation)
