@@ -39,8 +39,8 @@ function adaptClient(c) {
     emotionalMaturityHistory: c.emotional_maturity_history || [],
     prospectStage: c.prospect_stage,
     referredBy: c.referred_by,
-    clientLinks: c.client_links || [],
-    externalReferrer: c.external_referrer || null,
+    clientLinks: c.client_links || c.clientLinks || [],
+    externalReferrer: c.external_referrer || c.externalReferrer || null,
     deletedAt: c.deleted_at,
     deleted: !!c.deleted_at,
     // keep id as-is (UUID)
