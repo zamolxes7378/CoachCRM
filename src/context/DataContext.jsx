@@ -170,6 +170,28 @@ export function DataProvider({ user, children }) {
         ds.getSettings(user.id),
         ds.getProfessionals(user.id)
       ])
+      // Auto-complete past scheduled sessions on load
+      const now = new Date()
+      const rates = { ...defaultRates, ...(st?.session_rates || {}) }
+      for (const sess of s) {
+        if (sess.status === 'scheduled' && sess.date) {
+          const endTime = new Date(new Date(sess.date).getTime() + (sess.duration || 60) * 60000)
+          if (endTime <= now) {
+            await ds.updateSession(sess.id, { status: 'completed' })
+            sess.status = 'completed'
+            // Auto-transition: prospect → client if session is free or has payment
+            const client = c.find(cl => cl.id === sess.client_id)
+            if (client && client.phase === 'prospect') {
+              const effectiveAmount = sess.payment_amount ?? rates[client.type] ?? null
+              const isFreeOrPaid = sess.payment_method || effectiveAmount === 0
+              if (isFreeOrPaid) {
+                await ds.updateClient(client.id, { phase: defaultPhaseKey })
+                client.phase = defaultPhaseKey
+              }
+            }
+          }
+        }
+      }
       setRawClients(c)
       setRawSessions(s)
       setRawReports(r)
