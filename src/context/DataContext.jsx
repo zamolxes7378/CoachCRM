@@ -330,7 +330,14 @@ export function DataProvider({ user, children }) {
       return result
     },
     createSession: async (session) => {
-      if (isDemo) return true
+      if (isDemo) {
+        const demoSession = { ...session, id: `s_demo_${Date.now()}`, created_at: new Date().toISOString() }
+        // Convert camelCase fields for in-memory storage consistency
+        if (demoSession.coupleId) { demoSession.client_id = demoSession.coupleId; delete demoSession.coupleId }
+        rawSessions.unshift(demoSession)
+        setRawSessions([...rawSessions])
+        return demoSession
+      }
       const result = await ds.createSession({ ...unadaptSession(session), user_id: user.id })
       if (result) await loadData()
       return result

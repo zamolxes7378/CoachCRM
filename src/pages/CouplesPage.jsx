@@ -843,11 +843,17 @@ export default function CouplesPage() {
                       <div className="grid-2">
                         <div className="input-group">
                           <label>Phase de la thérapie</label>
-                          <select className="input" style={{ cursor: 'pointer' }} value={newPhase} onChange={e => setNewPhase(e.target.value)}>
-                            {therapyPhasesData.map(tp => (
-                              <option key={tp.key} value={tp.key}>{tp.label}</option>
-                            ))}
-                          </select>
+                          <div style={{
+                            padding: '8px 12px', background: '#F5F0FF', borderRadius: 'var(--radius-md)',
+                            border: '1px solid #E8D8FE', fontSize: '0.786rem', color: '#6B46C1', fontWeight: 600,
+                            display: 'flex', alignItems: 'center', gap: 6
+                          }}>
+                            <UserPlus size={14} />
+                            Prospect
+                            <span style={{ fontWeight: 400, fontSize: '0.643rem', color: 'var(--text-tertiary)', marginLeft: 4 }}>
+                              Évoluera automatiquement à la 1ère séance payée
+                            </span>
+                          </div>
                         </div>
                         <div className="input-group">
                           <label>Source du prospect</label>
@@ -1086,7 +1092,7 @@ export default function CouplesPage() {
                               billingAddress: billingAddressB.trim() || null,
                             }
                           } : {}),
-                          phase: newPhase || therapyPhasesData[0]?.key || 'debut',
+                          phase: 'prospect',
                           source: newSource || null,
                           status: 'active',
                           startDate: today,

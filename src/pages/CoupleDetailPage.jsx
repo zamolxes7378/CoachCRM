@@ -20,7 +20,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
   const params = useParams()
   const id = coupleIdProp || params.id
   const navigate = useNavigate()
-  const { clients: mockCouples, sessions: mockSessions, reports: mockReports, recruitmentSources, sessionRates, therapyPhases: therapyPhasesData, phaseIcons, phaseColors, defaultPhaseKey, getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel, getClientType, formatDate, formatTime, updateSession, updateClient, professionals: mockProfessionals, createProfessional: createPro, updateProfessional: updatePro } = useData()
+  const { clients: mockCouples, sessions: mockSessions, reports: mockReports, recruitmentSources, sessionRates, therapyPhases: therapyPhasesData, phaseIcons, phaseColors, defaultPhaseKey, getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel, getClientType, formatDate, formatTime, updateSession, updateClient, createSession, refreshData, professionals: mockProfessionals, createProfessional: createPro, updateProfessional: updatePro } = useData()
   const couple = mockCouples.find(c => c.id === id)
   // Sanitize: remove self-referencing clientLinks
   if (couple?.clientLinks) {
@@ -126,7 +126,14 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
     return <div className="empty-state"><p>Couple non trouvé</p></div>
   }
 
-  const sessions = mockSessions.filter(s => s.coupleId === id).sort((a, b) => b.date.localeCompare(a.date))
+  const sessions = mockSessions.filter(s => s.coupleId === id).map(s => {
+    // Auto-complete: sessions past their end time become 'completed' (mirrors DataContext logic)
+    if (s.status === 'scheduled') {
+      const endTime = new Date(new Date(s.date).getTime() + (s.duration || 60) * 60000)
+      if (endTime <= new Date()) return { ...s, status: 'completed' }
+    }
+    return s
+  }).sort((a, b) => b.date.localeCompare(a.date))
   const reports = mockReports.filter(r => r.coupleId === id)
   const PhaseIcon = phaseIcons[phase] || Sprout
 
@@ -768,23 +775,32 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
               </button>
               <button
                 className="btn btn-accent"
-                onClick={() => {
+                onClick={async () => {
                   const now = new Date()
                   now.setDate(now.getDate() + 7)
-                  const newId = `s_new_${Date.now()}`
+                  const targetDateStr = now.toISOString().split('T')[0]
+                  // Check for duplicate: same client, same day
+                  const duplicateSameClient = mockSessions.find(s => s.coupleId === id && s.date.startsWith(targetDateStr) && s.status !== 'cancelled')
+                  if (duplicateSameClient) {
+                    if (!confirm(`Doublon potentiel : une séance existe déjà pour ce client le ${formatDate(duplicateSameClient.date)}. Ajouter quand même ?`)) return
+                  } else {
+                    // Check for other sessions on the same day (any client)
+                    const otherSameDay = mockSessions.filter(s => s.date.startsWith(targetDateStr) && s.coupleId !== id && s.status !== 'cancelled')
+                    if (otherSameDay.length > 0) {
+                      const names = otherSameDay.slice(0, 3).map(s => { const c = mockCouples.find(cl => cl.id === s.coupleId); return c ? getCoupleName(c) : 'Client' }).join(', ')
+                      if (!confirm(`${otherSameDay.length} séance${otherSameDay.length > 1 ? 's' : ''} déjà prévue${otherSameDay.length > 1 ? 's' : ''} ce jour (${names}). Ajouter quand même ?`)) return
+                    }
+                  }
                   // Inherit phase from most recent session, default to first therapy phase if none
                   const recentSessions = sessions.filter(s => s.coupleId === id && s.status !== 'cancelled').sort((a, b) => b.date.localeCompare(a.date))
                   const inheritedPhase = recentSessions[0]?.phase || couple?.phase || (therapyPhasesData[0]?.key || 'debut')
-                  const newSession = {
-                    id: newId, coupleId: id,
+                  const sessionData = {
+                    coupleId: id,
                     date: now.toISOString().slice(0, 16),
                     duration: 60, phase: inheritedPhase,
-                    status: 'scheduled', audioFile: null, hasReport: false,
-                    title: '', paymentMethod: null
+                    status: 'scheduled',
                   }
-                  mockSessions.unshift(newSession)
-                  setExpandedSessionId(newId)
-                  setSessionUpdates(prev => ({ ...prev, [newId]: { _new: true } }))
+                  await createSession(sessionData)
                 }}
               >
                 <Plus size={18} style={{ color: 'white' }} /> Séance
