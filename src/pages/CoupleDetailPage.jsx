@@ -2196,7 +2196,13 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                     </label>
                     {(() => {
                       const isFreeSession = (session.paymentAmount ?? rate) === 0
-                      if (isFreeSession) return (
+                      // Check if this free session covers other paid sessions
+                      const hasCoveredPaidSessions = isFreeSession && (session.coveredSessionIds || []).some(sid => {
+                        if (sid === session.id) return false
+                        const covS = sessions.find(s => s.id === sid)
+                        return covS && (covS.paymentAmount ?? getRate(covS.id)) > 0
+                      })
+                      if (isFreeSession && !hasCoveredPaidSessions) return (
                         <div style={{
                           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                           padding: '10px 14px', borderRadius: 'var(--radius-md)',
@@ -2207,6 +2213,17 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                         </div>
                       )
                       return (
+                    <>
+                      {isFreeSession && hasCoveredPaidSessions && (
+                        <div style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                          padding: '6px 10px', borderRadius: 'var(--radius-md)',
+                          fontSize: '0.714rem', fontWeight: 700, marginBottom: 6,
+                          border: '1px solid #FED7D7', background: '#FFF5F5', color: 'var(--error)'
+                        }}>
+                          Séance offerte — paiement pour les séances couvertes
+                        </div>
+                      )}
                     <div style={{ display: 'flex', gap: 'var(--space-sm)', marginBottom: 'var(--space-sm)' }}>
                       {[
                         { key: 'especes', label: 'Espèces', icon: Banknote },
@@ -2237,6 +2254,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                         )
                       })}
                     </div>
+                    </>
                       )
                     })()}
 

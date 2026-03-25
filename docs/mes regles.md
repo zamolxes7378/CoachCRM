@@ -38,15 +38,31 @@
 - Conditions requises : `paymentMethod` renseigné + `paymentAmount > 0`
 
 ## Séance offerte (montant = 0)
-- Si le montant de la séance est **zéro** :
-  - Les boutons de mode de paiement (Espèces, Chèque, Virement) sont **remplacés** par un badge rouge « Séance offerte »
-  - Le badge en en-tête de la carte séance affiche « Séance offerte » en rouge
-  - Dans le suivi financier, « Séance offerte » remplace le mode de paiement
-  - Les alertes « Séance à confirmer » et « CONFIRMER » sont masquées
-  - La séance **valide l'alliance** (prospect → client) même sans mode de paiement
-  - La séance peut être **annulée** librement
+
+### Affichage dans la carte séance
+- Le badge en en-tête affiche **« Séance offerte »** en rouge
+- L'alerte **« Séance à confirmer »** est **toujours masquée** (pas de paiement à confirmer pour cette séance)
+- Le badge **« CONFIRMER »** est **toujours masqué**
+
+### Mode de paiement (section comptable)
+- **Si aucune autre séance payante n'est couverte** par ce paiement :
+  - Les boutons (Espèces, Chèque, Virement) sont **remplacés** par le badge rouge « Séance offerte »
+- **Si d'autres séances payantes sont couvertes** (`coveredSessionIds` contient des séances avec montant > 0) :
+  - Les boutons de paiement restent **visibles** pour permettre la confirmation du paiement des séances couvertes
+  - Le badge « Séance offerte » s'affiche en complément au-dessus des boutons
+
+### Suivi financier
+- « Séance offerte » remplace le mode de paiement
+
+### Alliance thérapeutique
+- La séance **valide l'alliance** (prospect → client) même sans mode de paiement
+- La séance peut être **annulée** librement
 
 > ⚠️ **Note technique** : `payment_amount` peut être `null` en DB. Le montant effectif est calculé par fallback : `payment_amount ?? session_rate du couple`. Toujours utiliser ce fallback pour détecter les séances offertes.
+
+> ⚠️ **Comportement confirmé** :
+> - Le compteur « Séances à confirmer » dans le suivi financier **inclut** les séances offertes
+> - Le `paymentReceived` se propage aux séances couvertes via `coveredSessionIds` quand le paiement est confirmé
 
 ## Dédoublonnage
 - Alerte si même client + même jour (bloquante avec confirmation)
