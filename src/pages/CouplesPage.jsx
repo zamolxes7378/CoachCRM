@@ -1152,9 +1152,9 @@ export default function CouplesPage() {
                     className="btn btn-accent"
                     style={{
                       fontSize: '0.857rem', padding: '8px 20px', display: 'flex', alignItems: 'center', gap: 6,
-                      opacity: ((newSource === 'referral' || newSource === 'parrainage') && externalReferrer && !(externalReferrer.lastName || '').trim()) ? 0.4 : 1
+                      opacity: ((newSource === 'referral' || newSource === 'parrainage') && !selectedReferrer && (!externalReferrer || !(externalReferrer.lastName || '').trim())) ? 0.4 : 1
                     }}
-                    disabled={(newSource === 'referral' || newSource === 'parrainage') && externalReferrer && !(externalReferrer.lastName || '').trim()}
+                    disabled={(newSource === 'referral' || newSource === 'parrainage') && !selectedReferrer && (!externalReferrer || !(externalReferrer.lastName || '').trim())}
                     onClick={async () => {
                       setCreateError(null)
                       try {
@@ -1187,12 +1187,18 @@ export default function CouplesPage() {
                           return
                         }
 
-                        // Handle external referrer parrainage link
-                        if (externalReferrer && externalReferrer.lastName && externalReferrer.lastName.trim()) {
+                        // Handle referrer → create clientLinks
+                        if (selectedReferrer) {
+                          // Client referrer — bidirectional links
+                          const filleulLinks = [{ clientId: selectedReferrer.id, type: 'parrainage', role: 'filleul' }]
+                          await updateClient(created.id, { clientLinks: filleulLinks, source: newSource || 'referral' })
+                          const parrainLinks = [...(selectedReferrer.clientLinks || []), { clientId: created.id, type: 'parrainage', role: 'parrain' }]
+                          await updateClient(selectedReferrer.id, { clientLinks: parrainLinks })
+                        } else if (externalReferrer && externalReferrer.lastName && externalReferrer.lastName.trim()) {
                           const refType = externalReferrer.referrerType || 'particulier'
                           if (refType === 'particulier') {
-                            // Create the external referrer as a prospect client too
-                            await createClient({
+                            // Create the external referrer as a prospect client
+                            const refClient = await createClient({
                               type: 'individual',
                               partnerA: {
                                 firstName: externalReferrer.firstName || '',
@@ -1203,8 +1209,16 @@ export default function CouplesPage() {
                               phase: 'prospect',
                               status: 'active',
                               startDate: today,
-                              referrerType: 'particulier',
                             })
+                            if (refClient) {
+                              // Bidirectional links
+                              await updateClient(created.id, { clientLinks: [{ clientId: refClient.id, type: 'parrainage', role: 'filleul' }], externalReferrer, source: newSource || 'referral' })
+                              await updateClient(refClient.id, { clientLinks: [{ clientId: created.id, type: 'parrainage', role: 'parrain' }] })
+                            }
+                          } else {
+                            // Professionnel externe — parrainage-pro link on the filleul
+                            const proName = `${externalReferrer.firstName || ''} ${externalReferrer.lastName || ''}`.trim()
+                            await updateClient(created.id, { clientLinks: [{ type: 'parrainage-pro', proName, role: 'filleul' }], externalReferrer, source: newSource || 'referral' })
                           }
                         }
 

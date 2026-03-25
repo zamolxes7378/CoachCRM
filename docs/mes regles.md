@@ -78,3 +78,32 @@
 - **Zéros en début de saisie** : interdit (ex: `007` → `7`, `00` → `0`)
 - La valeur `0` reste autorisée (ex: séance offerte)
 - Appliqué globalement via un listener sur tous les `input[type="number"]`
+
+## Parrainage
+
+### 3 niveaux de référencement
+1. **Client → Client** (type `parrainage`, roles `parrain`/`filleul`) — liens bidirectionnels via `clientLinks[]`
+2. **Externe particulier → Client** — crée un prospect automatiquement + liens bidirectionnels
+3. **Professionnel externe → Client** (type `parrainage-pro`) — lien avec le réseau pro
+
+### Validation à la création d'un client
+- Si source = `parrainage` ou `referral`, le champ **« Orienté par »** est **obligatoire** (client existant OU externe avec nom renseigné)
+- Le bouton « Créer le client » est **désactivé** tant que cette condition n'est pas remplie
+
+### Anti-doublons et intégrité
+- Anti auto-parrainage : un client ne peut pas se parrainer lui-même
+- Détection de boucle : A parrain de B ET B parrain de A → interdit
+- Doublon de lien : un même lien ne peut pas être créé deux fois
+
+### Nettoyage automatique
+- Changement de source (≠ parrainage) → supprime tous les liens de parrainage + `externalReferrer`
+- Suppression d'un lien filleul → suppression du lien inverse chez le parrain
+
+### Persistance
+- `clientLinks` persisté en DB via colonne `client_links` (JSONB)
+- `externalReferrer` persisté en DB via colonne `external_referrer` (JSONB)
+
+## Avatars
+- **Client inactif** : initiales en **blanc** sur fond `primary-200`
+- **Prospect** : initiales en `#6B46C1` sur fond `#E8D8FE`
+- **Client actif** : initiales en blanc sur fond `accent-main`
