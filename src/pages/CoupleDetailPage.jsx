@@ -2172,16 +2172,14 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                       <input
                         type="number" min="0" step="5"
                         className="input"
-                        value={rate || ''}
+                        value={rate ?? ''}
                         onChange={e => {
                           const raw = e.target.value
                           const v = raw === '' ? 0 : parseFloat(raw)
                           setRateOverrides(prev => ({ ...prev, [session.id]: v }))
-                          // Sync paymentAmount if not explicitly set differently
-                          if (session.paymentAmount === undefined || session.paymentAmount === rate) {
-                            session.paymentAmount = v
-                            updateSession(session.id, { paymentAmount: v })
-                          }
+                          // Always persist paymentAmount to DB when rate is changed
+                          session.paymentAmount = v
+                          updateSession(session.id, { paymentAmount: v })
                           setSessionUpdates(prev => ({ ...prev, [session.id]: { ...prev[session.id], _rate: Date.now() } }))
                         }}
                         style={{ fontSize: '0.857rem', fontWeight: 700, textAlign: 'center', color: '#E67E22', width: '100%', paddingRight: 24 }}
