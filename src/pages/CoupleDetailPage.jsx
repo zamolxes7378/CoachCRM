@@ -296,7 +296,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
 
       {/* Header */}
       <div className="couple-header">
-        <div className="couple-avatar" onClick={() => { setEditPartnerA({ ...couple.partnerA }); setEditPartnerB(couple.partnerB ? { ...couple.partnerB } : {}); setEditChildren(couple.children || []); setEditType(getClientType(couple)); setShowEditModal(true) }} style={{ background: status === 'inactive' ? 'var(--primary-200)' : couple.phase === 'prospect' ? '#E8D8FE' : 'var(--accent-main)', color: status === 'inactive' ? 'var(--text-tertiary)' : couple.phase === 'prospect' ? '#6B46C1' : 'white', cursor: 'pointer' }} title="Modifier l'identité">{getCoupleInitials(couple)}</div>
+        <div className="couple-avatar" onClick={() => { setEditPartnerA({ ...couple.partnerA }); setEditPartnerB(couple.partnerB ? { ...couple.partnerB } : {}); setEditChildren(couple.children || []); setEditType(getClientType(couple)); setShowEditModal(true) }} style={{ background: status === 'inactive' ? 'var(--primary-200)' : couple.phase === 'prospect' ? '#E8D8FE' : 'var(--accent-main)', color: status === 'inactive' ? 'white' : couple.phase === 'prospect' ? '#6B46C1' : 'white', cursor: 'pointer' }} title="Modifier l'identité">{getCoupleInitials(couple)}</div>
         <div className="couple-info">
           <div style={{ fontSize: '0.857rem', color: 'var(--text-secondary)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
             {getClientType(couple) === 'individual' && <><User size={18} /> <span>Individuel</span></>}
@@ -2272,9 +2272,10 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                       </div>
                     )}
 
-                    {/* Montant du paiement (calculated, read-only) */}
+                    {/* Montant du paiement (calculated, read-only) — hidden for free sessions */}
                     {(() => {
                       const pAmount = session.paymentAmount ?? rate
+                      if (pAmount === 0) return null
                       return (
                         <div style={{ marginBottom: 'var(--space-md)' }}>
                           <label style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-tertiary)', display: 'block', marginBottom: 6 }}>Montant du paiement <span style={{ fontWeight: 400, fontStyle: 'italic' }}>(calculé)</span></label>
@@ -2772,7 +2773,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
           }}>
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', padding: '20px 28px', borderBottom: '1px solid var(--border-light)', flexShrink: 0 }}>
-              <div className="couple-avatar" style={{ width: 40, height: 40, fontSize: '0.857rem', background: status === 'inactive' ? 'var(--primary-200)' : couple.phase === 'prospect' ? '#E8D8FE' : 'var(--accent-main)', color: status === 'inactive' ? 'var(--text-tertiary)' : couple.phase === 'prospect' ? '#6B46C1' : 'white', flexShrink: 0 }}>{getCoupleInitials(couple)}</div>
+              <div className="couple-avatar" style={{ width: 40, height: 40, fontSize: '0.857rem', background: status === 'inactive' ? 'var(--primary-200)' : couple.phase === 'prospect' ? '#E8D8FE' : 'var(--accent-main)', color: status === 'inactive' ? 'white' : couple.phase === 'prospect' ? '#6B46C1' : 'white', flexShrink: 0 }}>{getCoupleInitials(couple)}</div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>{getCoupleName(couple)}</div>
                 <div style={{ fontSize: '0.786rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 5, fontWeight: 500 }}>

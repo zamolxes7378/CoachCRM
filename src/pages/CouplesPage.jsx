@@ -452,7 +452,7 @@ export default function CouplesPage() {
                     </td>
                     <td style={{ padding: '10px 14px', fontWeight: 600 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div className="couple-avatar" style={{ width: 32, height: 32, fontSize: '0.714rem', ...(getComputedStatus(couple) === 'inactive' || couple.phase === 'completed' ? { background: 'var(--primary-200)', color: 'var(--text-tertiary)' } : couple.phase === 'prospect' ? { background: '#E8D8FE', color: '#6B46C1' } : {}) }}>
+                        <div className="couple-avatar" style={{ width: 32, height: 32, fontSize: '0.714rem', ...(getComputedStatus(couple) === 'inactive' || couple.phase === 'completed' ? { background: 'var(--primary-200)', color: 'white' } : couple.phase === 'prospect' ? { background: '#E8D8FE', color: '#6B46C1' } : {}) }}>
                           {getCoupleInitials(couple)}
                         </div>
                         {getCoupleName(couple)}

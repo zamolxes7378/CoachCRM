@@ -50,6 +50,7 @@
 - **Si d'autres séances payantes sont couvertes** (`coveredSessionIds` contient des séances avec montant > 0) :
   - Les boutons de paiement restent **visibles** pour permettre la confirmation du paiement des séances couvertes
   - Le badge « Séance offerte » s'affiche en complément au-dessus des boutons
+- **Champs masqués** : « Montant du paiement » et « Séances concernées par ce paiement » sont **cachés**
 
 ### Suivi financier
 - « Séance offerte » remplace le mode de paiement
