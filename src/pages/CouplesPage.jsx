@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Plus, Search, Users, User, TrendingUp, X, ArrowDownUp, ArrowUpAZ, Calendar, Globe, Phone, UserCheck, CheckCircle, XCircle, HelpCircle, Link2, Award, LayoutGrid, List, Star, Baby, Trash2, Briefcase, Sprout, UserPlus } from 'lucide-react'
+import { Plus, Search, Users, User, TrendingUp, X, ArrowDownUp, ArrowUpAZ, Calendar, Globe, Phone, UserCheck, CheckCircle, XCircle, HelpCircle, Link2, Award, LayoutGrid, List, Star, Baby, Trash2, Briefcase, Sprout, UserPlus, CheckSquare, Square, Archive } from 'lucide-react'
 // mockProfessionals removed — now from DataContext
 import { useData } from '../context/DataContext'
 import { findDuplicateClients } from '../utils/duplicateUtils'
@@ -13,7 +13,7 @@ const sourceIcons = { website: Globe, phone: Phone, referral: UserCheck }
 export default function CouplesPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { clients: mockCouples, sessions: mockSessions, recruitmentSources, therapyPhases: therapyPhasesData, phaseIcons, phaseColors: centralPhaseColors, defaultPhaseKey, isProspect, getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel, getComputedStatus, getProspectStageInfo, formatDate, getClientType, createClient } = useData()
+  const { clients: mockCouples, sessions: mockSessions, recruitmentSources, therapyPhases: therapyPhasesData, phaseIcons, phaseColors: centralPhaseColors, defaultPhaseKey, isProspect, getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel, getComputedStatus, getProspectStageInfo, formatDate, getClientType, createClient, updateClient } = useData()
   const [search, setSearch] = useState('')
   const [sortMode, setSortMode] = useState('none')
   const [showModal, setShowModal] = useState(false)
@@ -27,6 +27,8 @@ export default function CouplesPage() {
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'clients')
   const [statusFilter, setStatusFilter] = useState('all')
   const [viewMode, setViewMode] = useState('cards')
+  const [selected, setSelected] = useState(new Set())
+  const [archiving, setArchiving] = useState(false)
   const [wizardStep, setWizardStep] = useState(0)
   const [newClientType, setNewClientType] = useState('')
   const [newChildren, setNewChildren] = useState([])
@@ -393,12 +395,24 @@ export default function CouplesPage() {
             )
           })}
         </div>
-      ) : (
-        /* LIST VIEW */
+      ) : (<>
+        {/* LIST VIEW */}
         <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', border: '1px solid var(--border-light)' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.857rem' }}>
             <thead>
               <tr style={{ background: 'var(--primary-50)', textAlign: 'left' }}>
+                <th style={{ padding: '10px 8px 10px 14px', width: 36 }}>
+                  <button
+                    onClick={() => {
+                      if (selected.size === filtered.length) setSelected(new Set())
+                      else setSelected(new Set(filtered.map(c => c.id)))
+                    }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center', color: selected.size === filtered.length && filtered.length > 0 ? 'var(--primary-600)' : 'var(--text-tertiary)' }}
+                    title={selected.size === filtered.length ? 'Tout désélectionner' : 'Tout sélectionner'}
+                  >
+                    {selected.size === filtered.length && filtered.length > 0 ? <CheckSquare size={16} /> : <Square size={16} />}
+                  </button>
+                </th>
                 <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.714rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Nom</th>
                 {activeTab === 'clients' ? (<>
                   <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.714rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Phase</th>
@@ -419,14 +433,23 @@ export default function CouplesPage() {
                 const pc = centralPhaseColors[couple.phase]?.color || 'var(--primary-600)'
                 const referrals = mockCouples.filter(c => c.referredBy === couple.id)
                 const referrer = couple.referredBy ? mockCouples.find(c => c.id === couple.referredBy) : null
+                const isChecked = selected.has(couple.id)
                 return (
                   <tr
                     key={couple.id}
                     onClick={() => navigate(`/couples/${couple.id}`)}
-                    style={{ cursor: 'pointer', borderBottom: '1px solid var(--border-light)', transition: 'background 0.1s' }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'var(--primary-50)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    style={{ cursor: 'pointer', borderBottom: '1px solid var(--border-light)', transition: 'background 0.1s', background: isChecked ? 'var(--primary-50)' : 'transparent' }}
+                    onMouseEnter={e => { if (!isChecked) e.currentTarget.style.background = 'var(--primary-50)' }}
+                    onMouseLeave={e => { if (!isChecked) e.currentTarget.style.background = 'transparent' }}
                   >
+                    <td style={{ padding: '10px 8px 10px 14px', width: 36 }}>
+                      <button
+                        onClick={e => { e.stopPropagation(); setSelected(prev => { const s = new Set(prev); s.has(couple.id) ? s.delete(couple.id) : s.add(couple.id); return s }) }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center', color: isChecked ? 'var(--primary-600)' : 'var(--text-tertiary)' }}
+                      >
+                        {isChecked ? <CheckSquare size={16} /> : <Square size={16} />}
+                      </button>
+                    </td>
                     <td style={{ padding: '10px 14px', fontWeight: 600 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <div className="couple-avatar" style={{ width: 32, height: 32, fontSize: '0.714rem', ...(getComputedStatus(couple) === 'inactive' || couple.phase === 'completed' ? { background: 'var(--primary-200)', color: 'var(--text-tertiary)' } : couple.phase === 'prospect' ? { background: '#E8D8FE', color: '#6B46C1' } : {}) }}>
@@ -472,7 +495,66 @@ export default function CouplesPage() {
             </tbody>
           </table>
         </div>
-      )}
+
+        {/* Floating bulk action bar */}
+        {selected.size > 0 && (
+          <div style={{
+            position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+            display: 'flex', alignItems: 'center', gap: 'var(--space-md)',
+            padding: '12px 24px',
+            background: 'var(--bg-card)',
+            borderRadius: 'var(--radius-xl)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08)',
+            border: '1px solid var(--border-light)',
+            zIndex: 100,
+            animation: 'bulkBarIn 0.2s ease-out'
+          }}>
+            <span style={{ fontSize: '0.857rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+              {selected.size} sélectionné{selected.size > 1 ? 's' : ''}
+            </span>
+            <div style={{ width: 1, height: 20, background: 'var(--border-light)' }} />
+            <button
+              onClick={() => setSelected(new Set())}
+              className="btn btn-ghost"
+              style={{ fontSize: '0.786rem', padding: '5px 10px' }}
+            >
+              Désélectionner
+            </button>
+            <button
+              onClick={async () => {
+                const count = selected.size
+                if (!confirm(`Archiver ${count} client${count > 1 ? 's' : ''} ?\n\nIls seront déplacés dans « Clients archivés » et pourront être restaurés.`)) return
+                setArchiving(true)
+                try {
+                  for (const id of selected) {
+                    await updateClient(id, { deletedAt: new Date().toISOString() })
+                  }
+                  setSelected(new Set())
+                } catch (err) {
+                  console.error('Bulk archive error:', err)
+                  alert('Erreur lors de l\'archivage.')
+                } finally {
+                  setArchiving(false)
+                }
+              }}
+              disabled={archiving}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '8px 16px', borderRadius: 'var(--radius-md)',
+                fontSize: '0.857rem', fontWeight: 700,
+                background: '#DC2626', color: 'white',
+                border: 'none', cursor: archiving ? 'wait' : 'pointer',
+                transition: 'all 0.15s',
+                opacity: archiving ? 0.6 : 1
+              }}
+            >
+              <Archive size={15} />
+              {archiving ? 'Archivage...' : 'Archiver'}
+            </button>
+          </div>
+        )}
+        <style>{`@keyframes bulkBarIn { from { opacity: 0; transform: translateX(-50%) translateY(10px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }`}</style>
+      </>)}
 
       {/* Modal Nouveau Client — Wizard 3 étapes */}
       {showModal && (() => {
