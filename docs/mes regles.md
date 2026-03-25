@@ -72,3 +72,8 @@
 - **Archivage** (soft delete) : le client est masqué mais restaurable
 - **Suppression définitive** (hard delete) : supprime le client + séances + CR + contacts (irréversible)
 - Sélection multiple possible (checkboxes) dans les deux pages
+
+## Champs numériques
+- **Zéros en début de saisie** : interdit (ex: `007` → `7`, `00` → `0`)
+- La valeur `0` reste autorisée (ex: séance offerte)
+- Appliqué globalement via un listener sur tous les `input[type="number"]`
