@@ -2307,7 +2307,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                                   const newStatus = !session.paymentReceived
                                   session.paymentReceived = newStatus
                                   // Propagate to all covered sessions
-                                  const coveredIds = session.coveredSessionIds || [session.id]
+                                  const coveredIds = session.coveredSessionIds?.length ? session.coveredSessionIds : [session.id]
                                   coveredIds.forEach(sid => {
                                     const coveredSession = sessions.find(s => s.id === sid)
                                     if (coveredSession && coveredSession.id !== session.id) {
@@ -2357,7 +2357,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                             {session.paymentReceived && !editingCoveredSessions ? (
                               /* Simple display mode */
                               <div style={{ border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', padding: 4 }}>
-                                {(session.coveredSessionIds || [session.id]).map(sid => {
+                                {(session.coveredSessionIds?.length ? session.coveredSessionIds : [session.id]).map(sid => {
                                   const s = sessions.find(x => x.id === sid)
                                   if (!s) return null
                                   const sNum = sessionNumbers[s.id]
@@ -2374,13 +2374,13 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                                 <div style={{ maxHeight: 100, overflowY: 'auto', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', padding: 4 }}>
                                   {sessions.filter(s => {
                                     if (s.status !== 'completed' && s.status !== 'scheduled') return false
-                                    const currentCovered = session.coveredSessionIds || [session.id]
+                                    const currentCovered = session.coveredSessionIds?.length ? session.coveredSessionIds : [session.id]
                                     if (currentCovered.includes(s.id)) return true
                                     if (s.id === session.id) return true
                                     return !sessions.some(other => other.id !== session.id && other.paymentReceived && (other.coveredSessionIds || [other.id]).includes(s.id))
                                   }).sort((a, b) => b.date.localeCompare(a.date)).map(s => {
                                     const sNum = sessionNumbers[s.id]
-                                    const coveredSessions = session.coveredSessionIds || [session.id]
+                                    const coveredSessions = session.coveredSessionIds?.length ? session.coveredSessionIds : [session.id]
                                     const isChecked = coveredSessions.includes(s.id)
                                     const isCurrentSession = s.id === session.id
                                     return (
@@ -2396,7 +2396,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                                           checked={isChecked}
                                           disabled={isCurrentSession}
                                           onChange={() => {
-                                            const current = session.coveredSessionIds || [session.id]
+                                            const current = session.coveredSessionIds?.length ? session.coveredSessionIds : [session.id]
                                             const updated = isChecked
                                               ? current.filter(id => id !== s.id)
                                               : [...current, s.id]
