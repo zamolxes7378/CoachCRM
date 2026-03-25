@@ -1255,12 +1255,8 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                       {/* Payment confirmation alert — inside the card */}
                       {session.status === 'completed' && !session.paymentMethod && (session.paymentAmount ?? getRate(session.id)) > 0 && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                          <AlertTriangle size={10} style={{ color: '#D97706', flexShrink: 0 }} />
                           <span style={{ fontSize: '0.643rem', color: '#92400E', fontWeight: 600 }}>
-                            Paiement à confirmer
-                          </span>
-                          <span style={{ fontSize: '0.643rem', color: '#92400E', fontWeight: 400 }}>
-                            — Veuillez renseigner le mode de paiement.
+                            Séance à confirmer — Veuillez renseigner le mode de paiement.
                           </span>
                         </div>
                       )}
