@@ -323,6 +323,14 @@ export function DataProvider({ user, children }) {
             const validated = rawSessions.filter(s => (s.client_id || s.coupleId) === client.id && s.id !== id && s.status === 'completed' && ((s.payment_method || s.paymentMethod) || (s.payment_amount ?? s.paymentAmount) === 0))
             if (validated.length === 0) rawClients[clientIdx] = { ...client, phase: 'prospect' }
           }
+          // Reverse: client → prospect when session amount changes from 0 to > 0
+          if (('paymentAmount' in updates || 'payment_amount' in updates) && client.phase !== 'prospect') {
+            const mergedAmount = merged.payment_amount ?? merged.paymentAmount
+            if (mergedAmount > 0 && !(merged.payment_method || merged.paymentMethod)) {
+              const validated = rawSessions.filter(s => (s.client_id || s.coupleId) === client.id && s.id !== id && s.status === 'completed' && ((s.payment_method || s.paymentMethod) || (s.payment_amount ?? s.paymentAmount) === 0))
+              if (validated.length === 0) rawClients[clientIdx] = { ...client, phase: 'prospect' }
+            }
+          }
         }
         setRawSessions([...rawSessions])
         setRawClients([...rawClients])
@@ -375,6 +383,21 @@ export function DataProvider({ user, children }) {
           if (!effectivePM) {
             const client = rawClients.find(c => c.id === result.client_id)
             if (client && client.phase !== 'prospect') {
+              const validatedSessions = rawSessions.filter(
+                s => s.client_id === client.id && s.id !== id && s.status === 'completed' && (s.payment_method || (s.payment_amount ?? sessionRates[client.type]) === 0)
+              )
+              if (validatedSessions.length === 0) {
+                await ds.updateClient(client.id, { phase: 'prospect' })
+              }
+            }
+          }
+        }
+        // Reverse transition: client → prospect when session amount changes from 0 to > 0 (no longer free)
+        if (('paymentAmount' in updates || 'payment_amount' in updates) && result.client_id) {
+          const newAmount = result.payment_amount
+          if (newAmount > 0) {
+            const client = rawClients.find(c => c.id === result.client_id)
+            if (client && client.phase !== 'prospect' && !result.payment_method) {
               const validatedSessions = rawSessions.filter(
                 s => s.client_id === client.id && s.id !== id && s.status === 'completed' && (s.payment_method || (s.payment_amount ?? sessionRates[client.type]) === 0)
               )

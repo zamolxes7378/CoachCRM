@@ -21,6 +21,11 @@
 - **Condition** : aucune autre séance du client ne valide l'alliance
 - **Résultat** : le client redevient prospect
 
+#### 3. Par modification du montant (séance offerte → payante)
+- **Déclencheur** : le montant d'une séance passe de 0 à > 0 (et aucun moyen de paiement n'est renseigné)
+- **Condition** : aucune autre séance du client ne valide l'alliance
+- **Résultat** : le client redevient prospect
+
 > **Alliance thérapeutique** = au moins 1 séance `completed` + (`paymentMethod` renseigné OU `paymentAmount = 0`)
 
 ## Annulation de séance
