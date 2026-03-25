@@ -6,22 +6,22 @@
 - Tout nouveau client est créé en tant que **prospect** (`phase: 'prospect'`)
 
 ### Transition Prospect → Client
-- **Déclencheur** : une séance est complétée (`completed`) ET un moyen de paiement est renseigné
+- **Déclencheur** : une séance est complétée (`completed`) ET (un moyen de paiement est renseigné OU le montant est à zéro)
 - Le client passe à la première phase thérapeutique (par défaut `debut`)
 
 ### Réversion Client → Prospect
 
 #### 1. Par annulation de séance
 - **Déclencheur** : une séance est annulée (`cancelled`)
-- **Condition** : aucune autre séance du client ne valide l'alliance (complétée + moyen de paiement)
+- **Condition** : aucune autre séance du client ne valide l'alliance
 - **Résultat** : le client redevient prospect
 
 #### 2. Par suppression du moyen de paiement
 - **Déclencheur** : le moyen de paiement d'une séance est supprimé (mis à null)
-- **Condition** : aucune autre séance du client ne valide l'alliance (complétée + moyen de paiement)
+- **Condition** : aucune autre séance du client ne valide l'alliance
 - **Résultat** : le client redevient prospect
 
-> **Alliance thérapeutique** = au moins 1 séance `completed` + `paymentMethod` renseigné
+> **Alliance thérapeutique** = au moins 1 séance `completed` + (`paymentMethod` renseigné OU `paymentAmount = 0`)
 
 ## Annulation de séance
 - **Interdit** si un moyen de paiement est renseigné → alerte utilisateur

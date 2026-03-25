@@ -286,17 +286,19 @@ export function DataProvider({ user, children }) {
         const clientIdx = rawClients.findIndex(c => c.id === (session.client_id || session.coupleId))
         if (clientIdx >= 0) {
           const client = rawClients[clientIdx]
-          if (client.phase === 'prospect' && merged.status === 'completed' && (merged.payment_method || merged.paymentMethod)) {
+          const mergedAmount = merged.payment_amount ?? merged.paymentAmount
+          const isFreeOrPaid = (merged.payment_method || merged.paymentMethod) || mergedAmount === 0
+          if (client.phase === 'prospect' && merged.status === 'completed' && isFreeOrPaid) {
             rawClients[clientIdx] = { ...client, phase: defaultPhaseKey }
           }
           // Reverse: client → prospect if no validated session remains (completed + payment)
           if (merged.status === 'cancelled' && client.phase !== 'prospect') {
-            const validated = rawSessions.filter(s => (s.client_id || s.coupleId) === client.id && s.id !== id && s.status === 'completed' && (s.payment_method || s.paymentMethod))
+            const validated = rawSessions.filter(s => (s.client_id || s.coupleId) === client.id && s.id !== id && s.status === 'completed' && ((s.payment_method || s.paymentMethod) || (s.payment_amount ?? s.paymentAmount) === 0))
             if (validated.length === 0) rawClients[clientIdx] = { ...client, phase: 'prospect' }
           }
           // Reverse: client → prospect when payment method is removed
           if (('paymentMethod' in updates || 'payment_method' in updates) && !(merged.payment_method || merged.paymentMethod) && client.phase !== 'prospect') {
-            const validated = rawSessions.filter(s => (s.client_id || s.coupleId) === client.id && s.id !== id && s.status === 'completed' && (s.payment_method || s.paymentMethod))
+            const validated = rawSessions.filter(s => (s.client_id || s.coupleId) === client.id && s.id !== id && s.status === 'completed' && ((s.payment_method || s.paymentMethod) || (s.payment_amount ?? s.paymentAmount) === 0))
             if (validated.length === 0) rawClients[clientIdx] = { ...client, phase: 'prospect' }
           }
         }
@@ -324,7 +326,9 @@ export function DataProvider({ user, children }) {
           if (client && client.phase === 'prospect') {
             const effectiveStatus = result.status || updates.status
             const effectivePM = result.payment_method || updates.paymentMethod || updates.payment_method
-            if (effectiveStatus === 'completed' && effectivePM) {
+            const effectiveAmount = result.payment_amount ?? updates.paymentAmount ?? updates.payment_amount
+            const isFreeOrPaid = effectivePM || effectiveAmount === 0
+            if (effectiveStatus === 'completed' && isFreeOrPaid) {
               await ds.updateClient(client.id, { phase: defaultPhaseKey })
             }
           }
@@ -335,7 +339,7 @@ export function DataProvider({ user, children }) {
           const client = rawClients.find(c => c.id === result.client_id)
           if (client && client.phase !== 'prospect') {
             const validatedSessions = rawSessions.filter(
-              s => s.client_id === client.id && s.id !== id && s.status === 'completed' && s.payment_method
+              s => s.client_id === client.id && s.id !== id && s.status === 'completed' && (s.payment_method || s.payment_amount === 0)
             )
             if (validatedSessions.length === 0) {
               await ds.updateClient(client.id, { phase: 'prospect' })
@@ -349,7 +353,7 @@ export function DataProvider({ user, children }) {
             const client = rawClients.find(c => c.id === result.client_id)
             if (client && client.phase !== 'prospect') {
               const validatedSessions = rawSessions.filter(
-                s => s.client_id === client.id && s.id !== id && s.status === 'completed' && s.payment_method
+                s => s.client_id === client.id && s.id !== id && s.status === 'completed' && (s.payment_method || s.payment_amount === 0)
               )
               if (validatedSessions.length === 0) {
                 await ds.updateClient(client.id, { phase: 'prospect' })
