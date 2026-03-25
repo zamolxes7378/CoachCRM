@@ -31,6 +31,13 @@
 - **N'apparaît pas** tant que le mode de paiement n'a pas été choisi ET que le montant du paiement est > 0
 - Conditions requises : `paymentMethod` renseigné + `paymentAmount > 0`
 
+## Séance offerte (montant = 0)
+- Si le montant de la séance est **zéro** :
+  - Les boutons de mode de paiement (Espèces, Chèque, Virement) sont **remplacés** par un badge rouge « Séance offerte »
+  - Le badge en en-tête de la carte séance affiche « Séance offerte » en rouge
+  - Dans le suivi financier, « Séance offerte » remplace le mode de paiement
+  - L'alerte « Séance à confirmer » est masquée
+
 ## Dédoublonnage
 - Alerte si même client + même jour (bloquante avec confirmation)
 - Alerte si autres clients le même jour (informationnelle, désactivée pour les prospects)

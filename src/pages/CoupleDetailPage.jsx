@@ -1193,7 +1193,15 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                         })()}
                         {session.status === 'scheduled' && !isPast && <span style={{ color: 'var(--text-tertiary)', display: 'inline-flex', alignItems: 'center', gap: 2 }}><Clock size={10} /> Planifiée</span>}
                         {session.status === 'cancelled' && <span style={{ color: 'var(--error)', display: 'inline-flex', alignItems: 'center', gap: 2 }}><XCircle size={10} /> Annulée</span>}
-                        {session.paymentMethod && (() => {
+                        {(() => {
+                          const sessionPAmount = (session.paymentAmount ?? getRate(session.id))
+                          if (sessionPAmount === 0) return (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.643rem', fontWeight: 600, letterSpacing: '0.02em', color: 'var(--error)', opacity: 0.85 }}>
+                              <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--error)', flexShrink: 0 }} />
+                              Séance offerte
+                            </span>
+                          )
+                          if (!session.paymentMethod) return null
                           const pmBase = {
                             cheque: { label: 'Chèque', dot: 'var(--error)' },
                             virement: { label: 'Virement', dot: 'var(--error)' },
@@ -1630,7 +1638,9 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                             })()}
                           </span>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                            {isScheduled && !isPaid ? null : noPayment ? (
+                            {isScheduled && !isPaid ? null : pAmountOf(s) === 0 ? (
+                              <span style={{ fontSize: '0.643rem', fontWeight: 700, color: 'var(--error)' }}>Séance offerte</span>
+                            ) : noPayment ? (
                               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: '0.571rem', fontWeight: 700, color: '#92400E', letterSpacing: '0.02em' }}>
                                 <HelpCircle size={9} /> CONFIRMER
                               </span>
@@ -2189,6 +2199,19 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                     <label style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-tertiary)', display: 'block', marginBottom: 6 }}>
                       Mode de paiement
                     </label>
+                    {(() => {
+                      const isFreeSession = (session.paymentAmount ?? rate) === 0
+                      if (isFreeSession) return (
+                        <div style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                          padding: '10px 14px', borderRadius: 'var(--radius-md)',
+                          fontSize: '0.857rem', fontWeight: 700,
+                          border: '1px solid #FED7D7', background: '#FFF5F5', color: 'var(--error)'
+                        }}>
+                          Séance offerte
+                        </div>
+                      )
+                      return (
                     <div style={{ display: 'flex', gap: 'var(--space-sm)', marginBottom: 'var(--space-sm)' }}>
                       {[
                         { key: 'especes', label: 'Espèces', icon: Banknote },
@@ -2219,18 +2242,19 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                         )
                       })}
                     </div>
+                      )
+                    })()}
 
                     {/* Warning: past session without payment method */}
-                    {isPast && !session.paymentMethod && session.status !== 'cancelled' && (
+                    {isPast && !session.paymentMethod && session.status !== 'cancelled' && (session.paymentAmount ?? rate) > 0 && (
                       <div style={{
                         display: 'flex', alignItems: 'center', gap: 6,
                         padding: '6px 10px', background: '#FFFBEB',
                         borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-sm)',
                         border: '1px solid #FEF3C7'
                       }}>
-                        <AlertTriangle size={14} style={{ color: '#D97706', flexShrink: 0 }} />
                         <span style={{ fontSize: '0.714rem', color: '#92400E', fontWeight: 600 }}>
-                          Paiement à confirmer — Veuillez renseigner le mode de paiement.
+                          Séance à confirmer — Veuillez renseigner le mode de paiement.
                         </span>
                       </div>
                     )}
