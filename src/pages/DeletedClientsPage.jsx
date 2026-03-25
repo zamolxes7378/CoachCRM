@@ -1,11 +1,13 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Archive, RotateCcw, Users, User } from 'lucide-react'
+import { ArrowLeft, Archive, RotateCcw, Users, User, Trash2, CheckSquare, Square, AlertTriangle } from 'lucide-react'
 import { useData } from '../context/DataContext'
 
 export default function DeletedClientsPage() {
   const navigate = useNavigate()
-  const { clients: mockCouples, getCoupleName, formatDate, updateClient } = useData()
+  const { clients: mockCouples, getCoupleName, formatDate, updateClient, deleteClient } = useData()
+  const [selected, setSelected] = useState(new Set())
+  const [deleting, setDeleting] = useState(false)
 
   const deletedClients = mockCouples.filter(c => c.deleted)
 
@@ -15,8 +17,44 @@ export default function DeletedClientsPage() {
     if (updateClient) {
       await updateClient(client.id, { deletedAt: null })
     }
-    navigate('/admin/deleted-clients')
+    setSelected(prev => { const s = new Set(prev); s.delete(client.id); return s })
   }
+
+  const toggleSelect = (id) => {
+    setSelected(prev => {
+      const s = new Set(prev)
+      s.has(id) ? s.delete(id) : s.add(id)
+      return s
+    })
+  }
+
+  const toggleAll = () => {
+    if (selected.size === deletedClients.length) {
+      setSelected(new Set())
+    } else {
+      setSelected(new Set(deletedClients.map(c => c.id)))
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    const count = selected.size
+    if (count === 0) return
+    if (!confirm(`⚠️ SUPPRESSION DÉFINITIVE\n\nVous êtes sur le point de supprimer définitivement ${count} client${count > 1 ? 's' : ''} et toutes leurs données associées (séances, comptes rendus, contacts).\n\nCette action est IRRÉVERSIBLE.\n\nConfirmer la suppression ?`)) return
+    setDeleting(true)
+    try {
+      for (const id of selected) {
+        await deleteClient(id)
+      }
+      setSelected(new Set())
+    } catch (err) {
+      console.error('Bulk delete error:', err)
+      alert('Erreur lors de la suppression. Certains clients n\'ont peut-être pas été supprimés.')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const allSelected = deletedClients.length > 0 && selected.size === deletedClients.length
 
   const typeConfig = {
     individual: { icon: User, label: 'Individuel' },
@@ -30,8 +68,13 @@ export default function DeletedClientsPage() {
         <ArrowLeft size={18} /> Retour
       </button>
 
-      <div className="page-header">
+      <div className="page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <h1 className="page-title">Clients archivés</h1>
+        {deletedClients.length > 0 && (
+          <span style={{ fontSize: '0.786rem', color: 'var(--text-tertiary)', fontWeight: 500 }}>
+            {deletedClients.length} client{deletedClients.length > 1 ? 's' : ''} archivé{deletedClients.length > 1 ? 's' : ''}
+          </span>
+        )}
       </div>
 
       {deletedClients.length === 0 ? (
@@ -52,85 +95,152 @@ export default function DeletedClientsPage() {
           </p>
         </div>
       ) : (
-        <div className="card" style={{ overflow: 'hidden' }}>
-          <table className="table" style={{ width: '100%' }}>
-            <thead>
-              <tr>
-                <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '0.714rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border-light)' }}>Client</th>
-                <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '0.714rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border-light)' }}>Type</th>
-                <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '0.714rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border-light)' }}>Créé le</th>
-                <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '0.714rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border-light)' }}>Dernier RDV</th>
-                <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '0.714rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border-light)' }}>Archivé le</th>
-                <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '0.714rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border-light)' }}>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {deletedClients.map(client => (
-                <tr key={client.id} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                  <td style={{ padding: '12px 16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
-                      <div style={{
-                        width: 36, height: 36, borderRadius: 'var(--radius-full)',
-                        background: 'var(--primary-100)', color: 'var(--text-secondary)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '0.786rem', fontWeight: 700
-                      }}>
-                        {client.type === 'individual' ? <User size={16} /> : client.type === 'family' ? (
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                            <circle cx="7" cy="6" r="2.5"/><circle cx="17" cy="6" r="2.5"/><circle cx="12" cy="9" r="2"/>
-                            <path d="M1 20v-1.5a4.5 4.5 0 0 1 4.5-4.5h3a4.5 4.5 0 0 1 4.5 4.5V20"/>
-                            <path d="M15.5 14h3a4.5 4.5 0 0 1 4.5 4.5V20"/>
-                          </svg>
-                        ) : <Users size={16} />}
-                      </div>
-                      <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.929rem' }}>
-                        {getCoupleName(client)}
-                      </span>
-                    </div>
-                  </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <span style={{
-                      fontSize: '0.857rem', fontWeight: 600, padding: '3px 0',
-                      color: 'var(--text-tertiary)',
-                      display: 'inline-flex', alignItems: 'center', gap: 5
-                    }}>
-                      {(() => {
-                        if (client.type === 'family') return (
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                            <circle cx="7" cy="6" r="2.5"/><circle cx="17" cy="6" r="2.5"/><circle cx="12" cy="9" r="2"/>
-                            <path d="M1 20v-1.5a4.5 4.5 0 0 1 4.5-4.5h3a4.5 4.5 0 0 1 4.5 4.5V20"/>
-                            <path d="M15.5 14h3a4.5 4.5 0 0 1 4.5 4.5V20"/>
-                          </svg>
-                        )
-                        const TC = client.type === 'individual' ? User : Users
-                        return <TC size={16} />
-                      })()}
-                      {(typeConfig[client.type] || typeConfig.couple).label}
-                    </span>
-                  </td>
-                  <td style={{ padding: '12px 16px', fontSize: '0.857rem', color: 'var(--text-secondary)' }}>
-                    {client.startDate ? formatDate(client.startDate) : '—'}
-                  </td>
-                  <td style={{ padding: '12px 16px', fontSize: '0.857rem', color: 'var(--text-secondary)' }}>
-                    {client.lastSession ? formatDate(client.lastSession) : '—'}
-                  </td>
-                  <td style={{ padding: '12px 16px', fontSize: '0.857rem', color: 'var(--text-secondary)' }}>
-                    {client.deletedAt ? formatDate(client.deletedAt) : '—'}
-                  </td>
-                  <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+        <>
+          <div className="card" style={{ overflow: 'hidden' }}>
+            <table className="table" style={{ width: '100%' }}>
+              <thead>
+                <tr>
+                  <th style={{ padding: '12px 16px', width: 44, borderBottom: '1px solid var(--border-light)' }}>
                     <button
-                      className="btn btn-ghost"
-                      style={{ fontSize: '0.786rem', padding: '5px 12px', color: 'var(--accent-main)' }}
-                      onClick={() => handleRestore(client)}
+                      onClick={toggleAll}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center', color: allSelected ? 'var(--primary-600)' : 'var(--text-tertiary)' }}
+                      title={allSelected ? 'Tout désélectionner' : 'Tout sélectionner'}
                     >
-                      <RotateCcw size={14} /> Restaurer
+                      {allSelected ? <CheckSquare size={18} /> : <Square size={18} />}
                     </button>
-                  </td>
+                  </th>
+                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '0.714rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border-light)' }}>Client</th>
+                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '0.714rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border-light)' }}>Type</th>
+                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '0.714rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border-light)' }}>Créé le</th>
+                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '0.714rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border-light)' }}>Archivé le</th>
+                  <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '0.714rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border-light)' }}>Action</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {deletedClients.map(client => {
+                  const isChecked = selected.has(client.id)
+                  return (
+                    <tr key={client.id} style={{
+                      borderBottom: '1px solid var(--border-light)',
+                      background: isChecked ? 'var(--primary-50)' : 'transparent',
+                      transition: 'background 0.1s'
+                    }}>
+                      <td style={{ padding: '12px 16px', width: 44 }}>
+                        <button
+                          onClick={() => toggleSelect(client.id)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center', color: isChecked ? 'var(--primary-600)' : 'var(--text-tertiary)' }}
+                        >
+                          {isChecked ? <CheckSquare size={18} /> : <Square size={18} />}
+                        </button>
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+                          <div style={{
+                            width: 36, height: 36, borderRadius: 'var(--radius-full)',
+                            background: 'var(--primary-100)', color: 'var(--text-secondary)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: '0.786rem', fontWeight: 700
+                          }}>
+                            {client.type === 'individual' ? <User size={16} /> : client.type === 'family' ? (
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="7" cy="6" r="2.5"/><circle cx="17" cy="6" r="2.5"/><circle cx="12" cy="9" r="2"/>
+                                <path d="M1 20v-1.5a4.5 4.5 0 0 1 4.5-4.5h3a4.5 4.5 0 0 1 4.5 4.5V20"/>
+                                <path d="M15.5 14h3a4.5 4.5 0 0 1 4.5 4.5V20"/>
+                              </svg>
+                            ) : <Users size={16} />}
+                          </div>
+                          <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.929rem' }}>
+                            {getCoupleName(client)}
+                          </span>
+                        </div>
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <span style={{
+                          fontSize: '0.857rem', fontWeight: 600, padding: '3px 0',
+                          color: 'var(--text-tertiary)',
+                          display: 'inline-flex', alignItems: 'center', gap: 5
+                        }}>
+                          {(() => {
+                            if (client.type === 'family') return (
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="7" cy="6" r="2.5"/><circle cx="17" cy="6" r="2.5"/><circle cx="12" cy="9" r="2"/>
+                                <path d="M1 20v-1.5a4.5 4.5 0 0 1 4.5-4.5h3a4.5 4.5 0 0 1 4.5 4.5V20"/>
+                                <path d="M15.5 14h3a4.5 4.5 0 0 1 4.5 4.5V20"/>
+                              </svg>
+                            )
+                            const TC = client.type === 'individual' ? User : Users
+                            return <TC size={16} />
+                          })()}
+                          {(typeConfig[client.type] || typeConfig.couple).label}
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px 16px', fontSize: '0.857rem', color: 'var(--text-secondary)' }}>
+                        {client.startDate ? formatDate(client.startDate) : '—'}
+                      </td>
+                      <td style={{ padding: '12px 16px', fontSize: '0.857rem', color: 'var(--text-secondary)' }}>
+                        {client.deletedAt ? formatDate(client.deletedAt) : '—'}
+                      </td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                        <button
+                          className="btn btn-ghost"
+                          style={{ fontSize: '0.786rem', padding: '5px 12px', color: 'var(--accent-main)' }}
+                          onClick={() => handleRestore(client)}
+                        >
+                          <RotateCcw size={14} /> Restaurer
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Floating bulk action bar */}
+          {selected.size > 0 && (
+            <div style={{
+              position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+              display: 'flex', alignItems: 'center', gap: 'var(--space-md)',
+              padding: '12px 24px',
+              background: 'var(--bg-card)',
+              borderRadius: 'var(--radius-xl)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08)',
+              border: '1px solid var(--border-light)',
+              zIndex: 100,
+              animation: 'ncFadeIn 0.2s ease-out'
+            }}>
+              <span style={{ fontSize: '0.857rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                {selected.size} sélectionné{selected.size > 1 ? 's' : ''}
+              </span>
+              <div style={{ width: 1, height: 20, background: 'var(--border-light)' }} />
+              <button
+                onClick={() => setSelected(new Set())}
+                className="btn btn-ghost"
+                style={{ fontSize: '0.786rem', padding: '5px 10px' }}
+              >
+                Désélectionner
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                disabled={deleting}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '8px 16px', borderRadius: 'var(--radius-md)',
+                  fontSize: '0.857rem', fontWeight: 700,
+                  background: 'var(--error)', color: 'white',
+                  border: 'none', cursor: deleting ? 'wait' : 'pointer',
+                  transition: 'all 0.15s',
+                  opacity: deleting ? 0.6 : 1
+                }}
+              >
+                <Trash2 size={15} />
+                {deleting ? 'Suppression...' : 'Supprimer définitivement'}
+              </button>
+            </div>
+          )}
+
+          <style>{`@keyframes ncFadeIn { from { opacity: 0; transform: translateX(-50%) translateY(10px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }`}</style>
+        </>
       )}
     </div>
   )

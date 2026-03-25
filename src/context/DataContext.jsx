@@ -258,6 +258,17 @@ export function DataProvider({ user, children }) {
       if (result) await loadData()
       return result
     },
+    deleteClient: async (id) => {
+      if (isDemo) {
+        const idx = rawClients.findIndex(c => c.id === id)
+        if (idx >= 0) rawClients.splice(idx, 1)
+        setRawClients([...rawClients])
+        return true
+      }
+      const result = await ds.deleteClient(id)
+      if (result) await loadData()
+      return result
+    },
     updateSession: async (id, updates) => {
       if (isDemo) {
         // Demo mode: mutate in-memory data
@@ -278,10 +289,10 @@ export function DataProvider({ user, children }) {
           if (client.phase === 'prospect' && merged.status === 'completed' && (merged.payment_method || merged.paymentMethod)) {
             rawClients[clientIdx] = { ...client, phase: defaultPhaseKey }
           }
-          // Reverse: client → prospect if last session cancelled
+          // Reverse: client → prospect if no validated session remains (completed + payment)
           if (merged.status === 'cancelled' && client.phase !== 'prospect') {
-            const remaining = rawSessions.filter(s => (s.client_id || s.coupleId) === client.id && s.id !== id && s.status !== 'cancelled')
-            if (remaining.length === 0) rawClients[clientIdx] = { ...client, phase: 'prospect' }
+            const validated = rawSessions.filter(s => (s.client_id || s.coupleId) === client.id && s.id !== id && s.status === 'completed' && (s.payment_method || s.paymentMethod))
+            if (validated.length === 0) rawClients[clientIdx] = { ...client, phase: 'prospect' }
           }
         }
         setRawSessions([...rawSessions])
@@ -313,14 +324,15 @@ export function DataProvider({ user, children }) {
             }
           }
         }
-        // Reverse transition: client → prospect when last session is cancelled
+        // Reverse transition: client → prospect when no remaining session validates the alliance
+        // (alliance = completed + payment method chosen)
         if (updates.status === 'cancelled' && result.client_id) {
           const client = rawClients.find(c => c.id === result.client_id)
           if (client && client.phase !== 'prospect') {
-            const remainingSessions = rawSessions.filter(
-              s => s.client_id === client.id && s.id !== id && s.status !== 'cancelled'
+            const validatedSessions = rawSessions.filter(
+              s => s.client_id === client.id && s.id !== id && s.status === 'completed' && s.payment_method
             )
-            if (remainingSessions.length === 0) {
+            if (validatedSessions.length === 0) {
               await ds.updateClient(client.id, { phase: 'prospect' })
             }
           }

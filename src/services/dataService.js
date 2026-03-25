@@ -67,6 +67,17 @@ export async function updateClient(clientId, updates) {
   return data
 }
 
+export async function deleteClient(clientId) {
+  // Delete related data first (sessions, reports, contacts)
+  await supabase.from('reports').delete().eq('client_id', clientId)
+  await supabase.from('sessions').delete().eq('client_id', clientId)
+  await supabase.from('contacts').delete().eq('client_id', clientId)
+  // Delete the client
+  const { error } = await supabase.from('clients').delete().eq('id', clientId)
+  if (error) console.error('deleteClient error:', error.message)
+  return !error
+}
+
 // ============================================
 // Sessions
 // ============================================

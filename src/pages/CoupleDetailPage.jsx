@@ -783,8 +783,8 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                   const duplicateSameClient = mockSessions.find(s => s.coupleId === id && s.date.startsWith(targetDateStr) && s.status !== 'cancelled')
                   if (duplicateSameClient) {
                     if (!confirm(`Doublon potentiel : une séance existe déjà pour ce client le ${formatDate(duplicateSameClient.date)}. Ajouter quand même ?`)) return
-                  } else {
-                    // Check for other sessions on the same day (any client)
+                  } else if (couple?.phase !== 'prospect') {
+                    // Check for other sessions on the same day (any client) — skip for prospects
                     const otherSameDay = mockSessions.filter(s => s.date.startsWith(targetDateStr) && s.coupleId !== id && s.status !== 'cancelled')
                     if (otherSameDay.length > 0) {
                       const names = otherSameDay.slice(0, 3).map(s => { const c = mockCouples.find(cl => cl.id === s.coupleId); return c ? getCoupleName(c) : 'Client' }).join(', ')
@@ -793,7 +793,9 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                   }
                   // Inherit phase from most recent session, default to first therapy phase if none
                   const recentSessions = sessions.filter(s => s.coupleId === id && s.status !== 'cancelled').sort((a, b) => b.date.localeCompare(a.date))
-                  const inheritedPhase = recentSessions[0]?.phase || couple?.phase || (therapyPhasesData[0]?.key || 'debut')
+                  const lastSessionPhase = recentSessions[0]?.phase
+                  const couplePhase = couple?.phase !== 'prospect' ? couple?.phase : null
+                  const inheritedPhase = lastSessionPhase || couplePhase || (therapyPhasesData[0]?.key || 'debut')
                   const sessionData = {
                     coupleId: id,
                     date: now.toISOString().slice(0, 16),
@@ -1996,9 +1998,16 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                     ) : (
                       <div
                         onClick={() => {
+                          // Block cancellation if payment method is set
+                          if (session.paymentMethod) {
+                            alert('Impossible d\'annuler cette séance : un moyen de paiement est renseigné.\n\nVeuillez d\'abord supprimer le moyen de paiement avant d\'annuler la séance.')
+                            return
+                          }
                           if (!confirm('Annuler cette séance ?')) return
                           session.status = 'cancelled'
-                          updateSession(session.id, { status: 'cancelled' })
+                          session.paymentReceived = false
+                          session.paymentMethod = null
+                          updateSession(session.id, { status: 'cancelled', paymentReceived: false, paymentMethod: null })
                           setSessionUpdates(prev => ({ ...prev, [session.id]: { ...prev[session.id], _status: Date.now() } }))
                         }}
                         style={{
