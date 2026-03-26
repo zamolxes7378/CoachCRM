@@ -338,6 +338,66 @@ Style visuel pour tout champ dont la saisie est requise :
 
 ---
 
+## Modale de Confirmation / Alerte
+
+Remplace les `confirm()` et `alert()` natifs du navigateur. Toutes les fenêtres de confirmation et d'alerte utilisent ce composant.
+
+### Structure
+
+```
+┌──────────────────────────────────────┐
+│  ❤️ CoachCRM                    ✕   │  ← Header avec logo + bouton fermer
+├──────────────────────────────────────┤
+│                                      │
+│              ⚠️                      │  ← Icône dans cercle (doré ou rouge)
+│                                      │
+│      Titre optionnel (H3)            │
+│                                      │
+│   Message explicatif en texte        │  ← Corps du message
+│   secondaire, centré                 │
+│                                      │
+├──────────────────────────────────────┤
+│                    [Annuler] [OK]    │  ← Footer avec boutons
+└──────────────────────────────────────┘
+```
+
+### Propriétés visuelles
+
+| Propriété | Valeur |
+|-----------|--------|
+| Fond | Blanc (`--bg-card`) |
+| Largeur | 420px (max 90vw) |
+| Radius | 16px (`--radius-lg`) |
+| Ombre | `0 20px 60px rgba(0,0,0,0.2)` |
+| Animation | `modalIn` 250ms ease |
+| Z-index | 9999 |
+
+### 3 variantes
+
+| Variante | Icône cercle | Bouton principal | Usage |
+|----------|-------------|-----------------|-------|
+| **confirm** | Doré (`#FFFFF0` / `--accent-main`) | `.btn-primary` (bleu) | Confirmations courantes |
+| **alert** | Doré | `.btn-primary` + texte "Compris" | Messages informatifs (pas de bouton Annuler) |
+| **danger** | Rouge (`--error-bg` / `--error`) | `.btn-danger` (rouge) | Actions destructives irréversibles |
+
+### Classe CSS : `.confirm-dialog`
+
+```jsx
+{/* Confirmation simple */}
+const ok = await confirm('Annuler cette séance ?')
+
+{/* Alerte (pas de bouton Annuler) */}
+await confirm('Erreur lors de la suppression.', { variant: 'alert' })
+
+{/* Action dangereuse */}
+const ok = await confirm('Cette action est irréversible.', {
+  title: '⚠️ SUPPRESSION DÉFINITIVE',
+  variant: 'danger'
+})
+```
+
+---
+
 ## Responsive
 
 | Breakpoint | Largeur | Comportement |
