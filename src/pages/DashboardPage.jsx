@@ -13,8 +13,11 @@ export default function DashboardPage({ user }) {
   const [searchDate, setSearchDate] = useState('')
   const [showNewSession, setShowNewSession] = useState(false)
   const [newSessionClient, setNewSessionClient] = useState('')
-  const [newSessionDate, setNewSessionDate] = useState('')
-  const [newSessionTime, setNewSessionTime] = useState('')
+  const [newSessionDate, setNewSessionDate] = useState(() => new Date().toISOString().split('T')[0])
+  const [newSessionTime, setNewSessionTime] = useState(() => {
+    const now = new Date()
+    return `${String(now.getHours()).padStart(2, '0')}:00`
+  })
   const [newSessionNote, setNewSessionNote] = useState('')
   const [clientSearch, setClientSearch] = useState('')
   const [showClientDropdown, setShowClientDropdown] = useState(false)
@@ -501,10 +504,18 @@ export default function DashboardPage({ user }) {
                           borderRadius: 'var(--radius-md)', boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
                           maxHeight: 200, overflowY: 'auto', marginTop: 4
                         }}>
-                          {clients
-                            .filter(c => c.phase !== 'prospect')
-                            .filter(c => !clientSearch || getCoupleName(c).toLowerCase().includes(clientSearch.toLowerCase()))
-                            .map(c => (
+                          {(() => {
+                            const filtered = clients
+                              .filter(c => c.phase !== 'prospect')
+                              .filter(c => !clientSearch || getCoupleName(c).toLowerCase().includes(clientSearch.toLowerCase()))
+                            if (filtered.length === 0) {
+                              return (
+                                <div style={{ padding: '12px 16px', fontSize: '0.786rem', color: 'var(--text-tertiary)', textAlign: 'center', fontStyle: 'italic' }}>
+                                  Aucun client trouvé
+                                </div>
+                              )
+                            }
+                            return filtered.map(c => (
                               <div
                                 key={c.id}
                                 onClick={() => { setNewSessionClient(c.id); setShowClientDropdown(false); setClientSearch('') }}
@@ -513,7 +524,7 @@ export default function DashboardPage({ user }) {
                                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                               >{getCoupleName(c)}</div>
                             ))
-                          }
+                          })()}
                         </div>
                       )}
                     </div>
@@ -587,7 +598,7 @@ export default function DashboardPage({ user }) {
                   </div>
                 )}
               </div>
-              <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-sm)', padding: 'var(--space-md) var(--space-lg)', borderTop: '1px solid var(--border-light)' }}>
+              <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-sm)', padding: 'var(--space-md) var(--space-lg)', borderTop: 'none' }}>
                 <button className="btn btn-ghost" onClick={() => setShowNewSession(false)}>Annuler</button>
                 <button
                   className="btn btn-accent"

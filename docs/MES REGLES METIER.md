@@ -28,6 +28,20 @@
 
 > **Alliance thérapeutique** = au moins 1 séance `completed` + (`paymentMethod` renseigné OU `paymentAmount = 0`)
 
+## Création de séance (modale Accueil)
+
+### Champs obligatoires
+- **Client** : sélection obligatoire parmi les clients actifs (prospects exclus)
+- **Date** : par défaut = date du jour
+- **Heure** : par défaut = heure entière (XX:00) qui précède l'instant actuel
+- **Note de préparation** : optionnel
+
+### Comportement UI
+- Pas de ligne horizontale entre les sections de la modale
+- Si aucun client ne correspond à la recherche : afficher « Aucun client trouvé »
+- Si une séance existe déjà pour le même client + même jour : alerte doublon
+- Si d'autres séances existent le même jour (autre client) : alerte informative
+
 ## Annulation de séance
 - **Interdit** si un moyen de paiement est renseigné ET montant > 0 → alerte utilisateur
 - Avant d'annuler, l'utilisateur doit d'abord supprimer le moyen de paiement
