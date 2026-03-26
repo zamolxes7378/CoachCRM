@@ -2,11 +2,13 @@ import { useState, useMemo } from 'react'
 import { Calendar, Heart, Clock, PenTool, FileText, ArrowRight, Mic, CheckCircle, XCircle, ChevronDown, CreditCard, Landmark, Banknote, Plus, AlertTriangle, X, Hourglass, Receipt, Award, Search, Sprout, UserPlus } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useData } from '../context/DataContext'
+import { useConfirm } from '../context/ConfirmContext'
 
 
 export default function DashboardPage({ user }) {
   const navigate = useNavigate()
   const { clients, sessions, reports, phaseIcons, phaseColors, isProspect, getCoupleName, formatTime, formatDate, formatRelativeDate, getPhaseLabel, getComputedStatus, createSession } = useData()
+  const confirm = useConfirm()
   const [visibleCount, setVisibleCount] = useState(10)
   const [sessionView, setSessionView] = useState('future') // 'past' | 'future'
   const [searchQuery, setSearchQuery] = useState('')
@@ -606,7 +608,7 @@ export default function DashboardPage({ user }) {
                   onClick={async () => {
                     const selectedDate = new Date(`${newSessionDate}T${newSessionTime}`)
                     if (selectedDate < new Date()) {
-                      if (!confirm('La séance est planifiée dans le passé. Souhaitez-vous quand même créer cette séance ?')) return
+                      if (!await confirm('La séance est planifiée dans le passé. Souhaitez-vous quand même créer cette séance ?')) return
                     }
                     
                     // Create session in Supabase

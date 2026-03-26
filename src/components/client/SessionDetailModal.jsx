@@ -1,4 +1,5 @@
 import React from 'react'
+import { useConfirm } from '../../context/ConfirmContext'
 import {
   X, FileText, Mic, Sparkles, CheckCircle, XCircle, RefreshCw, Loader,
   Euro, Banknote, CreditCard, Landmark, Hourglass, Check, Receipt,
@@ -17,6 +18,7 @@ export default function SessionDetailModal({
   utils           // { updateSession, formatDate, getCoupleName }
 }) {
   if (!session) return null
+  const confirm = useConfirm()
 
   // Destructure for convenience
   const { sessionUpdates, recordingSessionId, recordingStep, editingCoveredSessions, editingInvoiceSessions } = sessionModal
@@ -179,14 +181,14 @@ export default function SessionDetailModal({
                       </div>
                     ) : (
                       <div
-                        onClick={() => {
+                        onClick={async () => {
                           // Block cancellation if payment method is set (except free sessions)
                           const sessionAmount = session.paymentAmount ?? getRate(session.id)
                           if (session.paymentMethod && sessionAmount > 0) {
-                            alert('Impossible d\'annuler cette séance : un moyen de paiement est renseigné.\n\nVeuillez d\'abord supprimer le moyen de paiement avant d\'annuler la séance.')
+                            await confirm('Impossible d\'annuler cette séance : un moyen de paiement est renseigné.\n\nVeuillez d\'abord supprimer le moyen de paiement avant d\'annuler la séance.', { variant: 'alert' })
                             return
                           }
-                          if (!confirm('Annuler cette séance ?')) return
+                          if (!await confirm('Annuler cette séance ?')) return
                           session.status = 'cancelled'
                           session.paymentReceived = false
                           session.paymentMethod = null

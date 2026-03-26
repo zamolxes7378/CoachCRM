@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Plus, Search, Users, User, TrendingUp, X, ArrowDownUp, ArrowUpAZ, Calendar, Globe, Phone, UserCheck, CheckCircle, XCircle, HelpCircle, Link2, Award, LayoutGrid, List, Star, Baby, Trash2, Briefcase, Sprout, UserPlus, CheckSquare, Square, Archive } from 'lucide-react'
 // professionals removed — now from DataContext
 import { useData } from '../context/DataContext'
+import { useConfirm } from '../context/ConfirmContext'
 import { findDuplicateClients } from '../utils/duplicateUtils'
 import DuplicateAlert from '../components/DuplicateAlert'
 
@@ -14,6 +15,7 @@ export default function CouplesPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { clients, sessions, recruitmentSources, therapyPhases: therapyPhasesData, phaseIcons, phaseColors: centralPhaseColors, defaultPhaseKey, isProspect, getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel, getComputedStatus, getProspectStageInfo, formatDate, getClientType, createClient, updateClient } = useData()
+  const confirm = useConfirm()
   const [search, setSearch] = useState('')
   const [sortMode, setSortMode] = useState('none')
   const [showModal, setShowModal] = useState(false)
@@ -523,7 +525,7 @@ export default function CouplesPage() {
             <button
               onClick={async () => {
                 const count = selected.size
-                if (!confirm(`Archiver ${count} client${count > 1 ? 's' : ''} ?\n\nIls seront déplacés dans « Clients archivés » et pourront être restaurés.`)) return
+                if (!await confirm(`Archiver ${count} client${count > 1 ? 's' : ''} ?\n\nIls seront déplacés dans « Clients archivés » et pourront être restaurés.`)) return
                 setArchiving(true)
                 try {
                   for (const id of selected) {
@@ -532,7 +534,7 @@ export default function CouplesPage() {
                   setSelected(new Set())
                 } catch (err) {
                   console.error('Bulk archive error:', err)
-                  alert('Erreur lors de l\'archivage.')
+                  await confirm('Erreur lors de l\'archivage.', { variant: 'alert' })
                 } finally {
                   setArchiving(false)
                 }

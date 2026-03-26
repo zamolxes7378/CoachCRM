@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, TrendingUp, PenTool, CheckCircle, XCircle, Clock, AlertTriangle, FileText, Calendar, Mic, MicOff, Loader, CreditCard, Landmark, Banknote, Phone, Mail, MessageSquare, Plus, Share2, Edit3, Sparkles, RefreshCw, Globe, Hourglass, Euro, X, Trash2, BookOpen, ChevronRight, Heart, AlertCircle, Crosshair, Check, HelpCircle, Link2, Users, User, Star, Baby, Briefcase, Sprout, Search, Target, Award, UserPlus } from 'lucide-react'
 // professionals removed — now from DataContext
 import { useData } from '../context/DataContext'
+import { useConfirm } from '../context/ConfirmContext'
 import { findDuplicateClients, findDuplicatePros } from '../utils/duplicateUtils'
 import DuplicateAlert from '../components/DuplicateAlert'
 import DeleteConfirmModal from '../components/client/DeleteConfirmModal'
@@ -21,6 +22,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
   const id = coupleIdProp || params.id
   const navigate = useNavigate()
   const { clients, sessions: allSessions, reports: allReports, recruitmentSources, sessionRates, therapyPhases: therapyPhasesData, phaseIcons, phaseColors, defaultPhaseKey, getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel, getClientType, formatDate, formatTime, updateSession, updateClient, createSession, refreshData, professionals, createProfessional: createPro, updateProfessional: updatePro } = useData()
+  const confirm = useConfirm()
   const couple = clients.find(c => c.id === id)
   // Sanitize: remove self-referencing clientLinks
   if (couple?.clientLinks) {
@@ -737,13 +739,13 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                   // Check for duplicate: same client, same day
                   const duplicateSameClient = sessions.find(s => s.coupleId === id && s.date.startsWith(targetDateStr) && s.status !== 'cancelled')
                   if (duplicateSameClient) {
-                    if (!confirm(`Doublon potentiel : une séance existe déjà pour ce client le ${formatDate(duplicateSameClient.date)}. Ajouter quand même ?`)) return
+                    if (!await confirm(`Doublon potentiel : une séance existe déjà pour ce client le ${formatDate(duplicateSameClient.date)}. Ajouter quand même ?`)) return
                   } else if (couple?.phase !== 'prospect') {
                     // Check for other sessions on the same day (any client) — skip for prospects
                     const otherSameDay = sessions.filter(s => s.date.startsWith(targetDateStr) && s.coupleId !== id && s.status !== 'cancelled')
                     if (otherSameDay.length > 0) {
                       const names = otherSameDay.slice(0, 3).map(s => { const c = clients.find(cl => cl.id === s.coupleId); return c ? getCoupleName(c) : 'Client' }).join(', ')
-                      if (!confirm(`${otherSameDay.length} séance${otherSameDay.length > 1 ? 's' : ''} déjà prévue${otherSameDay.length > 1 ? 's' : ''} ce jour (${names}). Ajouter quand même ?`)) return
+                      if (!await confirm(`${otherSameDay.length} séance${otherSameDay.length > 1 ? 's' : ''} déjà prévue${otherSameDay.length > 1 ? 's' : ''} ce jour (${names}). Ajouter quand même ?`)) return
                     }
                   }
                   // Inherit phase from most recent session, default to first therapy phase if none
@@ -1273,8 +1275,8 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
               <button
                 className="btn btn-secondary"
                 style={{ fontSize: '0.643rem', padding: '3px 8px' }}
-                onClick={() => {
-                  if (!confirm('Démarrer une nouvelle thérapie ? Les séances actuelles seront archivées.')) return
+                onClick={async () => {
+                  if (!await confirm('Démarrer une nouvelle thérapie ? Les séances actuelles seront archivées.')) return
                   const newCycle = {
                     id: `tc${Date.now()}`,
                     startDate: new Date().toISOString().slice(0, 10),

@@ -2,10 +2,12 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Archive, RotateCcw, Users, User, Trash2, CheckSquare, Square, AlertTriangle } from 'lucide-react'
 import { useData } from '../context/DataContext'
+import { useConfirm } from '../context/ConfirmContext'
 
 export default function DeletedClientsPage() {
   const navigate = useNavigate()
   const { clients, getCoupleName, formatDate, updateClient, deleteClient } = useData()
+  const confirm = useConfirm()
   const [selected, setSelected] = useState(new Set())
   const [deleting, setDeleting] = useState(false)
 
@@ -39,7 +41,7 @@ export default function DeletedClientsPage() {
   const handleBulkDelete = async () => {
     const count = selected.size
     if (count === 0) return
-    if (!confirm(`⚠️ SUPPRESSION DÉFINITIVE\n\nVous êtes sur le point de supprimer définitivement ${count} client${count > 1 ? 's' : ''} et toutes leurs données associées (séances, comptes rendus, contacts).\n\nCette action est IRRÉVERSIBLE.\n\nConfirmer la suppression ?`)) return
+    if (!await confirm(`Vous êtes sur le point de supprimer définitivement ${count} client${count > 1 ? 's' : ''} et toutes leurs données associées (séances, comptes rendus, contacts).\n\nCette action est IRRÉVERSIBLE.`, { title: '⚠️ SUPPRESSION DÉFINITIVE', variant: 'danger' })) return
     setDeleting(true)
     try {
       for (const id of selected) {
@@ -48,7 +50,7 @@ export default function DeletedClientsPage() {
       setSelected(new Set())
     } catch (err) {
       console.error('Bulk delete error:', err)
-      alert('Erreur lors de la suppression. Certains clients n\'ont peut-être pas été supprimés.')
+      await confirm('Erreur lors de la suppression. Certains clients n\'ont peut-être pas été supprimés.', { variant: 'alert' })
     } finally {
       setDeleting(false)
     }

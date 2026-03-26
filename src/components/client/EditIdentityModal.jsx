@@ -3,6 +3,7 @@ import {
   X, User, Users, Sprout, Baby, Trash2, Plus, Edit3, Save, Check,
   ChevronDown, ChevronUp, Star, Link2, Award, Briefcase, UserPlus
 } from 'lucide-react'
+import { useConfirm } from '../../context/ConfirmContext'
 import DeleteConfirmModal from './DeleteConfirmModal'
 
 /**
@@ -46,9 +47,10 @@ export default function EditIdentityModal({
     if (couple.partnerB && (editPartnerB.billingAddress || '') !== (couple.partnerB?.billingAddress || '')) return true
     return false
   }
-  const handleClose = () => {
+  const confirm = useConfirm()
+  const handleClose = async () => {
     if (hasChanges()) {
-      if (!window.confirm('Des modifications non enregistrées seront perdues. Voulez-vous vraiment quitter ?')) return
+      if (!await confirm('Des modifications non enregistrées seront perdues. Voulez-vous vraiment quitter ?')) return
     }
     // Reset all edit fields to original values
     setEditPartnerA({ ...couple.partnerA })
@@ -604,9 +606,9 @@ export default function EditIdentityModal({
                         fontSize: '0.714rem', fontWeight: 600, color,
                         cursor: 'pointer', transition: 'all 0.2s'
                       }}
-                        onClick={() => {
+                        onClick={async () => {
                           if (hasChanges()) {
-                            if (!window.confirm('Des modifications non enregistrées seront perdues. Voulez-vous vraiment quitter ?')) return
+                            if (!await confirm('Des modifications non enregistrées seront perdues. Voulez-vous vraiment quitter ?')) return
                           }
                           setShowEditModal(false)
                           isPro ? navigate('/admin/reseau-pro') : navigate(`/couples/${linked.id}`)
