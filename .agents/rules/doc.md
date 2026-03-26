@@ -56,3 +56,7 @@ Avant toute modification de code ou de base de données, tu **DOIS** :
 - **Utilisation des variables globales** : prioriser systématiquement les CSS variables du projet (ex: `var(--primary-500)`, `var(--space-md)`, `var(--radius-md)`).
 - **Réutilisation des composants** : avant de créer un nouvel élément UI, vérifier dans `src/components/` si un composant similaire existe déjà.
 - **Ambiance thérapeute** : chaque modification d'UI doit respecter l'univers visuel apaisé, sobre et lisible défini dans la charte.
+- **Mise à jour systématique** : toute modification graphique de l'interface (nouveau composant visuel, changement de style, ajout d'état visuel, nouveau pattern UI) **DOIT** être reflétée dans `/docs/MA_CHARTE_GRAPHIQUE.md` avant ou en même temps que le commit.
+
+### Règle absolue :
+**Ne jamais committer un changement visuel ou graphique de l'interface sans avoir mis à jour `/docs/MA_CHARTE_GRAPHIQUE.md`.**
