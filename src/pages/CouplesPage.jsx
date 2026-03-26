@@ -604,11 +604,11 @@ export default function CouplesPage() {
                 <input className="input" placeholder="Prénom" value={idx === 0 ? newFirstName : newFirstNameB} onChange={idx === 0 ? e => { setNewFirstName(e.target.value); setDuplicateDismissed(false) } : e => setNewFirstNameB(e.target.value)} />
               </div>
               <div className="input-group">
-                <label>Nom <span style={{ color: 'var(--error)' }}>*</span></label>
+                <label className="label-required">Nom</label>
                 {idx === 0 ? (
-                  <input className="input" placeholder="Nom" value={newLastName} onChange={e => { setNewLastName(e.target.value); setDuplicateDismissed(false) }} style={!newLastName.trim() ? { borderColor: 'var(--error)', borderWidth: 1 } : {}} />
+                  <input className={`input${!newLastName.trim() ? ' input-required' : ''}`} placeholder="Nom" value={newLastName} onChange={e => { setNewLastName(e.target.value); setDuplicateDismissed(false) }} />
                 ) : (
-                  <input className="input" placeholder="Nom" value={newLastNameB} onChange={e => setNewLastNameB(e.target.value)} style={!newLastNameB.trim() ? { borderColor: 'var(--error)', borderWidth: 1 } : {}} />
+                  <input className={`input${!newLastNameB.trim() ? ' input-required' : ''}`} placeholder="Nom" value={newLastNameB} onChange={e => setNewLastNameB(e.target.value)} />
                 )}
               </div>
             </div>
@@ -950,7 +950,7 @@ export default function CouplesPage() {
 
                       {(newSource === 'referral' || newSource === 'parrainage') && (
                         <div className="input-group" style={{ marginTop: 'var(--space-xs)' }}>
-                          <label>Orienté par <span style={{ color: 'var(--error)' }}>*</span></label>
+                          <label className="label-required">Orienté par</label>
                           {/* External referrer form */}
                           {externalReferrer ? (
                             <div style={{

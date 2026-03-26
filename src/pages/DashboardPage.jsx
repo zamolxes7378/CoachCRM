@@ -475,7 +475,7 @@ export default function DashboardPage({ user }) {
               </div>
               <div className="modal-body">
                 <div className="input-group">
-                  <label>Client <span style={{ color: 'var(--error-main, #e53e3e)' }}>*</span></label>
+                  <label className="label-required">Client</label>
                   {newSessionClient ? (
                     <div style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -489,7 +489,7 @@ export default function DashboardPage({ user }) {
                   ) : (
                     <div style={{ position: 'relative' }}>
                       <input
-                        className="input"
+                        className="input input-required"
                         type="text"
                         placeholder="Rechercher un client…"
                         value={clientSearch}
@@ -533,18 +533,18 @@ export default function DashboardPage({ user }) {
 
                 <div className="grid-2" style={{ marginTop: 'var(--space-sm)' }}>
                   <div className="input-group">
-                    <label>Date de la séance <span style={{ color: 'var(--error-main, #e53e3e)' }}>*</span></label>
+                    <label className="label-required">Date de la séance</label>
                     <input
-                      className="input"
+                      className="input input-required"
                       type="date"
                       value={newSessionDate}
                       onChange={e => setNewSessionDate(e.target.value)}
                     />
                   </div>
                   <div className="input-group">
-                    <label>Heure <span style={{ color: 'var(--error-main, #e53e3e)' }}>*</span></label>
+                    <label className="label-required">Heure</label>
                     <input
-                      className="input"
+                      className="input input-required"
                       type="time"
                       value={newSessionTime}
                       onChange={e => setNewSessionTime(e.target.value)}

@@ -606,6 +606,21 @@ select:focus {
   color: var(--text-tertiary);
 }
 
+/* --- Required Fields --- */
+.label-required::after {
+  content: ' *';
+  color: var(--error);
+}
+
+.input-required {
+  border-color: var(--error) !important;
+}
+
+.input-required:focus {
+  border-color: var(--error) !important;
+  box-shadow: 0 0 0 3px rgba(197, 48, 48, 0.12) !important;
+}
+
 .search-input {
   position: relative;
 }

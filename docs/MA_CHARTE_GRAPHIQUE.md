@@ -251,6 +251,57 @@ Propriétés :
 
 ---
 
+## Formulaires
+
+### Inputs standards
+
+| Propriété | Valeur |
+|-----------|--------|
+| Bordure | 1px solid `var(--border-medium)` |
+| Radius | 8px |
+| Padding | 8px 16px |
+| Font size | 0.929rem |
+| Fond | Blanc (`#FFFFFF`) |
+| Focus | Bordure `var(--primary-300)` + ombre `rgba(95,126,179,0.12)` |
+| Placeholder | Couleur `var(--text-tertiary)` |
+
+### Champs obligatoires
+
+Style visuel pour tout champ dont la saisie est requise :
+
+```
+  Nom *                          ← label + astérisque rouge
+  ┌──────────────────────────┐
+  │  Nom                     │   ← bordure rouge douce
+  └──────────────────────────┘
+```
+
+| Élément | Style | Classe CSS |
+|---------|-------|------------|
+| **Label** | Astérisque rouge ` *` ajouté automatiquement via `::after` | `.label-required` |
+| **Input** | Bordure `var(--error)` (`#C53030`) | `.input-required` |
+| **Input focus** | Bordure `var(--error)` + ombre `rgba(197,48,48,0.12)` | `.input-required:focus` |
+
+#### Usage
+
+```jsx
+{/* Label avec astérisque automatique */}
+<label className="label-required">Nom du client</label>
+
+{/* Input avec bordure rouge permanente */}
+<input className="input input-required" />
+
+{/* Bordure rouge conditionnelle (vide = erreur) */}
+<input className={`input${!value.trim() ? ' input-required' : ''}`} />
+```
+
+#### Règles d'application
+- Tout champ dont la validation est bloquante **doit** utiliser `.label-required`
+- La bordure rouge (`.input-required`) s'applique **en permanence** sur les champs toujours obligatoires, ou **conditionnellement** (quand le champ est vide) pour les validations au fil de la saisie
+- Couleur de l'astérisque et de la bordure : `--error` (`#C53030`) — le rouge doux de la palette sémantique
+
+---
+
 ## Responsive
 
 | Breakpoint | Largeur | Comportement |
