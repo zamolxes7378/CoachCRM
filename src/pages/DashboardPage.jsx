@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
-import { Calendar, Heart, Clock, PenTool, FileText, ArrowRight, Mic, CheckCircle, XCircle, ChevronDown, CreditCard, Landmark, Banknote, Plus, AlertTriangle, X, Hourglass, Receipt, Award, Search, Sprout, UserPlus } from 'lucide-react'
+import { Calendar, Heart, Clock, PenTool, FileText, ArrowRight, Mic, CheckCircle, XCircle, ChevronDown, CreditCard, Landmark, Banknote, Plus, AlertTriangle, X, Hourglass, Receipt, Award, Search, Sprout, UserPlus, HelpCircle, Trash2, CheckSquare, Square } from 'lucide-react'
+import SessionCard from '../components/session/SessionCard'
 import { useNavigate } from 'react-router-dom'
 import { useData } from '../context/DataContext'
 import { useConfirm } from '../context/ConfirmContext'
@@ -7,7 +8,7 @@ import { useConfirm } from '../context/ConfirmContext'
 
 export default function DashboardPage({ user }) {
   const navigate = useNavigate()
-  const { clients, sessions, reports, phaseIcons, phaseColors, isProspect, getCoupleName, formatTime, formatDate, formatRelativeDate, getPhaseLabel, getComputedStatus, createSession } = useData()
+  const { clients, sessions, reports, phaseIcons, phaseColors, isProspect, getCoupleName, formatTime, formatDate, formatRelativeDate, getPhaseLabel, getComputedStatus, createSession, deleteSession, deleteSessions, sessionRates, defaultPhaseKey, getPhaseColor, getPhaseIcon } = useData()
   const confirm = useConfirm()
   const [visibleCount, setVisibleCount] = useState(10)
   const [sessionView, setSessionView] = useState('future') // 'past' | 'future'
@@ -25,6 +26,17 @@ export default function DashboardPage({ user }) {
   const [showClientDropdown, setShowClientDropdown] = useState(false)
   const [filterInvoice, setFilterInvoice] = useState(false)
   const [filterPayment, setFilterPayment] = useState(false)
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedSessions, setSelectedSessions] = useState(new Set())
+
+  const toggleSelect = (id) => {
+    setSelectedSessions(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+  const exitSelectMode = () => { setSelectMode(false); setSelectedSessions(new Set()) }
 
 
   // All sessions with couple info
@@ -121,13 +133,27 @@ export default function DashboardPage({ user }) {
             </button>
           </div>
 
-          <div className="tabs" style={{ marginBottom: 'var(--space-sm)' }}>
-            <button className={`tab ${sessionView === 'future' ? 'active' : ''}`} onClick={() => { setSessionView('future'); setVisibleCount(10) }}>
-              <Calendar size={16} style={{ marginRight: 4, verticalAlign: -3 }} /> À venir ({upcomingSessions.length})
+          <div className="tabs" style={{ marginBottom: 'var(--space-sm)', display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+            <button className={`tab ${sessionView === 'future' ? 'active' : ''}`} onClick={() => { setSessionView('future'); setVisibleCount(10); exitSelectMode() }}>
+              <Calendar size={16} style={{ marginRight: 4, verticalAlign: -3 }} /> En cours ({upcomingSessions.length})
             </button>
-            <button className={`tab ${sessionView === 'past' ? 'active' : ''}`} onClick={() => { setSessionView('past'); setVisibleCount(10) }}>
+            <button className={`tab ${sessionView === 'past' ? 'active' : ''}`} onClick={() => { setSessionView('past'); setVisibleCount(10); exitSelectMode() }}>
               <Clock size={16} style={{ marginRight: 4, verticalAlign: -3 }} /> Passées ({pastSessions.length})
             </button>
+            {sessionView === 'future' && (
+              <button
+                className={`btn btn-ghost`}
+                style={{
+                  marginLeft: 'auto', fontSize: '0.714rem', padding: '4px 10px',
+                  color: selectMode ? 'var(--error)' : 'var(--text-secondary)',
+                  border: selectMode ? '1px solid var(--error)' : '1px solid var(--border-light)',
+                  borderRadius: 'var(--radius-md)'
+                }}
+                onClick={() => selectMode ? exitSelectMode() : setSelectMode(true)}
+              >
+                {selectMode ? <><X size={12} /> Annuler</> : <><CheckSquare size={12} /> Sélectionner</>}
+              </button>
+            )}
           </div>
           {Object.keys(groupedSessions).length > 0 ? (
             <>
@@ -153,147 +179,48 @@ export default function DashboardPage({ user }) {
                     {sessions
                       .sort((a, b) => a.date.localeCompare(b.date))
                       .map(session => {
-                        const PhaseIcon = phaseIcons[session.phase] || Sprout
-                        const pc = phaseColors[session.phase] || { bg: 'var(--primary-100)', color: 'var(--primary-700)' }
-                        const statusLabel = session.status === 'completed' ? 'Séance terminée'
-                          : session.status === 'cancelled' ? 'Séance annulée' : 'Séance planifiée'
-
+                        const couple = session.couple
+                        const effectivePhase = session.phase || couple?.phase || defaultPhaseKey
+                        const type = couple?.type || 'couple'
+                        const rate = sessionRates[type] ?? sessionRates.couple ?? 60
+                        const isSelected = selectedSessions.has(session.id)
                         return (
-                          <div key={session.id}
-                            onClick={() => navigate(`/couples/${session.coupleId}`)}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 'var(--space-md)',
-                              padding: 'var(--space-sm) var(--space-md)',
-                              background: session.status === 'cancelled' ? 'var(--error-bg)'
-                                : new Date(session.date) <= new Date() ? 'var(--primary-50)' : 'white',
-                              border: session.status === 'cancelled' ? 'none'
-                                : new Date(session.date) <= new Date() ? 'none' : '1px dashed var(--border-light)',
-                              borderRadius: 'var(--radius-lg)',
-                              marginBottom: 'var(--space-xs)',
-                              cursor: 'pointer',
-                              transition: 'box-shadow 0.15s ease, transform 0.15s ease',
-                              boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
-                            }}
-                            onMouseOver={e => { e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
-                            onMouseOut={e => { e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.04)'; e.currentTarget.style.transform = 'none' }}
-                          >
-                            {/* Phase icon avatar */}
-                            <div style={{ position: 'relative', flexShrink: 0 }}>
-                              <div style={{
-                                width: 40, height: 40, borderRadius: 'var(--radius-full)',
-                                background: pc.bg, color: pc.color,
-                                display: 'flex', alignItems: 'center', justifyContent: 'center'
-                              }}>
-                                <PhaseIcon size={20} />
-                              </div>
-                              {sessionNumbers[session.id] && (
-                                <span style={{
-                                  position: 'absolute', top: -4, right: -4,
-                                  minWidth: 18, height: 18,
-                                  borderRadius: 'var(--radius-full)',
-                                  background: pc.color, color: 'white',
-                                  fontSize: '0.643rem', fontWeight: 700,
+                          <div key={session.id} style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+                            {selectMode && (
+                              <div
+                                onClick={e => { e.stopPropagation(); toggleSelect(session.id) }}
+                                style={{
+                                  flexShrink: 0, cursor: 'pointer', padding: '0 8px 0 4px',
                                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                  padding: '0 4px',
-                                  border: '2px solid white',
-                                  lineHeight: 1
-                                }}>{sessionNumbers[session.id]}</span>
-                              )}
-                            </div>
-
-                            {/* Main info */}
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{
-                                fontWeight: 600, fontSize: '0.929rem',
-                                color: session.status === 'cancelled' ? 'var(--error)' : 'var(--text-primary)',
-                                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
-                              }}>
-                                {session.couple ? getCoupleName(session.couple) : 'Client inconnu'}
+                                  color: isSelected ? 'var(--error)' : 'var(--text-tertiary)',
+                                  transition: 'color 0.15s ease'
+                                }}
+                              >
+                                {isSelected ? <CheckSquare size={18} /> : <Square size={18} />}
                               </div>
-                              <div style={{
-                                fontSize: '0.786rem', color: session.status === 'cancelled' ? 'var(--error)' : session.status === 'completed' ? 'var(--success)' : 'var(--text-secondary)',
-                                marginTop: 2,
-                                display: 'flex', alignItems: 'center', gap: 6,
-                                overflow: 'hidden', whiteSpace: 'nowrap'
-                              }}>
-                                <span>{formatTime(session.date)}</span>
-                                {session.paymentMethod && (() => {
-                                  const pmBase = {
-                                    cheque: { label: 'Chèque', dot: 'var(--error)' },
-                                    virement: { label: 'Virement', dot: 'var(--error)' },
-                                    especes: { label: 'Espèces', dot: 'var(--success)' }
-                                  }[session.paymentMethod]
-                                  const isReceived = session.paymentMethod === 'especes' || session.paymentReceived
-                                  const displayColor = isReceived ? 'var(--success)' : pmBase.dot
-                                  return (
-                                    <span style={{
-                                      display: 'inline-flex', alignItems: 'center', gap: 4,
-                                      fontSize: '0.643rem', fontWeight: 500, letterSpacing: '0.02em',
-                                      color: displayColor, opacity: 0.85
-                                    }}>
-                                      <span style={{ width: 5, height: 5, borderRadius: '50%', background: displayColor, flexShrink: 0 }} />
-                                      {pmBase.label}
-                                      {isReceived && <CheckCircle size={9} style={{ color: 'var(--success)', flexShrink: 0 }} />}
-                                      {session.paymentStatus === 'deferred' && <Hourglass size={9} style={{ color: pmBase.dot, flexShrink: 0 }} />}
-                                    </span>
-                                  )
-                                })()}
-                                {session.status === 'completed' && !session.paymentMethod && (
-                                  <span style={{
-                                    display: 'inline-flex', alignItems: 'center', gap: 3,
-                                    fontSize: '0.643rem', fontWeight: 600,
-                                    color: 'var(--error)',
-                                    letterSpacing: '0.02em'
-                                  }} title="Mode de paiement non renseigné">
-                                    <AlertTriangle size={9} /> PAIEMENT
-                                  </span>
-                                )}
-                                {session.needsInvoice && (
-                                  <span style={{
-                                    display: 'inline-flex', alignItems: 'center', gap: 3,
-                                    fontSize: '0.643rem', fontWeight: 600,
-                                    color: session.invoiceSent ? 'var(--success)' : 'var(--error)',
-                                    letterSpacing: '0.02em'
-                                  }} title={session.invoiceSent ? 'Facture envoyée' : 'Facture à envoyer'}>
-                                    FACTURE {session.invoiceSent && <CheckCircle size={9} />}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Session content — only when report exists */}
-                            {session.hasReport && session.summary ? (
-                              <div style={{
-                                fontSize: '0.786rem', color: 'var(--text-secondary)',
-                                minWidth: 120, maxWidth: 280,
-                                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                                flexShrink: 0
-                              }} title={`Séance ${sessionNumbers[session.id] || '?'} : ${session.summary}`}>
-                                {(() => { const full = `S${sessionNumbers[session.id] || '?'} : ${session.summary}`; return full.length > 40 ? full.slice(0, 40) + '…' : full })()}
-                              </div>
-                            ) : (
-                              <div style={{ minWidth: 120, maxWidth: 160, flexShrink: 0 }} />
                             )}
-
-                            {/* Right side indicators */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', flexShrink: 0 }}>
-                              {session.hasReport ? (
-                                <FileText size={16} style={{ color: '#2B6CB0' }} title="Compte-rendu disponible" />
-                              ) : session.status === 'completed' ? (
-                                <span style={{
-                                  width: 28, height: 28, borderRadius: '50%',
-                                  background: 'var(--accent-main)', display: 'inline-flex',
-                                  alignItems: 'center', justifyContent: 'center'
-                                }} title="Dicter le CR">
-                                  <Mic size={14} style={{ color: 'white' }} />
-                                </span>
-                              ) : session.status === 'cancelled' ? (
-                                <XCircle size={16} style={{ color: 'var(--error)' }} />
-                              ) : (
-                                <Clock size={16} style={{ color: 'var(--text-tertiary)' }} />
-                              )}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <SessionCard
+                                session={session}
+                                sessionNumber={sessionNumbers[session.id]}
+                                phaseColor={getPhaseColor(effectivePhase)}
+                                PhaseIcon={getPhaseIcon(effectivePhase)}
+                                phaseLabel={getPhaseLabel(effectivePhase)}
+                                showClientName={true}
+                                clientName={couple ? getCoupleName(couple) : null}
+                                sessionRate={rate}
+                                hasReport={session.hasReport}
+                                reportSummary={session.summary}
+                                invoiceInfo={session.needsInvoice ? { needsInvoice: true, invoiceSent: session.invoiceSent } : null}
+                                formatDate={formatDate}
+                                formatTime={formatTime}
+                                onClick={selectMode ? () => toggleSelect(session.id) : () => navigate(`/couples/${session.coupleId}`)}
+                              onDelete={session.status === 'cancelled' ? async (sid) => {
+                                const ok = await confirm('Supprimer définitivement cette séance annulée ?\nElle disparaîtra du calendrier.', { variant: 'destructive' })
+                                if (!ok) return
+                                await deleteSession(sid)
+                              } : undefined}
+                              />
                             </div>
                           </div>
                         )
@@ -324,6 +251,58 @@ export default function DashboardPage({ user }) {
             </>
           ) : (
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.929rem' }}>Aucune séance récente</p>
+          )}
+
+          {/* Floating action bar for batch delete */}
+          {selectMode && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 'var(--space-md)',
+              padding: 'var(--space-sm) var(--space-md)',
+              background: selectedSessions.size > 0 ? 'var(--error-bg)' : 'var(--primary-50)',
+              borderRadius: 'var(--radius-md)',
+              border: selectedSessions.size > 0 ? '1px solid var(--error)' : '1px solid var(--border-light)',
+              marginTop: 'var(--space-sm)',
+              transition: 'all 0.2s ease'
+            }}>
+              <button
+                className="btn btn-ghost"
+                style={{ fontSize: '0.714rem', padding: '4px 8px', color: 'var(--text-secondary)' }}
+                onClick={() => {
+                  if (selectedSessions.size === lastSessions.length) {
+                    setSelectedSessions(new Set())
+                  } else {
+                    setSelectedSessions(new Set(lastSessions.map(s => s.id)))
+                  }
+                }}
+              >
+                {selectedSessions.size === lastSessions.length
+                  ? <><CheckSquare size={14} /> Tout désélectionner</>
+                  : <><Square size={14} /> Tout sélectionner</>}
+              </button>
+              <span style={{ flex: 1, fontSize: '0.786rem', fontWeight: 600, color: selectedSessions.size > 0 ? 'var(--error)' : 'var(--text-secondary)' }}>
+                {selectedSessions.size > 0 ? `${selectedSessions.size} séance${selectedSessions.size > 1 ? 's' : ''} sélectionnée${selectedSessions.size > 1 ? 's' : ''}` : 'Aucune séance sélectionnée'}
+              </span>
+              <button
+                className="btn"
+                disabled={selectedSessions.size === 0}
+                style={{
+                  background: selectedSessions.size > 0 ? 'var(--error)' : 'var(--text-tertiary)',
+                  color: 'white', fontSize: '0.714rem', padding: '6px 14px',
+                  borderRadius: 'var(--radius-md)', border: 'none',
+                  opacity: selectedSessions.size === 0 ? 0.5 : 1,
+                  cursor: selectedSessions.size === 0 ? 'not-allowed' : 'pointer'
+                }}
+                onClick={async () => {
+                  const count = selectedSessions.size
+                  if (!await confirm(`Supprimer définitivement ${count} séance${count > 1 ? 's' : ''} ? Cette action est irréversible.`)) return
+                  const ids = [...selectedSessions]
+                  await deleteSessions(ids)
+                  exitSelectMode()
+                }}
+              >
+                <Trash2 size={14} /> Supprimer ({selectedSessions.size})
+              </button>
+            </div>
           )}
         </div>
 
@@ -541,7 +520,13 @@ export default function DashboardPage({ user }) {
                       type="date"
                       value={newSessionDate}
                       onChange={e => setNewSessionDate(e.target.value)}
+                      max={(() => { const d = new Date(); d.setMonth(d.getMonth() + 6); return d.toISOString().split('T')[0] })()}
                     />
+                    {newSessionDate && new Date(newSessionDate) > (() => { const d = new Date(); d.setMonth(d.getMonth() + 6); return d })() && (
+                      <div style={{ fontSize: '0.643rem', color: 'var(--error)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <AlertTriangle size={10} /> La planification est limitée à 6 mois maximum
+                      </div>
+                    )}
                   </div>
                   <div className="input-group">
                     <label>Heure</label>
@@ -604,7 +589,7 @@ export default function DashboardPage({ user }) {
                 <button className="btn btn-ghost" onClick={() => setShowNewSession(false)}>Annuler</button>
                 <button
                   className="btn btn-accent"
-                  disabled={!newSessionClient || !newSessionDate || !newSessionTime}
+                  disabled={!newSessionClient || !newSessionDate || !newSessionTime || (newSessionDate && new Date(newSessionDate) > (() => { const d = new Date(); d.setMonth(d.getMonth() + 6); return d })())}
                   onClick={async () => {
                     const selectedDate = new Date(`${newSessionDate}T${newSessionTime}`)
                     if (selectedDate < new Date()) {

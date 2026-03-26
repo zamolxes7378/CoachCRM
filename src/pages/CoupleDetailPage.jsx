@@ -11,6 +11,7 @@ import NotesModal from '../components/client/NotesModal'
 import SessionDetailModal from '../components/client/SessionDetailModal'
 import EditIdentityModal from '../components/client/EditIdentityModal'
 import useSessionModalState from '../hooks/useSessionModalState'
+import SessionCard from '../components/session/SessionCard'
 import useEditIdentityState from '../hooks/useEditIdentityState'
 
 
@@ -21,7 +22,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
   const params = useParams()
   const id = coupleIdProp || params.id
   const navigate = useNavigate()
-  const { clients, sessions: allSessions, reports: allReports, recruitmentSources, sessionRates, therapyPhases: therapyPhasesData, phaseIcons, phaseColors, defaultPhaseKey, getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel, getClientType, formatDate, formatTime, updateSession, updateClient, createSession, refreshData, professionals, createProfessional: createPro, updateProfessional: updatePro } = useData()
+  const { clients, sessions: allSessions, reports: allReports, recruitmentSources, sessionRates, therapyPhases: therapyPhasesData, phaseIcons, phaseColors, defaultPhaseKey, getPhaseColor, getPhaseIcon, getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel, getClientType, formatDate, formatTime, updateSession, updateClient, createSession, deleteSession, refreshData, professionals, createProfessional: createPro, updateProfessional: updatePro } = useData()
   const confirm = useConfirm()
   const couple = clients.find(c => c.id === id)
   // Sanitize: remove self-referencing clientLinks
@@ -110,15 +111,17 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
   }
 
   const sessions = allSessions.filter(s => s.coupleId === id).map(s => {
-    // Auto-complete: sessions past their end time become 'completed' (mirrors DataContext logic)
+    // Auto-complete: only if past AND payment condition met (paymentMethod set OR paymentAmount = 0)
     if (s.status === 'scheduled') {
       const endTime = new Date(new Date(s.date).getTime() + (s.duration || 60) * 60000)
-      if (endTime <= new Date()) return { ...s, status: 'completed' }
+      const effectiveAmount = s.paymentAmount ?? sessionRates[couple?.type] ?? null
+      const paymentCondition = !!s.paymentMethod || effectiveAmount === 0
+      if (endTime <= new Date() && paymentCondition) return { ...s, status: 'completed' }
     }
     return s
   }).sort((a, b) => b.date.localeCompare(a.date))
   const reports = allReports.filter(r => r.coupleId === id)
-  const PhaseIcon = phaseIcons[phase] || Sprout
+  const PhaseIcon = getPhaseIcon(phase)
 
   // Compute session numbers chronologically
   const sortedSessions = [...sessions].filter(s => s.status !== 'cancelled').sort((a, b) => a.date.localeCompare(b.date))
@@ -517,7 +520,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
             const phaseCounts = {}
             therapyPhases.forEach(p => { phaseCounts[p] = sessions.filter(s => s.phase === p && s.status !== 'cancelled').length })
             const totalPhased = therapyPhases.reduce((sum, p) => sum + (phaseCounts[p] || 0), 0)
-            const currentPhaseIcon = phaseIcons[phase] || Sprout
+            const currentPhaseIcon = getPhaseIcon(phase)
             const CurrentPhaseIcon = currentPhaseIcon
             // Derive display phase from nearest future session (or most recent past)
             const nowTs = new Date().toISOString()
@@ -525,7 +528,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
             const futureFirst = activeSess.filter(s => s.date > nowTs).sort((a, b) => a.date.localeCompare(b.date))[0]
             const pastFirst = activeSess.filter(s => s.date <= nowTs).sort((a, b) => b.date.localeCompare(a.date))[0]
             const displayPhase = futureFirst?.phase || pastFirst?.phase || phase
-            const DisplayIcon = phaseIcons[displayPhase] || Sprout
+            const DisplayIcon = getPhaseIcon(displayPhase)
             return (
 
               <>
@@ -573,7 +576,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                           const sched = scheduledByPhase[p] || 0
                           const total = done + sched
                           const pc = phaseColors[p]
-                          const PhIcon = phaseIcons[p] || Sprout
+                          const PhIcon = getPhaseIcon(p)
                           return (
                             <div key={p} style={{
                               display: 'flex', alignItems: 'center', gap: 3,
@@ -609,7 +612,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
               border: '1px solid #FEF3C7'
             }}>
               <AlertTriangle size={14} style={{ color: '#D97706', flexShrink: 0 }} />
-              <span style={{ fontSize: '0.714rem', color: '#92400E', fontWeight: 600 }}>
+              <span style={{ fontSize: '0.714rem', color: '#D97706', fontWeight: 600 }}>
                 Aucun prochain RDV planifié
               </span>
             </div>
@@ -733,33 +736,27 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
               <button
                 className="btn btn-accent"
                 onClick={async () => {
+                  // Default date = today, time = current hour
                   const now = new Date()
-                  now.setDate(now.getDate() + 7)
-                  const targetDateStr = now.toISOString().split('T')[0]
-                  // Check for duplicate: same client, same day
-                  const duplicateSameClient = sessions.find(s => s.coupleId === id && s.date.startsWith(targetDateStr) && s.status !== 'cancelled')
-                  if (duplicateSameClient) {
-                    if (!await confirm(`Doublon potentiel : une séance existe déjà pour ce client le ${formatDate(duplicateSameClient.date)}. Ajouter quand même ?`)) return
-                  } else if (couple?.phase !== 'prospect') {
-                    // Check for other sessions on the same day (any client) — skip for prospects
-                    const otherSameDay = sessions.filter(s => s.date.startsWith(targetDateStr) && s.coupleId !== id && s.status !== 'cancelled')
-                    if (otherSameDay.length > 0) {
-                      const names = otherSameDay.slice(0, 3).map(s => { const c = clients.find(cl => cl.id === s.coupleId); return c ? getCoupleName(c) : 'Client' }).join(', ')
-                      if (!await confirm(`${otherSameDay.length} séance${otherSameDay.length > 1 ? 's' : ''} déjà prévue${otherSameDay.length > 1 ? 's' : ''} ce jour (${names}). Ajouter quand même ?`)) return
-                    }
-                  }
-                  // Inherit phase from most recent session, default to first therapy phase if none
+                  const h = now.getHours()
+                  const dateStr = now.toISOString().split('T')[0]
+                  const timeStr = `${String(h).padStart(2, '0')}:00`
+                  // Inherit phase
                   const recentSessions = sessions.filter(s => s.coupleId === id && s.status !== 'cancelled').sort((a, b) => b.date.localeCompare(a.date))
                   const lastSessionPhase = recentSessions[0]?.phase
                   const couplePhase = couple?.phase !== 'prospect' ? couple?.phase : null
                   const inheritedPhase = lastSessionPhase || couplePhase || (therapyPhasesData[0]?.key || 'debut')
-                  const sessionData = {
+                  // Create session and immediately open the SessionDetailModal
+                  const newSession = await createSession({
                     coupleId: id,
-                    date: now.toISOString().slice(0, 16),
-                    duration: 60, phase: inheritedPhase,
+                    date: `${dateStr}T${timeStr}:00`,
+                    duration: 60,
+                    phase: inheritedPhase,
                     status: 'scheduled',
+                  })
+                  if (newSession?.id) {
+                    setExpandedSessionId(newSession.id)
                   }
-                  await createSession(sessionData)
                 }}
               >
                 <Plus size={18} style={{ color: 'white' }} /> Séance
@@ -786,7 +783,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                       onClick={() => setContactType(t)}
                       style={{
                         padding: '4px 10px', borderRadius: 'var(--radius-md)',
-                        border: contactType === t ? `2px solid ${cc.color}` : '2px solid transparent',
+                        border: '2px solid transparent',
                         background: contactType === t ? cc.bg : 'white',
                         color: cc.color, fontSize: '0.714rem', fontWeight: 600,
                         cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
@@ -1033,7 +1030,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                           return (
                             <button key={t} onClick={() => setContactType(t)} style={{
                               padding: '4px 8px', borderRadius: 'var(--radius-md)',
-                              border: contactType === t ? `2px solid ${ctc.color}` : '2px solid transparent',
+                              border: '2px solid transparent',
                               background: contactType === t ? ctc.bg : 'white',
                               color: ctc.color, fontSize: '0.643rem', fontWeight: 600,
                               cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3
@@ -1064,193 +1061,44 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
 
               // Session card
               const session = item
-              const SessionPhaseIcon = phaseIcons[session.phase] || Sprout
-              const pc = phaseColors[session.phase] || phaseColors.debut
+              const effectivePhase = (session.phase === 'prospect' ? defaultPhaseKey : session.phase) || couple?.phase || defaultPhaseKey
               const sessionNum = sessionNumbers[session.id]
               const update = sessionUpdates[session.id]
               const hasReport = session.hasReport || update?.hasReport
               const summary = update?.summary || session.summary
               const isRecording = recordingSessionId === session.id
               const isPast = new Date(session.date) <= new Date()
+              const sessionRate = getRate(session.id)
+              // Compute invoice info (includes sessions covered by another invoice)
+              const hasSelfInv = session.needsInvoice
+              const covBy = sessions.find(other => other.needsInvoice && other.id !== session.id && (other.invoiceCoveredSessionIds || []).includes(session.id))
+              const needsF = hasSelfInv || !!covBy
+              const fSent = hasSelfInv ? session.invoiceSent : covBy?.invoiceSent
               return (
                 <div key={session.id}>
-                  <div
+                  <SessionCard
+                    session={session}
+                    sessionNumber={sessionNum}
+                    phaseColor={getPhaseColor(effectivePhase)}
+                    PhaseIcon={getPhaseIcon(effectivePhase)}
+                    phaseLabel={getPhaseLabel(effectivePhase)}
+                    showClientName={false}
+                    sessionRate={sessionRate}
+                    isExpanded={expandedSessionId === session.id}
+                    showExpandedStyle={true}
+                    hasReport={hasReport}
+                    reportSummary={summary}
+                    invoiceInfo={needsF ? { needsInvoice: true, invoiceSent: fSent } : null}
+                    formatDate={formatDate}
+                    formatTime={formatTime}
                     onClick={() => setExpandedSessionId(session.id)}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 'var(--space-sm)',
-                      padding: 'var(--space-sm)',
-                      background: expandedSessionId === session.id ? 'rgba(218, 165, 32, 0.12)'
-                        : session.status === 'cancelled' ? 'var(--error-bg)'
-                        : new Date(session.date) <= new Date() ? 'var(--primary-50)' : 'white',
-                      border: expandedSessionId === session.id ? '1px solid var(--accent-main)'
-                        : session.status === 'cancelled' ? 'none'
-                        : new Date(session.date) <= new Date() ? 'none' : '1px dashed var(--border-light)',
-                      borderLeft: expandedSessionId === session.id ? '3px solid var(--accent-main)' : undefined,
-                      borderRadius: 'var(--radius-md)',
-                      marginBottom: 2,
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                      boxShadow: expandedSessionId === session.id ? '0 1px 4px rgba(196, 167, 103, 0.25)' : undefined,
-                      opacity: therapyCycles.length > 1 && getSessionCycle(session)?.id !== activeCycle.id ? 0.5 : 1
-                    }}
-                  >
-                    <div style={{ position: 'relative', flexShrink: 0 }}>
-                      <div style={{
-                        width: 36, height: 36, borderRadius: 'var(--radius-full)',
-                        background: pc.bg, color: pc.color,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center'
-                      }}>
-                        <SessionPhaseIcon size={18} />
-                      </div>
-
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '0.786rem', fontWeight: 600, color: session.status === 'cancelled' ? 'var(--error)' : undefined }}>
-                        {formatDate(session.date)} · {formatTime(session.date)}
-                      </div>
-                      <div style={{ fontSize: '0.714rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
-                        {(() => {
-                          const effectivePhase = (session.phase === 'prospect' ? defaultPhaseKey : session.phase) || couple?.phase || defaultPhaseKey
-                          const ppc = phaseColors[effectivePhase]
-                          const isPlanned = session.status === 'scheduled'
-                          if (isPlanned) {
-                            return (
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                {sessionNum && <span style={{
-                                  minWidth: 18, height: 18, borderRadius: '50%',
-                                  background: ppc?.bg || '#EBF8FF', color: ppc?.color || '#2B6CB0',
-                                  fontSize: '0.643rem', fontWeight: 800,
-                                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                                  lineHeight: 1, padding: '0 3px'
-                                }}>{sessionNum}</span>}
-                                <span style={{ fontSize: '0.571rem', fontWeight: 600, color: ppc?.color || '#2B6CB0' }}>
-                                  {getPhaseLabel(effectivePhase)}
-                                </span>
-                              </span>
-                            )
-                          }
-                          return (
-                            <span style={{
-                              display: 'inline-flex', alignItems: 'center', gap: 3,
-                              fontSize: '0.571rem', fontWeight: 600,
-                              padding: '1px 5px', borderRadius: 'var(--radius-sm)',
-                              background: ppc?.bg || '#EBF8FF',
-                              color: ppc?.color || '#2B6CB0'
-                            }}>
-                              {sessionNum && <span style={{
-                                minWidth: 14, height: 14, borderRadius: '50%',
-                                background: ppc?.color || '#2B6CB0', color: 'white',
-                                fontSize: '0.5rem', fontWeight: 700,
-                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                                lineHeight: 1
-                              }}>{sessionNum}</span>}
-                              {getPhaseLabel(effectivePhase)}
-                            </span>
-                          )
-                        })()}
-                        {session.status === 'scheduled' && !isPast && <span style={{ color: 'var(--text-tertiary)', display: 'inline-flex', alignItems: 'center', gap: 2 }}><Clock size={10} /> Planifiée</span>}
-                        {session.status === 'cancelled' && <span style={{ color: 'var(--error)', display: 'inline-flex', alignItems: 'center', gap: 2 }}><XCircle size={10} /> Annulée</span>}
-                        {(() => {
-                          const sessionPAmount = (session.paymentAmount ?? getRate(session.id))
-                          if (sessionPAmount === 0) return (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.643rem', fontWeight: 600, letterSpacing: '0.02em', color: 'var(--error)', opacity: 0.85 }}>
-                              <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--error)', flexShrink: 0 }} />
-                              Séance offerte
-                            </span>
-                          )
-                          if (!session.paymentMethod) return null
-                          const pmBase = {
-                            cheque: { label: 'Chèque', dot: 'var(--error)' },
-                            virement: { label: 'Virement', dot: 'var(--error)' },
-                            especes: { label: 'Espèces', dot: 'var(--success)' }
-                          }[session.paymentMethod]
-                          if (!pmBase) return null
-                          const isReceived = session.paymentReceived
-                          const displayColor = isReceived ? 'var(--success)' : 'var(--error)'
-                          return (
-                            <span style={{
-                              display: 'inline-flex', alignItems: 'center', gap: 4,
-                              fontSize: '0.643rem', fontWeight: 500, letterSpacing: '0.02em',
-                              color: displayColor, opacity: 0.85
-                            }}>
-                              <span style={{ width: 5, height: 5, borderRadius: '50%', background: displayColor, flexShrink: 0 }} />
-                              {!isReceived && session.paymentDate && (
-                                <span style={{ fontStyle: 'italic', opacity: 0.9 }}>{formatDate(session.paymentDate)}</span>
-                              )}
-                              {pmBase.label}
-                              {isReceived && <CheckCircle size={9} style={{ color: 'var(--success)', flexShrink: 0 }} />}
-                            </span>
-                          )
-                        })()}
-                        {session.status === 'completed' && !session.paymentMethod && (session.paymentAmount ?? getRate(session.id)) > 0 && (
-                          <span style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 3,
-                            fontSize: '0.643rem', fontWeight: 600,
-                            color: '#92400E',
-                            letterSpacing: '0.02em'
-                          }} title="Mode de paiement non renseigné">
-                            <HelpCircle size={9} /> CONFIRMER
-                          </span>
-                        )}
-                        {(() => {
-                          const hasSelfInv = session.needsInvoice
-                          const covBy = sessions.find(other => other.needsInvoice && other.id !== session.id && (other.invoiceCoveredSessionIds || []).includes(session.id))
-                          const needsF = hasSelfInv || !!covBy
-                          const fSent = hasSelfInv ? session.invoiceSent : covBy?.invoiceSent
-                          return needsF ? (
-                            <span style={{
-                              display: 'inline-flex', alignItems: 'center', gap: 3,
-                              fontSize: '0.643rem', fontWeight: 600,
-                              color: fSent ? 'var(--success)' : '#1A365D',
-                              letterSpacing: '0.02em'
-                            }} title={fSent ? 'Facture envoyée' : 'Facture à envoyer'}>
-                              FACTURE {fSent && <CheckCircle size={9} />}
-                            </span>
-                          ) : null
-                        })()}
-                      </div>
-                      {/* Payment confirmation alert — inside the card */}
-                      {session.status === 'completed' && !session.paymentMethod && (session.paymentAmount ?? getRate(session.id)) > 0 && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                          <span style={{ fontSize: '0.643rem', color: '#92400E', fontWeight: 600 }}>
-                            Séance à confirmer — Veuillez renseigner le mode de paiement.
-                          </span>
-                        </div>
-                      )}
-
-                    </div>
-                    <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-                      {hasReport ? (
-                        <>
-                          {summary && expandedSessionId !== session.id && (
-                            <span style={{ fontSize: '0.643rem', color: 'var(--text-secondary)', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {summary.length > 30 ? summary.slice(0, 30) + '…' : summary}
-                            </span>
-                          )}
-                          <FileText size={18} style={{ color: '#2B6CB0' }} title="Compte-rendu disponible" />
-                        </>
-                      ) : session.status === 'cancelled' ? (
-                        <XCircle size={18} style={{ color: 'var(--error)' }} />
-                      ) : isPast && session.status === 'completed' ? (
-                        <span style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 3,
-                          background: '#FFF3E0', color: '#E67E22',
-                          borderRadius: 12, padding: '3px 8px',
-                          fontSize: '0.643rem', fontWeight: 600,
-                          border: '1px solid #E67E2240'
-                        }}>
-                          <Mic size={11} /> Rédiger CR
-                        </span>
-                      ) : (
-                        isPast && session.status === 'scheduled' ? (
-                          <AlertTriangle size={18} style={{ color: '#C05621' }} />
-                        ) : (
-                          <Clock size={18} style={{ color: 'var(--text-tertiary)' }} />
-                        )
-                      )}
-                    </div>
-                  </div>
-
+                    dimmed={therapyCycles.length > 1 && getSessionCycle(session)?.id !== activeCycle.id}
+                    onDelete={session.status === 'cancelled' ? async (sid) => {
+                      const ok = await confirm('Supprimer définitivement cette séance annulée ?\nElle disparaîtra du timeline et du calendrier.', { variant: 'destructive' })
+                      if (!ok) return
+                      await deleteSession(sid)
+                    } : undefined}
+                  />
                 </div>
               )
             })}
@@ -1481,7 +1329,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                       border: '1px solid #FEF3C7'
                     }}>
                       <HelpCircle size={14} style={{ color: '#D97706', flexShrink: 0 }} />
-                      <span style={{ fontSize: '0.714rem', color: '#92400E', fontWeight: 600 }}>
+                      <span style={{ fontSize: '0.714rem', color: '#D97706', fontWeight: 600 }}>
                         Séances à confirmer : {unpaidCompleted.length} séance{unpaidCompleted.length > 1 ? 's' : ''}
                       </span>
                     </div>
@@ -1580,7 +1428,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                           <span style={{ fontSize: '0.714rem', color: isCancelled ? 'var(--error)' : isScheduled ? 'var(--text-tertiary)' : 'var(--text-secondary)', flex: 1, display: 'flex', alignItems: 'center', gap: 4 }}>
                             {isCancelled ? `Annulée · ${formatDate(s.date)}` : (() => {
                               if (isScheduled && !isCancelled) {
-                                const spc = phaseColors[s.phase] || phaseColors.debut
+                                const spc = getPhaseColor(s.phase)
                                 return <>
                                   <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: spc.bg, color: spc.color, fontWeight: 700, fontSize: '0.643rem', padding: '1px 5px', borderRadius: 'var(--radius-sm)', minWidth: 20 }}>S{sNum}</span>
                                   <span>· {formatDate(s.date)}</span>
@@ -1594,7 +1442,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                             {isScheduled && !isPaid ? null : pAmountOf(s) === 0 ? (
                               <span style={{ fontSize: '0.643rem', fontWeight: 700, color: 'var(--error)' }}>Séance offerte</span>
                             ) : noPayment ? (
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: '0.571rem', fontWeight: 700, color: '#92400E', letterSpacing: '0.02em' }}>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: '0.571rem', fontWeight: 700, color: '#D97706', letterSpacing: '0.02em' }}>
                                 <HelpCircle size={9} /> CONFIRMER
                               </span>
                             ) : (
@@ -1659,7 +1507,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
             sessionNum={sessionNum}
             sessionModal={sessionModalState}
             sessionActions={sessionModalActions}
-            therapy={{ phasesData: therapyPhasesData, defaultPhaseKey, phaseIcons, phaseColors, sessionNumbers }}
+            therapy={{ phasesData: therapyPhasesData, defaultPhaseKey, phaseIcons, phaseColors, getPhaseColor, getPhaseIcon, sessionNumbers }}
             utils={{ updateSession, formatDate, getCoupleName }}
           />
         )
@@ -1671,9 +1519,9 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
           couple={couple}
           editState={editIdentityState}
           editActions={editIdentityActions}
-          therapy={{ phasesData: therapyPhasesData, phaseIcons, phaseColors, phase, setPhase, status }}
+          therapy={{ phasesData: therapyPhasesData, phaseIcons, phaseColors, getPhaseColor, getPhaseIcon, phase, setPhase, status }}
           data={{ clients, professionals, recruitmentSources }}
-          utils={{ updateClient, updatePro, createPro, navigate, getCoupleName, getClientType, getCoupleInitials, findDuplicateClients, findDuplicatePros, DuplicateAlert }}
+          utils={{ updateClient, updatePro, createPro, navigate, getCoupleName, getClientType, getCoupleInitials, findDuplicateClients, findDuplicatePros, DuplicateAlert, formatDate, getPhaseLabel }}
         />
       )}
 
@@ -1696,6 +1544,8 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
           onCancel={() => setShowDeleteConfirm(false)}
         />
       )}
+
+
 
       {/* CSS animations */}
       <style>{`

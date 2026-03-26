@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
 import { useToast } from './ToastContext'
 import * as ds from '../services/dataService'
-import { checkAllianceTransition } from '../services/allianceService'
+import { checkAllianceTransition, checkAllianceAfterBatchDelete } from '../services/allianceService'
 import { adaptClient, adaptSession, adaptReport, adaptProfessional, unadaptClient, unadaptSession, unadaptProfessional } from '../data/adapters'
 import { Sprout, Search, Target, Award, UserPlus } from 'lucide-react'
 import {
@@ -59,17 +59,16 @@ export function DataProvider({ user, children }) {
       for (const sess of s) {
         if (sess.status === 'scheduled' && sess.date) {
           const endTime = new Date(new Date(sess.date).getTime() + (sess.duration || 60) * 60000)
-          if (endTime <= now) {
+          // Auto-complete only if past AND payment condition met
+          const effectiveAmount = sess.payment_amount ?? rates[c.find(cl => cl.id === sess.client_id)?.type] ?? null
+          const paymentCondition = !!sess.payment_method || effectiveAmount === 0
+          if (endTime <= now && paymentCondition) {
             await ds.updateSession(sess.id, { status: 'completed' })
             sess.status = 'completed'
             const client = c.find(cl => cl.id === sess.client_id)
             if (client && client.phase === 'prospect') {
-              const effectiveAmount = sess.payment_amount ?? rates[client.type] ?? null
-              const isFreeOrPaid = sess.payment_method || effectiveAmount === 0
-              if (isFreeOrPaid) {
-                await ds.updateClient(client.id, { phase: phaseKey })
-                client.phase = phaseKey
-              }
+              await ds.updateClient(client.id, { phase: phaseKey })
+              client.phase = phaseKey
             }
           }
         }
@@ -94,7 +93,10 @@ export function DataProvider({ user, children }) {
   const sessions = useMemo(() => rawSessions.map(adaptSession).map(s => {
     if (s.status === 'scheduled') {
       const endTime = new Date(new Date(s.date).getTime() + (s.duration || 60) * 60000)
-      if (endTime <= new Date()) return { ...s, status: 'completed' }
+      // Auto-complete display only if past AND payment condition met
+      const effectiveAmount = s.paymentAmount ?? sessionRates[clients.find?.(c => c.id === s.coupleId)?.type] ?? null
+      const paymentCondition = !!s.paymentMethod || effectiveAmount === 0
+      if (endTime <= new Date() && paymentCondition) return { ...s, status: 'completed' }
     }
     return s
   }), [rawSessions])
@@ -118,6 +120,10 @@ export function DataProvider({ user, children }) {
     if (!phaseIcons[tp.key]) phaseIcons[tp.key] = Sprout
   })
 
+  // Centralized phase resolution — single source of truth for fallback logic
+  const getPhaseColor = (key) => phaseColors[key] || phaseColors[defaultPhaseKey] || phaseColors.debut
+  const getPhaseIcon = (key) => phaseIcons[key] || phaseIcons[defaultPhaseKey] || Sprout
+
   const isProspect = useCallback((couple) => {
     if (!couple) return false
     return couple.phase === 'prospect'
@@ -126,7 +132,7 @@ export function DataProvider({ user, children }) {
   const value = {
     clients, sessions, reports, settings, loading, professionals,
     sessionRates, recruitmentSources, therapyPhases, defaultTherapyConfig,
-    phaseIcons, phaseColors, defaultPhaseKey, isProspect,
+    phaseIcons, phaseColors, defaultPhaseKey, getPhaseColor, getPhaseIcon, isProspect,
     prospectStages,
     getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel,
     getComputedStatus, getProspectStageInfo, getClientType, clientTypeLabels,
@@ -144,7 +150,15 @@ export function DataProvider({ user, children }) {
     },
     createClient: async (client) => {
       try {
-        const result = await ds.createClient({ ...unadaptClient(client), user_id: user.id })
+        if (!user?.id) {
+          console.error('createClient BLOCKED: user.id is missing!', user)
+          showToast('Erreur : session utilisateur invalide. Rechargez la page.', 'error')
+          return null
+        }
+        const payload = { ...unadaptClient(client), user_id: user.id }
+        console.log('[createClient] payload:', JSON.stringify(payload, null, 2))
+        const result = await ds.createClient(payload)
+        console.log('[createClient] result:', result)
         if (result) {
           await loadData()
           showToast('Client créé avec succès.', 'success')
@@ -167,12 +181,16 @@ export function DataProvider({ user, children }) {
     },
     updateSession: async (id, updates) => {
       try {
-        // Auto-persist completion for past sessions
+        // Auto-persist completion for past sessions — only if payment condition met
         if (!updates.status) {
           const rawSession = rawSessions.find(s => s.id === id)
           if (rawSession && rawSession.status === 'scheduled' && rawSession.date) {
             const endTime = new Date(new Date(rawSession.date).getTime() + (rawSession.duration || 60) * 60000)
-            if (endTime <= new Date()) {
+            // Merge raw data with incoming updates to get effective payment state
+            const effectivePM = updates.paymentMethod || updates.payment_method || rawSession.payment_method
+            const effectiveAmount = updates.paymentAmount ?? updates.payment_amount ?? rawSession.payment_amount ?? null
+            const paymentCondition = !!effectivePM || effectiveAmount === 0
+            if (endTime <= new Date() && paymentCondition) {
               updates = { ...updates, status: 'completed' }
             }
           }
@@ -190,7 +208,15 @@ export function DataProvider({ user, children }) {
     },
     createSession: async (session) => {
       try {
-        const result = await ds.createSession({ ...unadaptSession(session), user_id: user.id })
+        if (!user?.id) {
+          console.error('createSession BLOCKED: user.id is missing!', user)
+          showToast('Erreur : session utilisateur invalide. Rechargez la page.', 'error')
+          return null
+        }
+        const payload = { ...unadaptSession(session), user_id: user.id }
+        console.log('[createSession] payload:', JSON.stringify(payload, null, 2))
+        const result = await ds.createSession(payload)
+        console.log('[createSession] result:', result)
         if (result) {
           await loadData()
           showToast('Séance créée avec succès.', 'success')
@@ -213,6 +239,35 @@ export function DataProvider({ user, children }) {
       const result = await ds.deleteContact(id)
       if (result) await loadData()
       return result
+    },
+    deleteSession: async (id) => {
+      try {
+        const result = await ds.deleteSession(id)
+        if (result) {
+          await loadData()
+          showToast('Séance supprimée.', 'success')
+        }
+        return result
+      } catch (err) {
+        console.error('deleteSession error:', err)
+        showToast('Erreur lors de la suppression.', 'error')
+      }
+    },
+    deleteSessions: async (ids) => {
+      try {
+        // Snapshot raw sessions BEFORE deletion for alliance check
+        const sessionsSnapshot = [...rawSessions]
+        const result = await ds.deleteSessions(ids)
+        if (result) {
+          await checkAllianceAfterBatchDelete(ids, sessionsSnapshot, rawClients, sessionRates)
+          await loadData()
+          showToast(`${ids.length} séance${ids.length > 1 ? 's' : ''} supprimée${ids.length > 1 ? 's' : ''}.`, 'success')
+        }
+        return result
+      } catch (err) {
+        console.error('deleteSessions error:', err)
+        showToast('Erreur lors de la suppression groupée.', 'error')
+      }
     },
     upsertSettings: async (settingsData) => {
       try {

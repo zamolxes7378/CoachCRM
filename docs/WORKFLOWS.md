@@ -106,7 +106,7 @@ flowchart TD
     C --> F[Professionnel]
     D --> G[Lien bidirectionnel parrain/filleul via clientLinks]
     E --> H[Création automatique d'un prospect + liens bidirectionnels]
-    F --> I[Lien parrainage-pro avec le réseau]
+    F --> I[Création/MAJ dans table professionals + lien parrainage-pro]
 ```
 
 ### Validations

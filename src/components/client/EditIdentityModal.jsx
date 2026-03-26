@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import { useConfirm } from '../../context/ConfirmContext'
 import DeleteConfirmModal from './DeleteConfirmModal'
+import ReferrerSection from './ReferrerSection'
 
 /**
  * Edit Identity Modal — sliding panel for editing client identity, type, source, links.
@@ -30,9 +31,9 @@ export default function EditIdentityModal({
     setModalReferrerSearch, setModalSelectedReferrer, setModalShowReferrerDropdown, setModalExternalReferrer,
     resetToOriginal
   } = editActions
-  const { phasesData: therapyPhasesData, phaseIcons, phaseColors, phase, setPhase, status } = therapy
+  const { phasesData: therapyPhasesData, phaseIcons, phaseColors, getPhaseColor, getPhaseIcon, phase, setPhase, status } = therapy
   const { clients, professionals, recruitmentSources } = data
-  const { updateClient, updatePro, createPro, navigate, getCoupleName, getClientType, getCoupleInitials, findDuplicateClients, findDuplicatePros, DuplicateAlert } = utils
+  const { updateClient, updatePro, createPro, navigate, getCoupleName, getClientType, getCoupleInitials, findDuplicateClients, findDuplicatePros, DuplicateAlert, formatDate, getPhaseLabel } = utils
 
 
   const hasChanges = () => {
@@ -108,8 +109,8 @@ export default function EditIdentityModal({
                       {therapyPhasesData.map((tp, i) => {
                         const isActive = tp.key === phase
                         const isCompleted = i < currentPhaseIdx
-                        const Icon = phaseIcons[tp.key] || Sprout
-                        const pc = phaseColors[tp.key] || phaseColors.debut
+                        const Icon = getPhaseIcon(tp.key)
+                        const pc = getPhaseColor(tp.key)
                         return (
                           <div key={tp.key} style={{ display: 'flex', alignItems: 'center' }}>
                             <div
@@ -395,109 +396,16 @@ export default function EditIdentityModal({
                   <div className="input-group">
                     <label>Orienté par <span style={{ color: 'var(--error)' }}>*</span></label>
                     {/* External referrer form */}
-                    {modalExternalReferrer ? (
-                      <div style={{
-                        padding: '10px 12px', background: '#F5F0FF', borderRadius: 'var(--radius-md)',
-                        border: '1px solid #C4B5FD'
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                          <span style={{ fontSize: '0.714rem', fontWeight: 600, color: '#8B5CF6' }}>Personne externe (non client)</span>
-                          <button onClick={() => {
-                            setModalExternalReferrer(null)
-                            couple.externalReferrer = null
-                            // Also remove parrainage-pro links
-                            if (couple.clientLinks) {
-                              couple.clientLinks = couple.clientLinks.filter(l => l.type !== 'parrainage-pro')
-                            }
-                          }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 2 }}>
-                            <X size={14} />
-                          </button>
-                        </div>
-                        {/* Particulier / Professionnel toggle */}
-                        <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-                          {[
-                            { key: 'particulier', label: 'Particulier', Icon: User, color: '#3B82F6', bg: '#EFF6FF' },
-                            { key: 'professionnel', label: 'Professionnel', Icon: Briefcase, color: '#8B5CF6', bg: '#F5F3FF' }
-                          ].map(opt => {
-                            const active = (modalExternalReferrer.referrerType || 'particulier') === opt.key
-                            return (
-                              <button key={opt.key} type="button"
-                                onClick={() => setModalExternalReferrer({ ...modalExternalReferrer, referrerType: opt.key })}
-                                style={{
-                                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-                                  padding: '5px 8px', borderRadius: 'var(--radius-sm)',
-                                  fontSize: '0.714rem', fontWeight: 600, cursor: 'pointer',
-                                  border: active ? `2px solid ${opt.color}` : '1px solid var(--border-light)',
-                                  background: active ? opt.bg : 'white',
-                                  color: active ? opt.color : 'var(--text-tertiary)',
-                                  transition: 'all 0.2s'
-                                }}
-                              >
-                                <opt.Icon size={13} /> {opt.label}
-                              </button>
-                            )
-                          })}
-                        </div>
-                        <div className="grid-2" style={{ marginBottom: 6 }}>
-                          <input className="input" placeholder="Prénom" value={modalExternalReferrer.firstName || ''}
-                            onChange={e => setModalExternalReferrer({ ...modalExternalReferrer, firstName: e.target.value })} style={{ fontSize: '0.786rem' }} />
-                          <input className="input" placeholder="Nom *" value={modalExternalReferrer.lastName || ''}
-                            onChange={e => setModalExternalReferrer({ ...modalExternalReferrer, lastName: e.target.value })}
-                            style={{ fontSize: '0.786rem', ...( !(modalExternalReferrer.lastName || '').trim() ? { borderColor: 'var(--error)', borderWidth: 1 } : {}) }} />
-                        </div>
-                        {(() => {
-                          const refType = modalExternalReferrer.referrerType || 'particulier'
-                          const matches = refType === 'professionnel'
-                            ? findDuplicatePros({ firstName: modalExternalReferrer.firstName, lastName: modalExternalReferrer.lastName }, professionals)
-                            : findDuplicateClients({ firstName: modalExternalReferrer.firstName, lastName: modalExternalReferrer.lastName }, clients, getCoupleName, couple.id)
-                          if (matches.length === 0) return null
-                          return (
-                            <DuplicateAlert
-                              matches={matches}
-                              type={refType === 'professionnel' ? 'pro' : 'client'}
-                              onView={(id) => navigate(`/couples/${id}`)}
-                              onLink={(item) => {
-                                if (refType === 'professionnel') {
-                                  // Link to existing pro
-                                  if (!couple.clientLinks) couple.clientLinks = []
-                                  if (!couple.clientLinks.some(l => l.type === 'parrainage-pro' && l.proId === item.id)) {
-                                    couple.clientLinks.push({ type: 'parrainage-pro', proId: item.id, proName: `${item.firstName || ''} ${item.lastName || ''}`.trim(), role: 'filleul' })
-                                  }
-                                  setModalExternalReferrer(null)
-                                } else {
-                                  // Link to existing client as parrain
-                                  setModalSelectedReferrer(item)
-                                  setModalExternalReferrer(null)
-                                }
-                              }}
-                              onDismiss={() => {}}
-                            />
-                          )
-                        })()}
-                        <div className="grid-2" style={{ marginBottom: 6 }}>
-                          <input className="input" type="email" placeholder="Email" value={modalExternalReferrer.email || ''}
-                            onChange={e => setModalExternalReferrer({ ...modalExternalReferrer, email: e.target.value })} style={{ fontSize: '0.786rem' }} />
-                          <input className="input" type="tel" placeholder="Téléphone" value={modalExternalReferrer.phone || ''}
-                            onChange={e => setModalExternalReferrer({ ...modalExternalReferrer, phone: e.target.value })} style={{ fontSize: '0.786rem' }} />
-                        </div>
-                        <input className="input" placeholder="Note (ex: confrère, ami, médecin…)" value={modalExternalReferrer.role || ''}
-                          onChange={e => setModalExternalReferrer({ ...modalExternalReferrer, role: e.target.value })} style={{ fontSize: '0.786rem', width: '100%' }} />
-                      </div>
-                    ) : (modalSelectedReferrer || (() => { const link = (couple.clientLinks || []).find(l => l.type === 'parrainage' && l.role === 'filleul'); return link ? clients.find(c => c.id === link.clientId) : null })()) ? (
-                      <div style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        padding: '8px 12px', background: '#F5F0FF', borderRadius: 'var(--radius-md)', fontSize: '0.857rem'
-                      }}>
-                        <span style={{ fontWeight: 500, color: '#8B5CF6' }}>
-                          <Award size={13} style={{ verticalAlign: -2, marginRight: 4 }} />
-                          {getCoupleName(modalSelectedReferrer || (() => { const link = (couple.clientLinks || []).find(l => l.type === 'parrainage' && l.role === 'filleul'); return link ? clients.find(c => c.id === link.clientId) : null })())} <span style={{ fontSize: '0.643rem', fontWeight: 400, opacity: 0.7 }}>· Parrain</span>
-                        </span>
-                        <button onClick={() => {
-                          // Clear modal state
-                          setModalSelectedReferrer(null)
+                    <ReferrerSection
+                      externalReferrer={modalExternalReferrer}
+                      setExternalReferrer={setModalExternalReferrer}
+                      selectedReferrer={modalSelectedReferrer || (() => { const link = (couple.clientLinks || []).find(l => l.type === 'parrainage' && l.role === 'filleul'); return link ? clients.find(c => c.id === link.clientId) : null })()}
+                      setSelectedReferrer={(val) => {
+                        setModalSelectedReferrer(val)
+                        if (!val) {
                           setModalReferrerSearch('')
                           setModalExternalReferrer(null)
-                          // Also remove the parrainage link from clientLinks
+                          // Clear parrainage links
                           if (couple.clientLinks) {
                             const parrainageLinks = couple.clientLinks.filter(l => l.type === 'parrainage' && l.role === 'filleul')
                             parrainageLinks.forEach(link => {
@@ -509,70 +417,37 @@ export default function EditIdentityModal({
                             couple.clientLinks = couple.clientLinks.filter(l => !(l.type === 'parrainage' && l.role === 'filleul'))
                           }
                           couple.externalReferrer = null
-                          // Force re-render
-                          setModalShowAddLink(prev => !prev)
-                          setTimeout(() => setModalShowAddLink(false), 0)
-                        }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 2 }}>
-                          <X size={14} />
-                        </button>
-                      </div>
-                    ) : (
-                      <div style={{ position: 'relative' }}>
-                        <input
-                          className="input" type="text" placeholder="Rechercher un client…"
-                          value={modalReferrerSearch}
-                          onChange={e => { setModalReferrerSearch(e.target.value); setModalShowReferrerDropdown(true) }}
-                          onFocus={() => setModalShowReferrerDropdown(true)}
-                          onBlur={() => setTimeout(() => setModalShowReferrerDropdown(false), 200)}
-                          style={{ fontSize: '0.857rem', width: '100%' }}
-                        />
-                        {modalShowReferrerDropdown && (
-                          <div style={{
-                            position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10,
-                            background: 'var(--bg-card)', border: '1px solid var(--border-light)',
-                            borderRadius: 'var(--radius-md)', boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                            maxHeight: 220, overflowY: 'auto', marginTop: 4
-                          }}>
-                            {/* External person option */}
-                            <div
-                              onMouseDown={e => {
-                                e.preventDefault()
-                                setModalExternalReferrer({ firstName: '', lastName: '', role: '' })
-                                setModalShowReferrerDropdown(false); setModalReferrerSearch('')
-                              }}
-                              style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '0.857rem', display: 'flex', alignItems: 'center', gap: 6, borderBottom: '1px solid var(--border-light)' }}
-                              onMouseEnter={e => e.currentTarget.style.background = '#FFF7ED'}
-                              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                            >
-                              <UserPlus size={14} color="#D97706" />
-                              <span style={{ fontWeight: 500, color: '#D97706' }}>Personne externe (non client)</span>
-                            </div>
-                            {clients
-                              .filter(c => !c.deleted && c.id !== couple.id)
-                              .filter(c => !modalReferrerSearch || getCoupleName(c).toLowerCase().includes(modalReferrerSearch.toLowerCase()))
-                              .slice(0, 8)
-                              .map(c => (
-                                <div
-                                  key={c.id}
-                                  onMouseDown={e => {
-                                    e.preventDefault()
-                                    setModalSelectedReferrer(c); setModalShowReferrerDropdown(false); setModalReferrerSearch('')
-                                  }}
-                                  style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '0.857rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-                                  onMouseEnter={e => e.currentTarget.style.background = 'var(--primary-50)'}
-                                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                                >
-                                  <span>{getCoupleName(c)}</span>
-                                  <span style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)' }}>
-                                    {getClientType(c) === 'individual' ? 'Individuel' : getClientType(c) === 'couple' ? 'Couple' : 'Famille'}
-                                  </span>
-                                </div>
-                              ))
-                            }
-                          </div>
-                        )}
-                      </div>
-                    )}
+                        }
+                      }}
+                      referrerSearch={modalReferrerSearch}
+                      setReferrerSearch={setModalReferrerSearch}
+                      clients={clients}
+                      professionals={professionals}
+                      getCoupleName={getCoupleName}
+                      formatDate={formatDate}
+                      getPhaseLabel={getPhaseLabel}
+                      getPhaseColor={utils.getPhaseColor}
+                      onNavigate={(id) => navigate(`/couples/${id}`)}
+                      onLink={(item, refType) => {
+                        if (refType === 'professionnel') {
+                          // Link to existing pro
+                          if (!couple.clientLinks) couple.clientLinks = []
+                          if (!couple.clientLinks.some(l => l.type === 'parrainage-pro' && l.proId === item.id)) {
+                            couple.clientLinks.push({ type: 'parrainage-pro', proId: item.id, proName: `${item.firstName || ''} ${item.lastName || ''}`.trim(), role: 'filleul' })
+                          }
+                        } else {
+                          // Link to existing client as parrain
+                          setModalSelectedReferrer(item)
+                        }
+                      }}
+                      onClear={() => {
+                        couple.externalReferrer = null
+                        if (couple.clientLinks) {
+                          couple.clientLinks = couple.clientLinks.filter(l => l.type !== 'parrainage-pro')
+                        }
+                      }}
+                      coupleId={couple.id}
+                    />
                   </div>
                 )}
               </div>

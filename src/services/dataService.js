@@ -122,6 +122,23 @@ export async function updateSession(sessionId, updates) {
   return data
 }
 
+export async function deleteSession(sessionId) {
+  // Delete related reports first
+  await supabase.from('reports').delete().eq('session_id', sessionId)
+  const { error } = await supabase.from('sessions').delete().eq('id', sessionId)
+  if (error) console.error('deleteSession error:', error.message)
+  return !error
+}
+
+export async function deleteSessions(sessionIds) {
+  if (!sessionIds?.length) return false
+  // Delete related reports first
+  await supabase.from('reports').delete().in('session_id', sessionIds)
+  const { error } = await supabase.from('sessions').delete().in('id', sessionIds)
+  if (error) console.error('deleteSessions error:', error.message)
+  return !error
+}
+
 // ============================================
 // Reports
 // ============================================

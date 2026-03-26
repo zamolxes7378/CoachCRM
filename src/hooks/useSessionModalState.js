@@ -26,6 +26,8 @@ export default function useSessionModalState({ sessions, updateSession, sessionR
   const getRate = useCallback((sessionId) => {
     if (rateOverrides[sessionId] !== undefined) return rateOverrides[sessionId]
     const s = sessions.find(s => s.id === sessionId)
+    // Respect persisted paymentAmount (even if 0, for offered sessions)
+    if (s && s.paymentAmount !== null && s.paymentAmount !== undefined) return s.paymentAmount
     if (s && s.date && s.date.split('T')[0] < todayStr) return originalRate
     return sessionRate
   }, [rateOverrides, sessions, sessionRate, originalRate, todayStr])

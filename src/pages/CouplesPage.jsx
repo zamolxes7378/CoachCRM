@@ -6,6 +6,7 @@ import { useData } from '../context/DataContext'
 import { useConfirm } from '../context/ConfirmContext'
 import { findDuplicateClients } from '../utils/duplicateUtils'
 import DuplicateAlert from '../components/DuplicateAlert'
+import ReferrerSection from '../components/client/ReferrerSection'
 
 
 
@@ -14,7 +15,7 @@ const sourceIcons = { website: Globe, phone: Phone, referral: UserCheck }
 export default function CouplesPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { clients, sessions, recruitmentSources, therapyPhases: therapyPhasesData, phaseIcons, phaseColors: centralPhaseColors, defaultPhaseKey, isProspect, getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel, getComputedStatus, getProspectStageInfo, formatDate, getClientType, createClient, updateClient } = useData()
+  const { clients, sessions, professionals, recruitmentSources, therapyPhases: therapyPhasesData, phaseIcons, phaseColors: centralPhaseColors, defaultPhaseKey, getPhaseColor, getPhaseIcon, isProspect, getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel, getComputedStatus, getProspectStageInfo, formatDate, getClientType, createClient, updateClient, createProfessional: createPro } = useData()
   const confirm = useConfirm()
   const [search, setSearch] = useState('')
   const [sortMode, setSortMode] = useState('none')
@@ -24,7 +25,6 @@ export default function CouplesPage() {
 
   const [referrerSearch, setReferrerSearch] = useState('')
   const [selectedReferrer, setSelectedReferrer] = useState(null)
-  const [showReferrerDropdown, setShowReferrerDropdown] = useState(false)
   const [externalReferrer, setExternalReferrer] = useState(null)
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'clients')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -43,24 +43,12 @@ export default function CouplesPage() {
   const [duplicateDismissed, setDuplicateDismissed] = useState(false)
   const [billingAddress, setBillingAddress] = useState('')
   const [billingAddressB, setBillingAddressB] = useState('')
-  const [extRefDuplicateDismissed, setExtRefDuplicateDismissed] = useState(false)
   const [createError, setCreateError] = useState(null)
 
   const duplicateMatches = useMemo(() => {
     if (duplicateDismissed || !newLastName.trim()) return []
     return findDuplicateClients({ firstName: newFirstName, lastName: newLastName }, clients, getCoupleName)
   }, [newFirstName, newLastName, clients, duplicateDismissed])
-
-  // Deduplication for external individual referrers against client DB
-  const extRefDuplicateMatches = useMemo(() => {
-    if (extRefDuplicateDismissed || !externalReferrer || (externalReferrer.referrerType || 'particulier') !== 'particulier') return []
-    if (!(externalReferrer.lastName || '').trim()) return []
-    return findDuplicateClients(
-      { firstName: externalReferrer.firstName || '', lastName: externalReferrer.lastName || '', email: externalReferrer.email || '', phone: externalReferrer.phone || '' },
-      clients, getCoupleName
-    )
-  }, [externalReferrer, clients, extRefDuplicateDismissed])
-
   // Auto-open new client modal from URL param
   useEffect(() => {
     if (searchParams.get('newClient') === '1') {
@@ -240,7 +228,7 @@ export default function CouplesPage() {
       {viewMode === 'cards' ? (
         <div className="grid-3">
           {filtered.map(couple => {
-            const PhaseIcon = phaseIcons[couple.phase] || Sprout
+            const PhaseIcon = getPhaseIcon(couple.phase)
             return (
               <div className={`card card-clickable ${getComputedStatus(couple) === 'inactive' || getComputedStatus(couple) === 'completed' ? 'card-inactive' : ''}`} key={couple.id} onClick={() => navigate(`/couples/${couple.id}`)} style={{ position: 'relative' }}>
                 {(() => {
@@ -271,7 +259,7 @@ export default function CouplesPage() {
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-sm)' }}>
                     <div style={{ display: 'flex', gap: 'var(--space-xs)', alignItems: 'center' }}>
                       {(() => {
-                        const pc = centralPhaseColors[couple.phase] || { bg: 'var(--primary-100)', color: 'var(--primary-700)' }
+                        const pc = getPhaseColor(couple.phase)
                         return (<>
                           <div style={{
                             width: 32, height: 32, borderRadius: 'var(--radius-full)',
@@ -316,7 +304,7 @@ export default function CouplesPage() {
                         const done = doneByPhase[p] || 0
                         const sched = schedByPhase[p] || 0
                         if (done + sched === 0) return null
-                        const pc = centralPhaseColors[p]
+                        const pc = getPhaseColor(p)
                         return (
                           <React.Fragment key={p}>
                             {done > 0 && <div style={{
@@ -431,8 +419,8 @@ export default function CouplesPage() {
             </thead>
             <tbody>
               {filtered.map(couple => {
-                const PhaseIcon = phaseIcons[couple.phase] || Sprout
-                const pc = centralPhaseColors[couple.phase]?.color || 'var(--primary-600)'
+                const PhaseIcon = getPhaseIcon(couple.phase)
+                const pc = getPhaseColor(couple.phase)?.color || 'var(--primary-600)'
                 const referrals = clients.filter(c => c.referredBy === couple.id)
                 const referrer = couple.referredBy ? clients.find(c => c.id === couple.referredBy) : null
                 const isChecked = selected.has(couple.id)
@@ -619,6 +607,9 @@ export default function CouplesPage() {
                 matches={duplicateMatches}
                 onView={(id) => { setShowModal(false); navigate(`/couples/${id}`) }}
                 onDismiss={() => setDuplicateDismissed(true)}
+                formatDate={formatDate}
+                getPhaseLabel={getPhaseLabel}
+                getPhaseColor={getPhaseColor}
               />
             )}
             <div className="grid-2">
@@ -747,7 +738,7 @@ export default function CouplesPage() {
                             style={{
                               padding: 'var(--space-lg) var(--space-md)',
                               borderRadius: 'var(--radius-lg)',
-                              border: `2px solid ${newClientType === t.key ? t.color : 'var(--border-light)'}`,
+                              border: `2px solid ${newClientType === t.key ? t.color : 'transparent'}`,
                               background: newClientType === t.key ? t.bg : 'var(--bg-card)',
                               cursor: 'pointer',
                               textAlign: 'center',
@@ -755,7 +746,7 @@ export default function CouplesPage() {
                               transform: newClientType === t.key ? 'scale(1.03)' : 'scale(1)'
                             }}
                             onMouseEnter={e => { if (newClientType !== t.key) { e.currentTarget.style.borderColor = t.color + '60'; e.currentTarget.style.background = t.bg + '80' } }}
-                            onMouseLeave={e => { if (newClientType !== t.key) { e.currentTarget.style.borderColor = 'var(--border-light)'; e.currentTarget.style.background = 'var(--bg-card)' } }}
+                            onMouseLeave={e => { if (newClientType !== t.key) { e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.background = 'var(--bg-card)' } }}
                           >
                             <div style={{
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -953,144 +944,30 @@ export default function CouplesPage() {
                       {(newSource === 'referral' || newSource === 'parrainage') && (
                         <div className="input-group" style={{ marginTop: 'var(--space-xs)' }}>
                           <label className="label-required">Orienté par</label>
-                          {/* External referrer form */}
-                          {externalReferrer ? (
-                            <div style={{
-                              padding: '10px 12px', background: '#F5F0FF', borderRadius: 'var(--radius-md)',
-                              border: '1px solid #C4B5FD'
-                            }}>
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                                <span style={{ fontSize: '0.714rem', fontWeight: 600, color: '#8B5CF6' }}>Personne externe (non client)</span>
-                                <button onClick={() => setExternalReferrer(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 2 }}>
-                                  <X size={14} />
-                                </button>
-                              </div>
-                              {/* Particulier / Professionnel toggle */}
-                              <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-                                {[
-                                  { key: 'particulier', label: 'Particulier', Icon: User, color: '#3B82F6', bg: '#EFF6FF' },
-                                  { key: 'professionnel', label: 'Professionnel', Icon: Briefcase, color: '#8B5CF6', bg: '#F5F3FF' }
-                                ].map(opt => {
-                                  const active = (externalReferrer.referrerType || 'particulier') === opt.key
-                                  return (
-                                    <button key={opt.key} type="button"
-                                      onClick={() => setExternalReferrer({ ...externalReferrer, referrerType: opt.key })}
-                                      style={{
-                                        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-                                        padding: '5px 8px', borderRadius: 'var(--radius-sm)',
-                                        fontSize: '0.714rem', fontWeight: 600, cursor: 'pointer',
-                                        border: active ? `2px solid ${opt.color}` : '1px solid var(--border-light)',
-                                        background: active ? opt.bg : 'white',
-                                        color: active ? opt.color : 'var(--text-tertiary)',
-                                        transition: 'all 0.2s'
-                                      }}
-                                    >
-                                      <opt.Icon size={13} /> {opt.label}
-                                    </button>
-                                  )
-                                })}
-                              </div>
-                              <div className="grid-2" style={{ marginBottom: 6 }}>
-                                <input className="input" placeholder="Prénom" value={externalReferrer.firstName || ''}
-                                  onChange={e => setExternalReferrer({ ...externalReferrer, firstName: e.target.value })} style={{ fontSize: '0.786rem' }} />
-                                <input className="input" placeholder="Nom *" value={externalReferrer.lastName || ''}
-                                  onChange={e => setExternalReferrer({ ...externalReferrer, lastName: e.target.value })}
-                                  style={{ fontSize: '0.786rem', ...(!(externalReferrer.lastName || '').trim() ? { borderColor: 'var(--error)', borderWidth: 1 } : {}) }} />
-                              </div>
-                              <div className="grid-2" style={{ marginBottom: 6 }}>
-                                <input className="input" type="email" placeholder="Email" value={externalReferrer.email || ''}
-                                  onChange={e => setExternalReferrer({ ...externalReferrer, email: e.target.value })} style={{ fontSize: '0.786rem' }} />
-                                <input className="input" type="tel" placeholder="Téléphone" value={externalReferrer.phone || ''}
-                                  onChange={e => setExternalReferrer({ ...externalReferrer, phone: e.target.value })} style={{ fontSize: '0.786rem' }} />
-                              </div>
-                              <input className="input" placeholder="Note (ex: confrère, ami, médecin…)" value={externalReferrer.role || ''}
-                                onChange={e => setExternalReferrer({ ...externalReferrer, role: e.target.value })} style={{ fontSize: '0.786rem', width: '100%' }} />
-                              {/* Deduplication alert for external individual referrers */}
-                              {(externalReferrer.referrerType || 'particulier') === 'particulier' && extRefDuplicateMatches.length > 0 && (
-                                <div style={{ marginTop: 8 }}>
-                                  <DuplicateAlert
-                                    matches={extRefDuplicateMatches}
-                                    onView={(id) => { setShowModal(false); navigate(`/couples/${id}`) }}
-                                    onDismiss={() => setExtRefDuplicateDismissed(true)}
-                                  />
-                                </div>
-                              )}
-                            </div>
-                          ) : selectedReferrer ? (
-                            <div style={{
-                              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                              padding: '8px 12px', background: '#F5F0FF', borderRadius: 'var(--radius-md)', fontSize: '0.857rem'
-                            }}>
-                              <span style={{ fontWeight: 500, color: '#8B5CF6' }}>
-                                <Award size={13} style={{ verticalAlign: -2, marginRight: 4 }} />
-                                {getCoupleName(selectedReferrer)} <span style={{ fontSize: '0.643rem', fontWeight: 400, opacity: 0.7 }}>· Parrain</span>
-                              </span>
-                              <button onClick={() => { setSelectedReferrer(null); setReferrerSearch('') }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 2 }}>
-                                <X size={14} />
-                              </button>
-                            </div>
-                          ) : (
-                            <div style={{ position: 'relative' }}>
-                              <input
-                                className="input" type="text" placeholder="Rechercher un client…"
-                                value={referrerSearch}
-                                onChange={e => { setReferrerSearch(e.target.value); setShowReferrerDropdown(true) }}
-                                onFocus={() => setShowReferrerDropdown(true)}
-                                onBlur={() => setTimeout(() => setShowReferrerDropdown(false), 200)}
-                                style={{ fontSize: '0.857rem', width: '100%' }}
-                              />
-                              {showReferrerDropdown && (
-                                <div style={{
-                                  position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10,
-                                  background: 'var(--bg-card)', border: '1px solid var(--border-light)',
-                                  borderRadius: 'var(--radius-md)', boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                                  maxHeight: 220, overflowY: 'auto', marginTop: 4
-                                }}>
-                                  {/* External person option */}
-                                  <div
-                                    onMouseDown={e => {
-                                      e.preventDefault()
-                                      setExternalReferrer({ firstName: '', lastName: '', role: '' })
-                                      setShowReferrerDropdown(false); setReferrerSearch('')
-                                    }}
-                                    style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '0.857rem', display: 'flex', alignItems: 'center', gap: 6, borderBottom: '1px solid var(--border-light)' }}
-                                    onMouseEnter={e => e.currentTarget.style.background = '#FFF7ED'}
-                                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                                  >
-                                    <UserPlus size={14} color="#D97706" />
-                                    <span style={{ fontWeight: 500, color: '#D97706' }}>Personne externe (non client)</span>
-                                  </div>
-                                  {clients
-                                    .filter(c => !c.deleted)
-                                    .filter(c => !referrerSearch || getCoupleName(c).toLowerCase().includes(referrerSearch.toLowerCase()))
-                                    .slice(0, 8)
-                                    .map(c => (
-                                      <div
-                                        key={c.id}
-                                        onMouseDown={e => {
-                                          e.preventDefault()
-                                          setSelectedReferrer(c); setShowReferrerDropdown(false); setReferrerSearch('')
-                                        }}
-                                        style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '0.857rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-                                        onMouseEnter={e => e.currentTarget.style.background = 'var(--primary-50)'}
-                                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                                      >
-                                        <span>{getCoupleName(c)}</span>
-                                        <span style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)' }}>
-                                          {getClientType(c) === 'individual' ? 'Individuel' : getClientType(c) === 'couple' ? 'Couple' : 'Famille'}
-                                        </span>
-                                      </div>
-                                    ))
-                                  }
-                                  {clients.filter(c => !c.deleted).filter(c => !referrerSearch || getCoupleName(c).toLowerCase().includes(referrerSearch.toLowerCase())).length === 0 && (
-                                    <div style={{ padding: '8px 12px', fontSize: '0.786rem', color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
-                                      Aucun client trouvé
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          )}
+                          <ReferrerSection
+                            externalReferrer={externalReferrer}
+                            setExternalReferrer={setExternalReferrer}
+                            selectedReferrer={selectedReferrer}
+                            setSelectedReferrer={setSelectedReferrer}
+                            referrerSearch={referrerSearch}
+                            setReferrerSearch={setReferrerSearch}
+                            clients={clients}
+                            professionals={professionals}
+                            getCoupleName={getCoupleName}
+                            formatDate={formatDate}
+                            getPhaseLabel={getPhaseLabel}
+                            getPhaseColor={getPhaseColor}
+                            onNavigate={(id) => { setShowModal(false); navigate(`/couples/${id}`) }}
+                            onLink={(item, refType) => {
+                              if (refType === 'professionnel') {
+                                // Pro linked — will be handled at save time
+                                setExternalReferrer({ ...externalReferrer, linkedProId: item.id, referrerType: 'professionnel' })
+                              } else {
+                                setSelectedReferrer(item)
+                              }
+                            }}
+                            coupleId={null}
+                          />
                         </div>
                       )}
 
@@ -1218,13 +1095,43 @@ export default function CouplesPage() {
                               await updateClient(refClient.id, { clientLinks: [{ clientId: created.id, type: 'parrainage', role: 'parrain' }] })
                             }
                           } else {
-                            // Professionnel externe — parrainage-pro link on the filleul
+                            // Professionnel externe → créer dans Supabase professionals + lien parrainage-pro
+                            const today2 = new Date().toISOString().split('T')[0]
                             const proName = `${externalReferrer.firstName || ''} ${externalReferrer.lastName || ''}`.trim()
-                            await updateClient(created.id, { clientLinks: [{ type: 'parrainage-pro', proName, role: 'filleul' }], externalReferrer, source: newSource || 'referral' })
+                            // Check if this pro already exists
+                            const existingPro = professionals.find(p =>
+                              p.lastName?.toUpperCase() === externalReferrer.lastName?.trim().toUpperCase() &&
+                              (p.firstName || '').toLowerCase() === (externalReferrer.firstName || '').toLowerCase()
+                            )
+                            let proId
+                            if (existingPro) {
+                              // Update existing pro with referral
+                              const updatedReferrals = [...(existingPro.referrals || [])]
+                              if (!updatedReferrals.some(r => r.clientId === created.id)) {
+                                updatedReferrals.push({ clientId: created.id, date: today2, clientName: `${newFirstName} ${newLastName}`.trim() })
+                              }
+                              proId = existingPro.id
+                            } else {
+                              // Create new professional
+                              const newPro = await createPro({
+                                firstName: externalReferrer.firstName || '',
+                                lastName: externalReferrer.lastName.trim().toUpperCase(),
+                                email: externalReferrer.email || '',
+                                phone: externalReferrer.phone || '',
+                                note: externalReferrer.role || '',
+                                referrals: [{ clientId: created.id, date: today2, clientName: `${newFirstName} ${newLastName}`.trim() }]
+                              })
+                              proId = newPro?.id
+                            }
+                            await updateClient(created.id, {
+                              clientLinks: [{ type: 'parrainage-pro', proId: proId || undefined, proName, role: 'filleul' }],
+                              externalReferrer: { ...externalReferrer, referrerType: 'professionnel' },
+                              source: newSource || 'referral'
+                            })
                           }
                         }
 
-                        setShowModal(false); setWizardStep(0); setNewClientType(''); setNewChildren([]); setNewFamilyAdults([{}]); setNewLastName(''); setNewFirstName(''); setNewReferents([0]); setSelectedReferrer(null); setReferrerSearch(''); setExternalReferrer(null); setCreateError(null); setExtRefDuplicateDismissed(false); setNewPhase(therapyPhasesData[0]?.key || 'debut')
+                        setShowModal(false); setWizardStep(0); setNewClientType(''); setNewChildren([]); setNewFamilyAdults([{}]); setNewLastName(''); setNewFirstName(''); setNewReferents([0]); setSelectedReferrer(null); setReferrerSearch(''); setExternalReferrer(null); setCreateError(null); setNewPhase(therapyPhasesData[0]?.key || 'debut')
                         navigate(`/couples/${created.id}`)
                       } catch (err) {
                         console.error('Client creation error:', err)

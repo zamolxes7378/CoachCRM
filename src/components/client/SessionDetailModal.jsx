@@ -23,7 +23,7 @@ export default function SessionDetailModal({
   // Destructure for convenience
   const { sessionUpdates, recordingSessionId, recordingStep, editingCoveredSessions, editingInvoiceSessions } = sessionModal
   const { setSessionUpdates, setExpandedSessionId, setRateOverrides, setEditingCoveredSessions, setEditingInvoiceSessions, getRate, handleStartRecording, handleSaveCR } = sessionActions
-  const { phasesData: therapyPhasesData, defaultPhaseKey, phaseIcons, phaseColors, sessionNumbers } = therapy
+  const { phasesData: therapyPhasesData, defaultPhaseKey, phaseIcons, phaseColors, getPhaseColor, getPhaseIcon, sessionNumbers } = therapy
   const { updateSession, formatDate, getCoupleName } = utils
 
   const update = sessionUpdates[session.id]
@@ -32,8 +32,8 @@ export default function SessionDetailModal({
   const isRecording = recordingSessionId === session.id
   const rate = getRate(session.id)
   const isPast = new Date(session.date) <= new Date()
-  const pc = phaseColors[session.phase] || phaseColors.debut
-  const SessionPhaseIcon = phaseIcons[session.phase] || Sprout
+  const pc = getPhaseColor(session.phase)
+  const SessionPhaseIcon = getPhaseIcon(session.phase)
 
   return (
           <>
@@ -94,8 +94,8 @@ export default function SessionDetailModal({
                         const currentPhaseIdx = therapyPhasesData.findIndex(t => t.key === (session.phase || defaultPhaseKey))
                         const isActive = tp.key === (session.phase || defaultPhaseKey)
                         const isCompleted = i < currentPhaseIdx
-                        const Icon = phaseIcons[tp.key] || Sprout
-                        const pc = phaseColors[tp.key] || phaseColors.debut
+                        const Icon = getPhaseIcon(tp.key)
+                        const pc = getPhaseColor(tp.key)
                         return (
                           <div key={tp.key} style={{ display: 'flex', alignItems: 'center' }}>
                             <div
@@ -373,7 +373,7 @@ export default function SessionDetailModal({
                       Mode de paiement
                     </label>
                     {(() => {
-                      const isFreeSession = (session.paymentAmount ?? rate) === 0
+                      const isFreeSession = rate === 0
                       // Check if this free session covers other paid sessions
                       const hasCoveredPaidSessions = isFreeSession && (session.coveredSessionIds || []).some(sid => {
                         if (sid === session.id) return false
@@ -421,7 +421,7 @@ export default function SessionDetailModal({
                               flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                               padding: '10px 14px', borderRadius: 'var(--radius-md)',
                               fontSize: '0.786rem', fontWeight: 600,
-                              border: isActive ? '2px solid var(--primary-400)' : '1px solid var(--border-light)',
+                              border: isActive ? '2px solid var(--primary-400)' : '2px solid transparent',
                               background: isActive ? 'var(--primary-50)' : 'white',
                               color: isActive ? 'var(--primary-700)' : 'var(--text-secondary)',
                               cursor: 'pointer', transition: 'all 0.15s'
@@ -444,7 +444,7 @@ export default function SessionDetailModal({
                         borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-sm)',
                         border: '1px solid #FEF3C7'
                       }}>
-                        <span style={{ fontSize: '0.714rem', color: '#92400E', fontWeight: 600 }}>
+                        <span style={{ fontSize: '0.714rem', color: '#D97706', fontWeight: 600 }}>
                           Séance à confirmer — Veuillez renseigner le mode de paiement.
                         </span>
                       </div>

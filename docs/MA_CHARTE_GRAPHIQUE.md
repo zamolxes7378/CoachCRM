@@ -266,6 +266,10 @@ Propriétés :
 - Radius : 12px
 - Padding : 16px
 - Transition hover : 200ms ease
+
+**Hiérarchie date/heure dans les cartes séance :**
+- **Élément principal** (nom client ou date) : `fontWeight: 600`, couleur par défaut
+- **Heure** : `fontWeight: 500`, couleur `var(--text-secondary)`, aligné baseline avec l'élément principal
 ```
 
 ### Tags / Badges de phase
@@ -276,6 +280,18 @@ Propriétés :
 | **Analyse** | `#FEFCBF` | `#975A16` | `Search` (16px) |
 | **Intégration** | `#F0FFF4` | `#276749` | `Target` (16px) |
 
+> **Règle absolue — Résolution de phase centralisée :**
+> L'accès aux couleurs et icônes de phase doit **toujours** passer par `getPhaseColor(key)` et `getPhaseIcon(key)` exposés par `DataContext`.
+> Il est **interdit** d'écrire un fallback local du type `phaseColors[x] || { … }` dans les composants.
+> Cela garantit un fallback unique (`defaultPhaseKey → debut`) sur toutes les vues.
+
+> **Règle absolue — Composant SessionCard unique :**
+> Le rendu d'une carte de séance (accueil, fiche client, ou toute autre vue) doit **toujours** utiliser le composant `src/components/session/SessionCard.jsx`.
+> Il est **interdit** de dupliquer le JSX de rendu de séance dans les pages consommatrices.
+> Toute modification visuelle d'une carte de séance doit se faire **exclusivement** dans `SessionCard.jsx`.
+> Les différences contextuelles (nom du client, style étendu) sont gérées par les props `showClientName`, `showExpandedStyle`, `dimmed`.
+
+
 ### Notifications & Alertes
 
 | Type | Icône Lucide | Couleur barre gauche | Fond |
@@ -284,6 +300,22 @@ Propriétés :
 | **Succès** | `CheckCircle` | `#38A169` | `#F0FFF4` |
 | **Attention** | `AlertTriangle` | `#D69E2E` | `#FFFFF0` |
 | **Urgent** | `AlertCircle` | `#C53030` | `#FFF5F5` |
+
+### Alerte « Séance à confirmer » (signalétique moutarde)
+
+Couleur unique `#D97706` (ambre) utilisée **systématiquement** pour l'icône ET le texte dans toutes les occurrences de cette alerte :
+
+| Emplacement | Élément | Couleur |
+|------------|---------|---------|
+| **Carte séance (timeline)** | Badge « CONFIRMER » | `#D97706` |
+| **Carte séance (timeline)** | Message « Séance à confirmer — Veuillez renseigner le mode de paiement. » | `#D97706` |
+| **Suivi financier (alerte globale)** | Icône `HelpCircle` + texte « Séances à confirmer : N séances » | `#D97706` |
+| **Suivi financier (détail)** | Badge « CONFIRMER » par séance | `#D97706` |
+| **Modale détail séance** | Message « Séance à confirmer — Veuillez renseigner le mode de paiement. » | `#D97706` |
+
+**Fond commun** : `#FFFBEB` — **Bordure** : `#FEF3C7`
+
+> ⚠️ **Règle absolue** : ne jamais utiliser `#92400E` ou toute autre nuance de brun pour ces éléments. La couleur `#D97706` est la référence unique pour toute la signalétique de confirmation.
 
 ---
 
@@ -480,6 +512,34 @@ Icones Lucide React — 22px — couleur #D9E2EC
 | Upload audio | Progress bar avec pulse doré | Continue |
 | Sidebar toggle | Slide horizontal | 200ms |
 | Indicateur de chargement | Skeleton loader (shimmer) | Continue |
+
+---
+
+## Composants spécifiques
+
+### DuplicateAlert — Aperçu compact
+- Chaque doublon est une **carte extensible** avec nom + score de similarité
+- Bouton **« Voir / Masquer »** déploie un aperçu inline :
+  - Badge de phase (couleur contextuelle via `getPhaseColor`) + type client + nombre de séances
+  - Grille contacts 2 colonnes : nom, téléphone, email par partenaire
+  - Date de création + lien **« Ouvrir la fiche complète ↗ »** (nouvel onglet)
+- Un seul aperçu ouvert à la fois (toggle mutuel)
+- Couleurs : fond `#FFF8EE`, bordure `var(--accent-warm)`, icône `AlertTriangle` dorée
+
+### Parrainage professionnel
+- Lors de la création d'un client filleul avec source = Parrainage + type = Professionnel :
+  - Si le professionnel **existe déjà** (matching nom/prénom) → mise à jour de ses referrals
+  - Si le professionnel **n'existe pas** → création dans la table `professionals` via `createPro()`
+  - Lien `parrainage-pro` avec `proId` créé sur le client filleul
+
+### Boutons-toggle — Style filigrane (obligatoire)
+- **Règle absolue** : tous les groupes de boutons-toggle (sélection exclusive) utilisent le style **filigrane** (contour coloré uniquement sur l'élément sélectionné)
+- **État non sélectionné** : `border: 2px solid transparent` — aucun contour visible, fond blanc ou `var(--bg-card)`
+- **État sélectionné** : `border: 2px solid ${couleur}` — contour coloré assorti à l'icône, fond légèrement teinté
+- **Hover (non sélectionné)** : bordure à 40% de la couleur (`+ '60'`) + fond teinté léger
+- **Exemples d'application** : mode de paiement (Espèces/Chèque/Virement), type de parrain (Particulier/Professionnel), type de client (Individuel/Couple/Famille)
+- **Exception — boutons Contact et Parrainage** : les boutons type de contact (Appel/Email/SMS/Réseaux/Site web) et type de parrain (Particulier/Professionnel) n'ont **aucun contour** dans aucun état. La sélection est indiquée uniquement par le fond coloré
+- **Anti-pattern** : ne jamais utiliser `1px solid var(--border-light)` sur les boutons non sélectionnés
 
 ---
 

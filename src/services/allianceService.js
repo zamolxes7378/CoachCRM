@@ -79,3 +79,41 @@ export async function checkAllianceTransition(result, updates, rawClients, rawSe
     }
   }
 }
+
+/**
+ * Vérifie l'alliance thérapeutique après suppression groupée de séances.
+ * Pour chaque client affecté : si aucune séance restante ne valide l'alliance,
+ * le client redevient prospect.
+ *
+ * @param {string[]} deletedSessionIds - IDs des séances supprimées
+ * @param {Array} rawSessionsBeforeDelete - Snapshot des sessions AVANT suppression
+ * @param {Array} rawClients - Clients bruts (snake_case)
+ * @param {Object} sessionRates - Tarifs par type
+ */
+export async function checkAllianceAfterBatchDelete(deletedSessionIds, rawSessionsBeforeDelete, rawClients, sessionRates) {
+  // 1. Find unique clientIds from deleted sessions
+  const deletedSet = new Set(deletedSessionIds)
+  const affectedClientIds = [...new Set(
+    rawSessionsBeforeDelete
+      .filter(s => deletedSet.has(s.id))
+      .map(s => s.client_id)
+      .filter(Boolean)
+  )]
+
+  // 2. Remaining sessions = all sessions minus deleted ones
+  const remainingSessions = rawSessionsBeforeDelete.filter(s => !deletedSet.has(s.id))
+
+  // 3. For each affected client, check if alliance is still valid
+  for (const clientId of affectedClientIds) {
+    const client = rawClients.find(c => c.id === clientId)
+    if (!client || client.phase === 'prospect') continue // Already prospect, skip
+
+    const validCount = remainingSessions.filter(
+      s => s.client_id === clientId && isAllianceValidated(s, sessionRates, client.type)
+    ).length
+
+    if (validCount === 0) {
+      await ds.updateClient(clientId, { phase: 'prospect' })
+    }
+  }
+}
