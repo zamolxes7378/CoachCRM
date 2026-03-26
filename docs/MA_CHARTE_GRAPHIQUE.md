@@ -201,13 +201,49 @@ npm install lucide-react
 
 ### Boutons
 
-| Variante | Style | Usage |
-|----------|-------|-------|
-| **Primary** | Fond bleu marine `#334E68`, texte blanc, radius 8px | Actions principales (Sauvegarder, Soumettre) |
-| **Secondary** | Fond transparent, bordure bleu marine, texte bleu | Actions secondaires (Annuler, Retour) |
-| **Accent** | Fond doré `#D69E2E`, texte blanc | Actions spéciales (Nouveau couple, Upload audio) |
-| **Ghost** | Aucun fond ni bordure, texte bleu | Actions tertiaires (Voir plus, Détails) |
-| **Danger** | Fond rouge doux `#C53030`, texte blanc | Actions destructives (Supprimer) |
+#### Variantes
+
+| Variante | Fond (actif) | Texte | Usage |
+|----------|-------------|-------|-------|
+| **Primary** | `#334E68` (primary-700) | blanc | Actions principales (Sauvegarder, Soumettre) |
+| **Secondary** | transparent, bordure `#BCCCDC` | bleu marine | Actions secondaires (Annuler, Retour) |
+| **Accent** | `#D69E2E` (accent-main) | blanc | Actions spéciales (Nouveau couple, Créer la séance) |
+| **Ghost** | transparent | bleu marine | Actions tertiaires (Voir plus, Détails) |
+| **Danger** | `#C53030` (error) | blanc | Actions destructives (Supprimer) |
+
+#### 3 états visuels
+
+```
+ ┌─────────────────────────┐
+ │  + Créer la séance       │   ACTIF     — fond doré #D69E2E, texte blanc
+ └─────────────────────────┘
+
+ ┌─────────────────────────┐
+ │    Suivant →             │   INACTIF   — fond doré pâle #E8CC8C, texte blanc 60%
+ └─────────────────────────┘
+
+ ┌━━━━━━━━━━━━━━━━━━━━━━━━━┓
+ ║    Suivant →             ║   HOVER     — fond doré foncé #B7791F, texte blanc
+ └━━━━━━━━━━━━━━━━━━━━━━━━━┘
+```
+
+| État | Classe CSS | Fond (exemple Accent) | Texte | Curseur | Ombre |
+|------|------------|----------------------|-------|---------|-------|
+| **Actif** | `.btn-accent` | `#D69E2E` | blanc (`#FFFFFF`) | `pointer` | aucune |
+| **Inactif (disabled)** | `.btn:disabled` | fond + `opacity: 0.45` | blanc + `opacity: 0.45` | `not-allowed` | aucune |
+| **Hover** | `.btn-accent:hover` | `#B7791F` (accent-dark) | blanc (`#FFFFFF`) | `pointer` | `0 2px 8px rgba(0,0,0,0.15)` |
+
+> S'applique à **toutes les variantes** : Primary, Accent, Danger utilisent `opacity: 0.45` au disabled ; Secondary et Ghost utilisent `opacity: 0.5`.
+
+#### Propriétés communes
+
+| Propriété | Valeur |
+|-----------|--------|
+| Radius | 8px |
+| Padding | 8px 20px (standard), 16px 24px (`.btn-lg`) |
+| Font weight | 500 |
+| Font size | 0.875rem (standard), 1rem (`.btn-lg`) |
+| Transition | `all 200ms ease` |
 
 ### Cartes
 

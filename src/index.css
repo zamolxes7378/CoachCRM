@@ -473,6 +473,16 @@ h3, .h3 { font-size: 1.143rem; font-weight: 600; line-height: 1.5; }
   font-size: 1rem;
 }
 
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.btn:not(:disabled):hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
 .btn-google {
   background: var(--bg-card);
   color: var(--text-primary);
