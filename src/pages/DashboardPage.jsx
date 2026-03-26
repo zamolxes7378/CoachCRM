@@ -606,7 +606,7 @@ export default function DashboardPage({ user }) {
                   onClick={async () => {
                     const selectedDate = new Date(`${newSessionDate}T${newSessionTime}`)
                     if (selectedDate < new Date()) {
-                      if (!confirm('La date choisie est dans le passé. Souhaitez-vous quand même créer cette séance ?')) return
+                      if (!confirm('La séance est planifiée dans le passé. Souhaitez-vous quand même créer cette séance ?')) return
                     }
                     
                     // Create session in Supabase
