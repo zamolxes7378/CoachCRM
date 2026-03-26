@@ -475,7 +475,7 @@ export default function DashboardPage({ user }) {
               </div>
               <div className="modal-body">
                 <div className="input-group">
-                  <label>Client</label>
+                  <label>Client <span style={{ color: 'var(--error-main, #e53e3e)' }}>*</span></label>
                   {newSessionClient ? (
                     <div style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -533,7 +533,7 @@ export default function DashboardPage({ user }) {
 
                 <div className="grid-2" style={{ marginTop: 'var(--space-sm)' }}>
                   <div className="input-group">
-                    <label>Date de la séance</label>
+                    <label>Date de la séance <span style={{ color: 'var(--error-main, #e53e3e)' }}>*</span></label>
                     <input
                       className="input"
                       type="date"
@@ -542,7 +542,7 @@ export default function DashboardPage({ user }) {
                     />
                   </div>
                   <div className="input-group">
-                    <label>Heure</label>
+                    <label>Heure <span style={{ color: 'var(--error-main, #e53e3e)' }}>*</span></label>
                     <input
                       className="input"
                       type="time"

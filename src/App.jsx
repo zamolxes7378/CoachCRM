@@ -125,7 +125,11 @@ export default function App() {
   }, [])
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
+    try {
+      await supabase.auth.signOut({ scope: 'local' })
+    } catch (err) {
+      console.warn('signOut error (forcing local cleanup):', err.message)
+    }
     setUser(null)
     setShowOnboarding(false)
   }
