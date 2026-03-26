@@ -105,7 +105,7 @@ export default function DashboardPage({ user }) {
                 setShowNewSession(true)
                 setNewSessionClient('')
                 setNewSessionDate(now.toISOString().split('T')[0])
-                setNewSessionTime(now.toTimeString().slice(0, 5))
+                setNewSessionTime(`${String(now.getHours()).padStart(2, '0')}:00`)
               }}
             >
               <Plus size={18} style={{ color: 'white' }} /> Ajouter une séance
@@ -533,18 +533,18 @@ export default function DashboardPage({ user }) {
 
                 <div className="grid-2" style={{ marginTop: 'var(--space-sm)' }}>
                   <div className="input-group">
-                    <label className="label-required">Date de la séance</label>
+                    <label>Date de la séance</label>
                     <input
-                      className="input input-required"
+                      className="input"
                       type="date"
                       value={newSessionDate}
                       onChange={e => setNewSessionDate(e.target.value)}
                     />
                   </div>
                   <div className="input-group">
-                    <label className="label-required">Heure</label>
+                    <label>Heure</label>
                     <input
-                      className="input input-required"
+                      className="input"
                       type="time"
                       value={newSessionTime}
                       onChange={e => setNewSessionTime(e.target.value)}

@@ -32,6 +32,8 @@
 
 ### Champs obligatoires
 - **Client** : sélection obligatoire parmi les clients actifs (prospects exclus)
+
+### Valeurs par défaut
 - **Date** : par défaut = date du jour
 - **Heure** : par défaut = heure entière (XX:00) qui précède l'instant actuel
 - **Note de préparation** : optionnel
