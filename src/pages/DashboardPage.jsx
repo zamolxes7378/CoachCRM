@@ -6,7 +6,7 @@ import { useData } from '../context/DataContext'
 
 export default function DashboardPage({ user }) {
   const navigate = useNavigate()
-  const { clients: mockCouples, sessions: mockSessions, reports: mockReports, phaseIcons, phaseColors, isProspect, getCoupleName, formatTime, formatDate, formatRelativeDate, getPhaseLabel, getComputedStatus, createSession } = useData()
+  const { clients, sessions, reports, phaseIcons, phaseColors, isProspect, getCoupleName, formatTime, formatDate, formatRelativeDate, getPhaseLabel, getComputedStatus, createSession } = useData()
   const [visibleCount, setVisibleCount] = useState(10)
   const [sessionView, setSessionView] = useState('future') // 'past' | 'future'
   const [searchQuery, setSearchQuery] = useState('')
@@ -23,8 +23,8 @@ export default function DashboardPage({ user }) {
 
 
   // All sessions with couple info
-  const allSessionsWithCouple = mockSessions
-    .map(s => ({ ...s, couple: mockCouples.find(c => c.id === s.coupleId) }))
+  const allSessionsWithCouple = sessions
+    .map(s => ({ ...s, couple: clients.find(c => c.id === s.coupleId) }))
 
   const todayStr = new Date().toISOString().split('T')[0]
   const pastSessions = allSessionsWithCouple.filter(s => s.date.split('T')[0] < todayStr).sort((a, b) => b.date.localeCompare(a.date))
@@ -63,19 +63,19 @@ export default function DashboardPage({ user }) {
     return groups
   }, {})
 
-  const activeCouples = mockCouples.filter(c => c.phase !== 'prospect' && getComputedStatus(c) === 'active').length
-  const activeProspects = mockCouples.filter(c => isProspect(c) && getComputedStatus(c) === 'active').length
-  const pendingReports = mockSessions.filter(s => s.status === 'completed' && !s.hasReport).length
-  const pendingInvoices = mockSessions.filter(s => s.needsInvoice && !s.invoiceSent).length
-  const pendingPayments = mockSessions.filter(s => s.status === 'completed' && (!s.paymentMethod || (s.paymentMethod !== 'especes' && !s.paymentReceived))).length
-  const parrains = mockCouples.filter(c => mockCouples.some(r => r.referredBy === c.id)).length
-  const pendingExercises = mockCouples.reduce((acc, c) => acc + (c.exercises || []).filter(e => e.status === 'pending' || e.status === 'in-progress').length, 0)
+  const activeCouples = clients.filter(c => c.phase !== 'prospect' && getComputedStatus(c) === 'active').length
+  const activeProspects = clients.filter(c => isProspect(c) && getComputedStatus(c) === 'active').length
+  const pendingReports = sessions.filter(s => s.status === 'completed' && !s.hasReport).length
+  const pendingInvoices = sessions.filter(s => s.needsInvoice && !s.invoiceSent).length
+  const pendingPayments = sessions.filter(s => s.status === 'completed' && (!s.paymentMethod || (s.paymentMethod !== 'especes' && !s.paymentReceived))).length
+  const parrains = clients.filter(c => clients.some(r => r.referredBy === c.id)).length
+  const pendingExercises = clients.reduce((acc, c) => acc + (c.exercises || []).filter(e => e.status === 'pending' || e.status === 'in-progress').length, 0)
 
 
 
   // Compute session number per couple (chronological order)
   const sessionNumbers = {}
-  mockSessions
+  sessions
     .filter(s => s.status !== 'cancelled')
     .sort((a, b) => a.date.localeCompare(b.date))
     .forEach(s => {
@@ -454,11 +454,11 @@ export default function DashboardPage({ user }) {
       {showNewSession && (() => {
         // Check duplicate for same client on same date
         const duplicateSameClient = newSessionClient && newSessionDate
-          ? mockSessions.find(s => s.coupleId === newSessionClient && s.date.startsWith(newSessionDate))
+          ? sessions.find(s => s.coupleId === newSessionClient && s.date.startsWith(newSessionDate))
           : null
         // Check all sessions on the same date (any client)
         const otherSessionsSameDay = newSessionDate
-          ? mockSessions.filter(s => s.date.startsWith(newSessionDate) && s.coupleId !== newSessionClient)
+          ? sessions.filter(s => s.date.startsWith(newSessionDate) && s.coupleId !== newSessionClient)
           : []
         const duplicate = duplicateSameClient
         return (
@@ -478,7 +478,7 @@ export default function DashboardPage({ user }) {
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                       padding: '8px 12px', background: 'var(--primary-50)', borderRadius: 'var(--radius-md)', fontSize: '0.857rem'
                     }}>
-                      <span style={{ fontWeight: 500 }}>{getCoupleName(mockCouples.find(c => c.id === newSessionClient))}</span>
+                      <span style={{ fontWeight: 500 }}>{getCoupleName(clients.find(c => c.id === newSessionClient))}</span>
                       <button onClick={() => { setNewSessionClient(''); setClientSearch('') }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 2 }}>
                         <X size={14} />
                       </button>
@@ -501,7 +501,7 @@ export default function DashboardPage({ user }) {
                           borderRadius: 'var(--radius-md)', boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
                           maxHeight: 200, overflowY: 'auto', marginTop: 4
                         }}>
-                          {mockCouples
+                          {clients
                             .filter(c => c.phase !== 'prospect')
                             .filter(c => !clientSearch || getCoupleName(c).toLowerCase().includes(clientSearch.toLowerCase()))
                             .map(c => (
@@ -578,7 +578,7 @@ export default function DashboardPage({ user }) {
                       <strong>{otherSessionsSameDay.length} séance{otherSessionsSameDay.length > 1 ? 's' : ''} déjà prévue{otherSessionsSameDay.length > 1 ? 's' : ''} ce jour :</strong>
                       <div style={{ marginTop: 4 }}>
                         {otherSessionsSameDay.slice(0, 3).map((s, i) => {
-                          const c = mockCouples.find(cl => cl.id === s.coupleId)
+                          const c = clients.find(cl => cl.id === s.coupleId)
                           return <div key={i} style={{ fontSize: '0.714rem', opacity: 0.85 }}>• {c ? getCoupleName(c) : 'Client'} à {formatTime(s.date)}</div>
                         })}
                         {otherSessionsSameDay.length > 3 && <div style={{ fontSize: '0.714rem', opacity: 0.7 }}>...et {otherSessionsSameDay.length - 3} autre(s)</div>}

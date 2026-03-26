@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Plus, Search, Users, User, TrendingUp, X, ArrowDownUp, ArrowUpAZ, Calendar, Globe, Phone, UserCheck, CheckCircle, XCircle, HelpCircle, Link2, Award, LayoutGrid, List, Star, Baby, Trash2, Briefcase, Sprout, UserPlus, CheckSquare, Square, Archive } from 'lucide-react'
-// mockProfessionals removed — now from DataContext
+// professionals removed — now from DataContext
 import { useData } from '../context/DataContext'
 import { findDuplicateClients } from '../utils/duplicateUtils'
 import DuplicateAlert from '../components/DuplicateAlert'
@@ -13,7 +13,7 @@ const sourceIcons = { website: Globe, phone: Phone, referral: UserCheck }
 export default function CouplesPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { clients: mockCouples, sessions: mockSessions, recruitmentSources, therapyPhases: therapyPhasesData, phaseIcons, phaseColors: centralPhaseColors, defaultPhaseKey, isProspect, getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel, getComputedStatus, getProspectStageInfo, formatDate, getClientType, createClient, updateClient } = useData()
+  const { clients, sessions, recruitmentSources, therapyPhases: therapyPhasesData, phaseIcons, phaseColors: centralPhaseColors, defaultPhaseKey, isProspect, getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel, getComputedStatus, getProspectStageInfo, formatDate, getClientType, createClient, updateClient } = useData()
   const [search, setSearch] = useState('')
   const [sortMode, setSortMode] = useState('none')
   const [showModal, setShowModal] = useState(false)
@@ -46,8 +46,8 @@ export default function CouplesPage() {
 
   const duplicateMatches = useMemo(() => {
     if (duplicateDismissed || !newLastName.trim()) return []
-    return findDuplicateClients({ firstName: newFirstName, lastName: newLastName }, mockCouples, getCoupleName)
-  }, [newFirstName, newLastName, mockCouples, duplicateDismissed])
+    return findDuplicateClients({ firstName: newFirstName, lastName: newLastName }, clients, getCoupleName)
+  }, [newFirstName, newLastName, clients, duplicateDismissed])
 
   // Deduplication for external individual referrers against client DB
   const extRefDuplicateMatches = useMemo(() => {
@@ -55,9 +55,9 @@ export default function CouplesPage() {
     if (!(externalReferrer.lastName || '').trim()) return []
     return findDuplicateClients(
       { firstName: externalReferrer.firstName || '', lastName: externalReferrer.lastName || '', email: externalReferrer.email || '', phone: externalReferrer.phone || '' },
-      mockCouples, getCoupleName
+      clients, getCoupleName
     )
-  }, [externalReferrer, mockCouples, extRefDuplicateDismissed])
+  }, [externalReferrer, clients, extRefDuplicateDismissed])
 
   // Auto-open new client modal from URL param
   useEffect(() => {
@@ -80,14 +80,14 @@ export default function CouplesPage() {
     }
   }, [searchParams])
 
-  const activeClients = mockCouples.filter(c => !c.deleted)
+  const activeClients = clients.filter(c => !c.deleted)
   const prospectCount = activeClients.filter(c => isProspect(c)).length
   const clientCount = activeClients.filter(c => c.phase !== 'prospect').length
 
   // Compute next/last session from real session data
   const now = new Date()
   const sessionsByCouple = {}
-  mockSessions.forEach(s => {
+  sessions.forEach(s => {
     if (s.status === 'cancelled') return
     if (!sessionsByCouple[s.coupleId]) sessionsByCouple[s.coupleId] = { past: [], future: [] }
     const d = new Date(s.date)
@@ -299,7 +299,7 @@ export default function CouplesPage() {
                 {couple.phase !== 'prospect' && (() => {
                   const therapyPhases = therapyPhasesData.map(tp => tp.key)
                   const nowStr = new Date().toISOString()
-                  const coupleSessions = mockSessions.filter(s => s.coupleId === couple.id && s.status !== 'cancelled')
+                  const coupleSessions = sessions.filter(s => s.coupleId === couple.id && s.status !== 'cancelled')
                   const doneByPhase = {}
                   const schedByPhase = {}
                   therapyPhases.forEach(p => {
@@ -341,7 +341,7 @@ export default function CouplesPage() {
                     return (<>
                       <SourceIcon size={14} style={{ color: '#6B46C1' }} />
                       <span className="caption" style={{ color: 'var(--text-secondary)' }}>
-                        Source : {(() => { if (couple.referrerType === 'particulier') return 'Parrain externe'; const hasExternalParrain = (couple.clientLinks || []).some(l => l.type === 'parrainage' && l.role === 'filleul' && (() => { const ref = mockCouples.find(c => c.id === l.clientId); return ref?.referrerType === 'particulier' })()); return hasExternalParrain ? 'Parrain externe' : (recruitmentSources.find(s => s.key === couple.source) || {}).label || couple.source })()}
+                        Source : {(() => { if (couple.referrerType === 'particulier') return 'Parrain externe'; const hasExternalParrain = (couple.clientLinks || []).some(l => l.type === 'parrainage' && l.role === 'filleul' && (() => { const ref = clients.find(c => c.id === l.clientId); return ref?.referrerType === 'particulier' })()); return hasExternalParrain ? 'Parrain externe' : (recruitmentSources.find(s => s.key === couple.source) || {}).label || couple.source })()}
                       </span>
                     </>)
                   })() : couple.phase === 'prospect' && !couple.source ? (<>
@@ -364,7 +364,7 @@ export default function CouplesPage() {
                 {(couple.clientLinks || []).length > 0 && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
                     {(couple.clientLinks || []).map((link, idx) => {
-                      const linked = mockCouples.find(c => c.id === link.clientId)
+                      const linked = clients.find(c => c.id === link.clientId)
                       if (!linked) return null
                       const isDossier = link.type === 'dossier'
                       const color = isDossier ? '#6366F1' : '#8B5CF6'
@@ -431,8 +431,8 @@ export default function CouplesPage() {
               {filtered.map(couple => {
                 const PhaseIcon = phaseIcons[couple.phase] || Sprout
                 const pc = centralPhaseColors[couple.phase]?.color || 'var(--primary-600)'
-                const referrals = mockCouples.filter(c => c.referredBy === couple.id)
-                const referrer = couple.referredBy ? mockCouples.find(c => c.id === couple.referredBy) : null
+                const referrals = clients.filter(c => c.referredBy === couple.id)
+                const referrer = couple.referredBy ? clients.find(c => c.id === couple.referredBy) : null
                 const isChecked = selected.has(couple.id)
                 return (
                   <tr
@@ -479,7 +479,7 @@ export default function CouplesPage() {
                       </td>
                     </>) : (<>
                       <td style={{ padding: '10px 14px', color: 'var(--text-secondary)' }}>{formatDate(couple.startDate)}</td>
-                      <td style={{ padding: '10px 14px', color: 'var(--text-secondary)' }}>{(() => { if (couple.referrerType === 'particulier') return 'Parrain externe'; const hasExternalParrain = (couple.clientLinks || []).some(l => l.type === 'parrainage' && l.role === 'filleul' && (() => { const ref = mockCouples.find(c => c.id === l.clientId); return ref?.referrerType === 'particulier' })()); return hasExternalParrain ? 'Parrain externe' : (recruitmentSources.find(s => s.key === couple.source) || {}).label || couple.source || '—' })()}</td>
+                      <td style={{ padding: '10px 14px', color: 'var(--text-secondary)' }}>{(() => { if (couple.referrerType === 'particulier') return 'Parrain externe'; const hasExternalParrain = (couple.clientLinks || []).some(l => l.type === 'parrainage' && l.role === 'filleul' && (() => { const ref = clients.find(c => c.id === l.clientId); return ref?.referrerType === 'particulier' })()); return hasExternalParrain ? 'Parrain externe' : (recruitmentSources.find(s => s.key === couple.source) || {}).label || couple.source || '—' })()}</td>
                       <td style={{ padding: '10px 14px' }}>
                         {referrer ? (
                           <span style={{ color: '#6B46C1', fontWeight: 500, fontSize: '0.786rem' }}>
@@ -1058,7 +1058,7 @@ export default function CouplesPage() {
                                     <UserPlus size={14} color="#D97706" />
                                     <span style={{ fontWeight: 500, color: '#D97706' }}>Personne externe (non client)</span>
                                   </div>
-                                  {mockCouples
+                                  {clients
                                     .filter(c => !c.deleted)
                                     .filter(c => !referrerSearch || getCoupleName(c).toLowerCase().includes(referrerSearch.toLowerCase()))
                                     .slice(0, 8)
@@ -1080,7 +1080,7 @@ export default function CouplesPage() {
                                       </div>
                                     ))
                                   }
-                                  {mockCouples.filter(c => !c.deleted).filter(c => !referrerSearch || getCoupleName(c).toLowerCase().includes(referrerSearch.toLowerCase())).length === 0 && (
+                                  {clients.filter(c => !c.deleted).filter(c => !referrerSearch || getCoupleName(c).toLowerCase().includes(referrerSearch.toLowerCase())).length === 0 && (
                                     <div style={{ padding: '8px 12px', fontSize: '0.786rem', color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
                                       Aucun client trouvé
                                     </div>

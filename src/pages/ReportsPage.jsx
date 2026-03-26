@@ -4,7 +4,7 @@ import { useData } from '../context/DataContext'
 
 export default function ReportsPage() {
   const navigate = useNavigate()
-  const { reports: mockReports, formatRelativeDate, getPhaseLabel } = useData()
+  const { reports, formatRelativeDate, getPhaseLabel } = useData()
 
   return (
     <div>
@@ -13,7 +13,7 @@ export default function ReportsPage() {
       </div>
 
       <div className="card">
-        {mockReports.map(report => (
+        {reports.map(report => (
           <div className="report-item" key={report.id} onClick={() => navigate(`/reports/${report.id}`)}>
             <div className="report-icon">
               <FileText />

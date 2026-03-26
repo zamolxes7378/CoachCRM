@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from './lib/supabase'
 import { upsertUser } from './services/dataService'
 import { DataProvider } from './context/DataContext'
+import { ToastProvider } from './context/ToastContext'
 import Layout from './components/layout/Layout'
 import LoginPage from './pages/LoginPage'
 import OnboardingWizard from './components/OnboardingWizard'
@@ -151,6 +152,7 @@ export default function App() {
   }
 
   return (
+    <ToastProvider>
     <DataProvider user={user}>
       <BrowserRouter>
         <Layout user={user} onLogout={handleLogout}>
@@ -172,5 +174,6 @@ export default function App() {
         </Layout>
       </BrowserRouter>
     </DataProvider>
+    </ToastProvider>
   )
 }

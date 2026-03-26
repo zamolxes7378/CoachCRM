@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Briefcase, Phone, Mail, Calendar, Users, Search, Plus, X, Edit3, Trash2, Award, MapPin, Globe, Building2, FileText, Save, ChevronDown, ChevronUp, ArrowUpAZ, ArrowDownUp, LayoutGrid, List, ChevronsUpDown, UserPlus } from 'lucide-react'
-// mockProfessionals removed — now from DataContext
+// professionals removed — now from DataContext
 import { useData } from '../context/DataContext'
 
 // Field component defined OUTSIDE to avoid re-creation on each render
@@ -46,9 +46,9 @@ export default function ReseauProPage() {
 
   const navigate = useNavigate()
 
-  const { clients: mockCouples, professionals: mockProfessionals, createProfessional, updateProfessional: updatePro } = useData()
+  const { clients, professionals, createProfessional, updateProfessional: updatePro } = useData()
 
-  let filtered = mockProfessionals.filter(p => {
+  let filtered = professionals.filter(p => {
     if (!search) return true
     const q = search.toLowerCase()
     return `${p.firstName} ${p.lastName}`.toLowerCase().includes(q) ||
@@ -118,7 +118,7 @@ export default function ReseauProPage() {
         <div>
           <h1 style={{ fontSize: '1.286rem', fontWeight: 700, margin: 0 }}>Réseau Pro</h1>
           <p style={{ fontSize: '0.786rem', color: 'var(--text-tertiary)', margin: 0 }}>
-            {mockProfessionals.length} partenaire{mockProfessionals.length > 1 ? 's' : ''} professionnel{mockProfessionals.length > 1 ? 's' : ''}
+            {professionals.length} partenaire{professionals.length > 1 ? 's' : ''} professionnel{professionals.length > 1 ? 's' : ''}
           </p>
         </div>
         <button

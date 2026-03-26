@@ -5,8 +5,8 @@ import { useData } from '../context/DataContext'
 export default function ReportDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { reports: mockReports, formatDate, getPhaseLabel } = useData()
-  const report = mockReports.find(r => r.id === id)
+  const { reports, formatDate, getPhaseLabel } = useData()
+  const report = reports.find(r => r.id === id)
 
   if (!report) {
     return <div className="empty-state"><p>Compte rendu non trouvé</p></div>

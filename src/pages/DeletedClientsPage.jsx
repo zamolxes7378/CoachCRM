@@ -5,11 +5,11 @@ import { useData } from '../context/DataContext'
 
 export default function DeletedClientsPage() {
   const navigate = useNavigate()
-  const { clients: mockCouples, getCoupleName, formatDate, updateClient, deleteClient } = useData()
+  const { clients, getCoupleName, formatDate, updateClient, deleteClient } = useData()
   const [selected, setSelected] = useState(new Set())
   const [deleting, setDeleting] = useState(false)
 
-  const deletedClients = mockCouples.filter(c => c.deleted)
+  const deletedClients = clients.filter(c => c.deleted)
 
   const handleRestore = async (client) => {
     client.deleted = false

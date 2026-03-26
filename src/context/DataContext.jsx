@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
+import { useToast } from './ToastContext'
 import * as ds from '../services/dataService'
 import { checkAllianceTransition } from '../services/allianceService'
 import { adaptClient, adaptSession, adaptReport, adaptProfessional, unadaptClient, unadaptSession, unadaptProfessional } from '../data/adapters'
@@ -23,6 +24,7 @@ export function useData() {
 }
 
 export function DataProvider({ user, children }) {
+  const { showToast } = useToast()
   const [rawClients, setRawClients] = useState([])
   const [rawSessions, setRawSessions] = useState([])
   const [rawReports, setRawReports] = useState([])
@@ -79,6 +81,7 @@ export function DataProvider({ user, children }) {
       setRawProfessionals(p)
     } catch (err) {
       console.error('DataProvider load error:', err)
+      showToast('Erreur de chargement des données. Vérifiez votre connexion.', 'error')
     } finally {
       setLoading(false)
     }
@@ -130,42 +133,73 @@ export function DataProvider({ user, children }) {
     formatDate, formatTime, formatRelativeDate, getTodaySessions,
     refreshData: loadData,
     updateClient: async (id, updates) => {
-      const result = await ds.updateClient(id, unadaptClient(updates))
-      if (result) await loadData()
-      return result
+      try {
+        const result = await ds.updateClient(id, unadaptClient(updates))
+        if (result) await loadData()
+        return result
+      } catch (err) {
+        console.error('updateClient error:', err)
+        showToast('Erreur lors de la mise à jour du client.', 'error')
+      }
     },
     createClient: async (client) => {
-      const result = await ds.createClient({ ...unadaptClient(client), user_id: user.id })
-      if (result) await loadData()
-      return result
+      try {
+        const result = await ds.createClient({ ...unadaptClient(client), user_id: user.id })
+        if (result) {
+          await loadData()
+          showToast('Client créé avec succès.', 'success')
+        }
+        return result
+      } catch (err) {
+        console.error('createClient error:', err)
+        showToast('Erreur lors de la création du client.', 'error')
+      }
     },
     deleteClient: async (id) => {
-      const result = await ds.deleteClient(id)
-      if (result) await loadData()
-      return result
+      try {
+        const result = await ds.deleteClient(id)
+        if (result) await loadData()
+        return result
+      } catch (err) {
+        console.error('deleteClient error:', err)
+        showToast('Erreur lors de la suppression du client.', 'error')
+      }
     },
     updateSession: async (id, updates) => {
-      // Auto-persist completion for past sessions
-      if (!updates.status) {
-        const rawSession = rawSessions.find(s => s.id === id)
-        if (rawSession && rawSession.status === 'scheduled' && rawSession.date) {
-          const endTime = new Date(new Date(rawSession.date).getTime() + (rawSession.duration || 60) * 60000)
-          if (endTime <= new Date()) {
-            updates = { ...updates, status: 'completed' }
+      try {
+        // Auto-persist completion for past sessions
+        if (!updates.status) {
+          const rawSession = rawSessions.find(s => s.id === id)
+          if (rawSession && rawSession.status === 'scheduled' && rawSession.date) {
+            const endTime = new Date(new Date(rawSession.date).getTime() + (rawSession.duration || 60) * 60000)
+            if (endTime <= new Date()) {
+              updates = { ...updates, status: 'completed' }
+            }
           }
         }
+        const result = await ds.updateSession(id, unadaptSession(updates))
+        if (result) {
+          await checkAllianceTransition(result, updates, rawClients, rawSessions, sessionRates, defaultPhaseKey)
+          await loadData()
+        }
+        return result
+      } catch (err) {
+        console.error('updateSession error:', err)
+        showToast('Erreur lors de la mise à jour de la séance.', 'error')
       }
-      const result = await ds.updateSession(id, unadaptSession(updates))
-      if (result) {
-        await checkAllianceTransition(result, updates, rawClients, rawSessions, sessionRates, defaultPhaseKey)
-        await loadData()
-      }
-      return result
     },
     createSession: async (session) => {
-      const result = await ds.createSession({ ...unadaptSession(session), user_id: user.id })
-      if (result) await loadData()
-      return result
+      try {
+        const result = await ds.createSession({ ...unadaptSession(session), user_id: user.id })
+        if (result) {
+          await loadData()
+          showToast('Séance créée avec succès.', 'success')
+        }
+        return result
+      } catch (err) {
+        console.error('createSession error:', err)
+        showToast('Erreur lors de la création de la séance.', 'error')
+      }
     },
     createContact: async (contact) => {
       const result = await ds.createContact({ ...contact, user_id: user.id })
@@ -181,24 +215,44 @@ export function DataProvider({ user, children }) {
       return result
     },
     upsertSettings: async (settingsData) => {
-      const result = await ds.upsertSettings(user.id, settingsData)
-      if (result) setSettings(result)
-      return result
+      try {
+        const result = await ds.upsertSettings(user.id, settingsData)
+        if (result) { setSettings(result); showToast('Paramètres sauvegardés.', 'success') }
+        return result
+      } catch (err) {
+        console.error('upsertSettings error:', err)
+        showToast('Erreur lors de la sauvegarde des paramètres.', 'error')
+      }
     },
     createProfessional: async (professional) => {
-      const result = await ds.createProfessional({ ...unadaptProfessional(professional), user_id: user.id })
-      if (result) await loadData()
-      return result
+      try {
+        const result = await ds.createProfessional({ ...unadaptProfessional(professional), user_id: user.id })
+        if (result) { await loadData(); showToast('Professionnel créé.', 'success') }
+        return result
+      } catch (err) {
+        console.error('createProfessional error:', err)
+        showToast('Erreur lors de la création du professionnel.', 'error')
+      }
     },
     updateProfessional: async (id, updates) => {
-      const result = await ds.updateProfessional(id, unadaptProfessional(updates))
-      if (result) await loadData()
-      return result
+      try {
+        const result = await ds.updateProfessional(id, unadaptProfessional(updates))
+        if (result) await loadData()
+        return result
+      } catch (err) {
+        console.error('updateProfessional error:', err)
+        showToast('Erreur lors de la mise à jour du professionnel.', 'error')
+      }
     },
     deleteProfessional: async (id) => {
-      const result = await ds.deleteProfessional(id)
-      if (result) await loadData()
-      return result
+      try {
+        const result = await ds.deleteProfessional(id)
+        if (result) await loadData()
+        return result
+      } catch (err) {
+        console.error('deleteProfessional error:', err)
+        showToast('Erreur lors de la suppression du professionnel.', 'error')
+      }
     }
   }
 

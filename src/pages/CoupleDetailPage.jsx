@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, TrendingUp, PenTool, CheckCircle, XCircle, Clock, AlertTriangle, FileText, Calendar, Mic, MicOff, Loader, CreditCard, Landmark, Banknote, Phone, Mail, MessageSquare, Plus, Share2, Edit3, Sparkles, RefreshCw, Globe, Hourglass, Euro, X, Trash2, BookOpen, ChevronRight, Heart, AlertCircle, Crosshair, Check, HelpCircle, Link2, Users, User, Star, Baby, Briefcase, Sprout, Search, Target, Award, UserPlus } from 'lucide-react'
-// mockProfessionals removed — now from DataContext
+// professionals removed — now from DataContext
 import { useData } from '../context/DataContext'
 import { findDuplicateClients, findDuplicatePros } from '../utils/duplicateUtils'
 import DuplicateAlert from '../components/DuplicateAlert'
@@ -20,8 +20,8 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
   const params = useParams()
   const id = coupleIdProp || params.id
   const navigate = useNavigate()
-  const { clients: mockCouples, sessions: mockSessions, reports: mockReports, recruitmentSources, sessionRates, therapyPhases: therapyPhasesData, phaseIcons, phaseColors, defaultPhaseKey, getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel, getClientType, formatDate, formatTime, updateSession, updateClient, createSession, refreshData, professionals: mockProfessionals, createProfessional: createPro, updateProfessional: updatePro } = useData()
-  const couple = mockCouples.find(c => c.id === id)
+  const { clients, sessions: allSessions, reports: allReports, recruitmentSources, sessionRates, therapyPhases: therapyPhasesData, phaseIcons, phaseColors, defaultPhaseKey, getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel, getClientType, formatDate, formatTime, updateSession, updateClient, createSession, refreshData, professionals, createProfessional: createPro, updateProfessional: updatePro } = useData()
+  const couple = clients.find(c => c.id === id)
   // Sanitize: remove self-referencing clientLinks
   if (couple?.clientLinks) {
     couple.clientLinks = couple.clientLinks.filter(l => l.clientId !== couple.id)
@@ -126,7 +126,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
     return <div className="empty-state"><p>Couple non trouvé</p></div>
   }
 
-  const sessions = mockSessions.filter(s => s.coupleId === id).map(s => {
+  const sessions = allSessions.filter(s => s.coupleId === id).map(s => {
     // Auto-complete: sessions past their end time become 'completed' (mirrors DataContext logic)
     if (s.status === 'scheduled') {
       const endTime = new Date(new Date(s.date).getTime() + (s.duration || 60) * 60000)
@@ -134,7 +134,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
     }
     return s
   }).sort((a, b) => b.date.localeCompare(a.date))
-  const reports = mockReports.filter(r => r.coupleId === id)
+  const reports = allReports.filter(r => r.coupleId === id)
   const PhaseIcon = phaseIcons[phase] || Sprout
 
   // Compute session numbers chronologically
@@ -237,7 +237,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
   // Generate virtual parrainage events from clientLinks (dynamic — disappear if link removed)
   const parrainageEvents = (couple.clientLinks || []).filter(l => l.type === 'parrainage' || l.type === 'parrainage-pro').map(link => {
     const isPro = link.type === 'parrainage-pro'
-    const linkedName = isPro ? link.proName : (() => { const c = mockCouples.find(c => c.id === link.clientId); return c ? getCoupleName(c) : link.clientId })() 
+    const linkedName = isPro ? link.proName : (() => { const c = clients.find(c => c.id === link.clientId); return c ? getCoupleName(c) : link.clientId })() 
     const isParrain = link.role === 'parrain'
     return {
       id: `parrainage-link-${link.clientId || link.proId}`,
@@ -383,9 +383,9 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
           }}>
             {links.map((link, idx) => {
               const cfg = linkConfig[link.type] || linkConfig.dossier
-              // For parrainage-pro, the linked entity is a professional (not in mockCouples)
+              // For parrainage-pro, the linked entity is a professional (not in clients)
               const isPro = link.type === 'parrainage-pro'
-              const linked = isPro ? null : mockCouples.find(c => c.id === link.clientId)
+              const linked = isPro ? null : clients.find(c => c.id === link.clientId)
               if (!isPro && !linked) return null
               const displayName = isPro ? link.proName : getCoupleName(linked)
               const roleLabel = link.type === 'parrainage' && link.role
@@ -485,7 +485,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
 
                   {/* Results */}
                   <div style={{ maxHeight: 160, overflowY: 'auto' }}>
-                    {mockCouples
+                    {clients
                       .filter(c => c.id !== couple.id && !c.deleted)
                       .filter(c => !links.some(l => l.clientId === c.id))
                       .filter(c => !addLinkSearch || getCoupleName(c).toLowerCase().includes(addLinkSearch.toLowerCase()))
@@ -780,14 +780,14 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                   now.setDate(now.getDate() + 7)
                   const targetDateStr = now.toISOString().split('T')[0]
                   // Check for duplicate: same client, same day
-                  const duplicateSameClient = mockSessions.find(s => s.coupleId === id && s.date.startsWith(targetDateStr) && s.status !== 'cancelled')
+                  const duplicateSameClient = sessions.find(s => s.coupleId === id && s.date.startsWith(targetDateStr) && s.status !== 'cancelled')
                   if (duplicateSameClient) {
                     if (!confirm(`Doublon potentiel : une séance existe déjà pour ce client le ${formatDate(duplicateSameClient.date)}. Ajouter quand même ?`)) return
                   } else if (couple?.phase !== 'prospect') {
                     // Check for other sessions on the same day (any client) — skip for prospects
-                    const otherSameDay = mockSessions.filter(s => s.date.startsWith(targetDateStr) && s.coupleId !== id && s.status !== 'cancelled')
+                    const otherSameDay = sessions.filter(s => s.date.startsWith(targetDateStr) && s.coupleId !== id && s.status !== 'cancelled')
                     if (otherSameDay.length > 0) {
-                      const names = otherSameDay.slice(0, 3).map(s => { const c = mockCouples.find(cl => cl.id === s.coupleId); return c ? getCoupleName(c) : 'Client' }).join(', ')
+                      const names = otherSameDay.slice(0, 3).map(s => { const c = clients.find(cl => cl.id === s.coupleId); return c ? getCoupleName(c) : 'Client' }).join(', ')
                       if (!confirm(`${otherSameDay.length} séance${otherSameDay.length > 1 ? 's' : ''} déjà prévue${otherSameDay.length > 1 ? 's' : ''} ce jour (${names}). Ajouter quand même ?`)) return
                     }
                   }
@@ -3148,8 +3148,8 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                         {(() => {
                           const refType = modalExternalReferrer.referrerType || 'particulier'
                           const matches = refType === 'professionnel'
-                            ? findDuplicatePros({ firstName: modalExternalReferrer.firstName, lastName: modalExternalReferrer.lastName }, mockProfessionals)
-                            : findDuplicateClients({ firstName: modalExternalReferrer.firstName, lastName: modalExternalReferrer.lastName }, mockCouples, getCoupleName, couple.id)
+                            ? findDuplicatePros({ firstName: modalExternalReferrer.firstName, lastName: modalExternalReferrer.lastName }, professionals)
+                            : findDuplicateClients({ firstName: modalExternalReferrer.firstName, lastName: modalExternalReferrer.lastName }, clients, getCoupleName, couple.id)
                           if (matches.length === 0) return null
                           return (
                             <DuplicateAlert
@@ -3183,14 +3183,14 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                         <input className="input" placeholder="Note (ex: confrère, ami, médecin…)" value={modalExternalReferrer.role || ''}
                           onChange={e => setModalExternalReferrer({ ...modalExternalReferrer, role: e.target.value })} style={{ fontSize: '0.786rem', width: '100%' }} />
                       </div>
-                    ) : (modalSelectedReferrer || (() => { const link = (couple.clientLinks || []).find(l => l.type === 'parrainage' && l.role === 'filleul'); return link ? mockCouples.find(c => c.id === link.clientId) : null })()) ? (
+                    ) : (modalSelectedReferrer || (() => { const link = (couple.clientLinks || []).find(l => l.type === 'parrainage' && l.role === 'filleul'); return link ? clients.find(c => c.id === link.clientId) : null })()) ? (
                       <div style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                         padding: '8px 12px', background: '#F5F0FF', borderRadius: 'var(--radius-md)', fontSize: '0.857rem'
                       }}>
                         <span style={{ fontWeight: 500, color: '#8B5CF6' }}>
                           <Award size={13} style={{ verticalAlign: -2, marginRight: 4 }} />
-                          {getCoupleName(modalSelectedReferrer || (() => { const link = (couple.clientLinks || []).find(l => l.type === 'parrainage' && l.role === 'filleul'); return link ? mockCouples.find(c => c.id === link.clientId) : null })())} <span style={{ fontSize: '0.643rem', fontWeight: 400, opacity: 0.7 }}>· Parrain</span>
+                          {getCoupleName(modalSelectedReferrer || (() => { const link = (couple.clientLinks || []).find(l => l.type === 'parrainage' && l.role === 'filleul'); return link ? clients.find(c => c.id === link.clientId) : null })())} <span style={{ fontSize: '0.643rem', fontWeight: 400, opacity: 0.7 }}>· Parrain</span>
                         </span>
                         <button onClick={() => {
                           // Clear modal state
@@ -3201,7 +3201,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                           if (couple.clientLinks) {
                             const parrainageLinks = couple.clientLinks.filter(l => l.type === 'parrainage' && l.role === 'filleul')
                             parrainageLinks.forEach(link => {
-                              const other = mockCouples.find(c => c.id === link.clientId)
+                              const other = clients.find(c => c.id === link.clientId)
                               if (other?.clientLinks) {
                                 other.clientLinks = other.clientLinks.filter(l => !(l.type === 'parrainage' && l.clientId === couple.id))
                               }
@@ -3247,7 +3247,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                               <UserPlus size={14} color="#D97706" />
                               <span style={{ fontWeight: 500, color: '#D97706' }}>Personne externe (non client)</span>
                             </div>
-                            {mockCouples
+                            {clients
                               .filter(c => !c.deleted && c.id !== couple.id)
                               .filter(c => !modalReferrerSearch || getCoupleName(c).toLowerCase().includes(modalReferrerSearch.toLowerCase()))
                               .slice(0, 8)
@@ -3288,7 +3288,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
                   {(couple.clientLinks || []).map((link, idx) => {
                     const isPro = link.type === 'parrainage-pro'
-                    const linked = isPro ? null : mockCouples.find(c => c.id === link.clientId)
+                    const linked = isPro ? null : clients.find(c => c.id === link.clientId)
                     if (!isPro && !linked) return null
                     const isDossier = link.type === 'dossier'
                     const color = isPro ? '#7C3AED' : isDossier ? '#6366F1' : '#8B5CF6'
@@ -3372,7 +3372,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                           style={{ fontSize: '0.714rem', marginBottom: 'var(--space-xs)' }}
                         />
                         <div style={{ maxHeight: 120, overflowY: 'auto' }}>
-                          {mockCouples
+                          {clients
                             .filter(c => c.id !== couple.id && !c.deleted)
                             .filter(c => !(couple.clientLinks || []).some(l => l.clientId === c.id))
                             .filter(c => !modalAddLinkSearch || getCoupleName(c).toLowerCase().includes(modalAddLinkSearch.toLowerCase()))
@@ -3460,7 +3460,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                       if (couple.clientLinks) {
                         const parrainageLinks = couple.clientLinks.filter(l => l.type === 'parrainage')
                         parrainageLinks.forEach(link => {
-                          const other = mockCouples.find(c => c.id === link.clientId)
+                          const other = clients.find(c => c.id === link.clientId)
                           if (other?.clientLinks) {
                             other.clientLinks = other.clientLinks.filter(l => !(l.type === 'parrainage' && l.clientId === couple.id))
                           }
@@ -3491,9 +3491,9 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                         // --- PROFESSIONNEL → Supabase professionals ---
                         // Try to find by proId from existing link first, then by name
                         const existingProLink = (couple.clientLinks || []).find(l => l.type === 'parrainage-pro')
-                        let existingPro = existingProLink ? mockProfessionals.find(p => p.id === existingProLink.proId) : null
+                        let existingPro = existingProLink ? professionals.find(p => p.id === existingProLink.proId) : null
                         if (!existingPro) {
-                          existingPro = mockProfessionals.find(p =>
+                          existingPro = professionals.find(p =>
                             p.lastName === modalExternalReferrer.lastName.trim() &&
                             (p.firstName || '') === (modalExternalReferrer.firstName || '')
                           )
@@ -3532,9 +3532,9 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                           couple.clientLinks.push({ type: 'parrainage-pro', proId, proName, role: 'filleul' })
                         }
                       } else {
-                        // --- PARTICULIER → prospect in mockCouples ---
+                        // --- PARTICULIER → prospect in clients ---
                         const existingLink = (couple.clientLinks || []).find(l => l.type === 'parrainage' && l.role === 'filleul')
-                        const existingProspect = existingLink ? mockCouples.find(c => c.id === existingLink.clientId) : null
+                        const existingProspect = existingLink ? clients.find(c => c.id === existingLink.clientId) : null
                         if (existingProspect) {
                           existingProspect.partnerA.firstName = modalExternalReferrer.firstName || ''
                           existingProspect.partnerA.lastName = modalExternalReferrer.lastName.trim()
@@ -3561,7 +3561,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                             sessions: [],
                             clientLinks: [{ clientId: couple.id, type: 'parrainage', role: 'parrain' }]
                           }
-                          mockCouples.push(newProspect)
+                          clients.push(newProspect)
                           if (!couple.clientLinks) couple.clientLinks = []
                           couple.clientLinks.push({ clientId: newProspect.id, type: 'parrainage', role: 'filleul' })
                         }

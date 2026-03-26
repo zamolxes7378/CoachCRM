@@ -8,28 +8,28 @@ import { getCoupleName } from '../data/mockData'
 const DEFAULT_RATE = 75 // fallback
 
 export default function FinancesPage() {
-  const { clients: mockCouples, sessions: mockSessions, recruitmentSources, sessionRates } = useData()
+  const { clients, sessions: allSessions, recruitmentSources, sessionRates } = useData()
 
   function getDefaultRate(coupleId) {
-    const c = mockCouples.find(x => x.id === coupleId)
+    const c = clients.find(x => x.id === coupleId)
     return c && c.type === 'individual' ? sessionRates.individual : sessionRates.couple
   }
 
   function getClientName(coupleId) {
-    const c = mockCouples.find(x => x.id === coupleId)
+    const c = clients.find(x => x.id === coupleId)
     if (!c) return '—'
     if (c.partnerB) return `${c.partnerA.firstName} & ${c.partnerB.firstName} ${c.partnerA.lastName}`
     return `${c.partnerA.firstName} ${c.partnerA.lastName}`
   }
 
   function getClientType(coupleId) {
-    const c = mockCouples.find(x => x.id === coupleId)
+    const c = clients.find(x => x.id === coupleId)
     if (!c) return 'couple'
     return c.type === 'individual' ? 'individuel' : 'couple'
   }
 
   function getClientSource(coupleId) {
-    const c = mockCouples.find(x => x.id === coupleId)
+    const c = clients.find(x => x.id === coupleId)
     if (!c || !c.source) return '—'
     const src = recruitmentSources.find(s => s.key === c.source)
     return src ? src.label : c.source
@@ -58,7 +58,7 @@ export default function FinancesPage() {
   const [refreshKey, setRefreshKey] = useState(0)
 
   // All sessions — spread to force re-evaluation on refresh
-  const sessions = useMemo(() => [...mockSessions], [refreshKey])
+  const sessions = useMemo(() => [...allSessions], [refreshKey])
 
   // Helper: sessions in a given month/year
   const sessionsInMonth = (m, y) => sessions.filter(s => {
@@ -750,7 +750,7 @@ export default function FinancesPage() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-sm)', marginTop: 'var(--space-sm)' }}>
         {/* Source Performance */}
         {(() => {
-          const sourceCounts = countClientsBySource(mockCouples, selectedYear)
+          const sourceCounts = countClientsBySource(clients, selectedYear)
           const sourceColors = {
             website: '#2B6CB0', phone: '#E67E22', referral: '#8B5CF6',
             email: '#38A169', social: '#D53F8C', parrainage: '#8B5CF6', unknown: '#A0AEC0'
@@ -804,7 +804,7 @@ export default function FinancesPage() {
           </p>
           <button
             onClick={() => {
-              const csv = exportSponsorshipCSV(mockCouples, getCoupleName)
+              const csv = exportSponsorshipCSV(clients, getCoupleName)
               const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
               const url = URL.createObjectURL(blob)
               const a = document.createElement('a')
@@ -869,7 +869,7 @@ export default function FinancesPage() {
                 ))
               })() : (() => {
                 const referralCounts = {}
-                mockCouples.forEach(c => {
+                clients.forEach(c => {
                   if (c.referredBy) {
                     if (c.startDate && new Date(c.startDate).getFullYear() === selectedYear) {
                       if (!referralCounts[c.referredBy]) referralCounts[c.referredBy] = { name: getClientName(c.referredBy), count: 0, referredNames: [] }
