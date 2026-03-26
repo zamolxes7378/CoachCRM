@@ -59,7 +59,7 @@ Un « client » peut être un couple, un individu, ou une famille. C'est le doss
 | `next_session` | timestamptz | Prochain RDV planifié |
 | `last_session` | timestamptz | Dernier RDV réalisé |
 | `emotional_maturity` | integer | Score de maturité émotionnelle (défaut 0) |
-| `emotional_maturity_history` | JSONB | Historique des scores `[]` |
+
 | `notes` | text | Notes libres du thérapeute |
 | `exercises` | JSONB | Exercices assignés `[]` |
 | `prospect_stage` | text | Étape dans le parcours prospect |
@@ -121,7 +121,7 @@ Chaque séance est liée à un client et contient les informations de planificat
 | `status` | text | `scheduled`, `completed`, ou `cancelled` |
 | `title` | text | Titre optionnel |
 | `summary` | text | Résumé / notes de séance |
-| `audio_file` | text | Chemin vers l'enregistrement audio |
+
 | `has_report` | boolean | Un compte-rendu a été généré (défaut false) |
 | `cancellation_reason` | text | Motif d'annulation |
 | **Comptabilité** | | |

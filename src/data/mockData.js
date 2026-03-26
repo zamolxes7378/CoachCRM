@@ -47,7 +47,6 @@ export const mockCouples = [
     nextSession: '2026-03-19T14:00:00',
     lastSession: '2026-03-05',
     emotionalMaturity: 62,
-    emotionalMaturityHistory: [30, 35, 38, 42, 45, 48, 50, 52, 55, 58, 60, 62],
     notes: 'Couple marié depuis 8 ans. Problème de communication principal.',
     exercises: [
       { id: 'e1', title: 'Journal des émotions quotidien', status: 'completed', dueDate: '2026-03-10' },
@@ -73,7 +72,6 @@ export const mockCouples = [
     nextSession: '2026-03-19T16:00:00',
     lastSession: '2026-03-12',
     emotionalMaturity: 28,
-    emotionalMaturityHistory: [20, 24, 28],
     notes: 'En couple depuis 3 ans, pas mariés. Premiers signes de crise.',
     exercises: [
       { id: 'e4', title: 'Identifier 3 besoins fondamentaux', status: 'completed', dueDate: '2026-03-05' }
@@ -94,7 +92,6 @@ export const mockCouples = [
     nextSession: '2026-03-21T10:00:00',
     lastSession: '2026-03-14',
     emotionalMaturity: 78,
-    emotionalMaturityHistory: [25, 30, 35, 40, 45, 50, 55, 58, 62, 65, 68, 70, 73, 75, 78],
     notes: 'Très bonne progression. Phase d\'intégration en cours.',
     exercises: [
       { id: 'e5', title: 'Rituel de connexion quotidien', status: 'in-progress', dueDate: '2026-03-30' },
@@ -119,7 +116,6 @@ export const mockCouples = [
     nextSession: '2026-03-22T11:00:00',
     lastSession: '2026-03-12',
     emotionalMaturity: 45,
-    emotionalMaturityHistory: [22, 25, 28, 32, 35, 38, 42, 45],
     notes: 'Enjeux de parentalité et répartition des tâches.',
     exercises: [
       { id: 'e7', title: 'Planning parental équilibré', status: 'pending', dueDate: '2026-03-18' }
@@ -140,7 +136,6 @@ export const mockCouples = [
     nextSession: null,
     lastSession: '2026-03-10',
     emotionalMaturity: 22,
-    emotionalMaturityHistory: [18, 22],
     notes: 'Couple en pause depuis le 10 mars. Raison : voyage à l\'étranger. Reprise prévue en avril.',
     exercises: []
   },
@@ -159,7 +154,6 @@ export const mockCouples = [
     nextSession: '2026-03-19T21:00:00',
     lastSession: '2026-03-17',
     emotionalMaturity: 82,
-    emotionalMaturityHistory: [28, 32, 38, 42, 48, 52, 56, 60, 63, 66, 70, 73, 75, 78, 80, 82],
     status: 'active',
     notes: 'Thérapie terminée avec succès. Excellente progression du couple.',
     exercises: [
@@ -185,7 +179,6 @@ export const mockCouples = [
     nextSession: '2026-03-26T10:00:00',
     lastSession: null,
     emotionalMaturity: 0,
-    emotionalMaturityHistory: [],
     notes: 'Premier contact par téléphone. Couple en difficulté depuis 2 ans. Rendez-vous de découverte prévu.',
     exercises: []
   },
@@ -204,7 +197,6 @@ export const mockCouples = [
     nextSession: null,
     lastSession: null,
     emotionalMaturity: 0,
-    emotionalMaturityHistory: [],
     notes: 'Formulaire rempli via le site web. En attente de rappel.',
     exercises: []
   },
@@ -224,7 +216,6 @@ export const mockCouples = [
     nextSession: '2026-03-25T14:00:00',
     lastSession: null,
     emotionalMaturity: 0,
-    emotionalMaturityHistory: [],
     notes: 'Recommandé par le couple Rey. RDV découverte fixé au 25 mars.',
     exercises: [],
     clientLinks: [
@@ -246,7 +237,6 @@ export const mockCouples = [
     nextSession: '2026-03-20T09:00:00',
     lastSession: null,
     emotionalMaturity: 0,
-    emotionalMaturityHistory: [],
     notes: 'Converti suite à l\'appel découverte. Première séance prévue le 20 mars.',
     exercises: []
   },
@@ -266,7 +256,6 @@ export const mockCouples = [
     nextSession: null,
     lastSession: null,
     emotionalMaturity: 0,
-    emotionalMaturityHistory: [],
     notes: 'Demande reçue par email, source inconnue.',
     exercises: []
   },
@@ -289,7 +278,6 @@ export const mockCouples = [
     nextSession: '2026-03-24T09:00:00',
     lastSession: '2026-03-17',
     emotionalMaturity: 55,
-    emotionalMaturityHistory: [20, 25, 30, 34, 38, 42, 46, 49, 52, 55],
     notes: 'Famille recomposée. Enjeux de communication parent-enfant et de coparentalité.',
     exercises: [
       { id: 'e10', title: 'Temps familial structuré (30 min/jour)', status: 'in-progress', dueDate: '2026-03-28' },
@@ -301,152 +289,122 @@ export const mockCouples = [
 export const mockSessions = [
   {
     id: 's23', coupleId: 'c3', date: '2026-03-20T10:00:00', duration: 60,
-    phase: 'integration', status: 'completed', audioFile: 'session_15b.m4a', hasReport: true,
     title: 'Séance #15b — Bilan matinal', summary: 'Point étape', paymentMethod: null
   },
   {
     id: 's24', coupleId: 'c1', date: '2026-03-20T18:00:00', duration: 75,
-    phase: 'analyse', status: 'completed', audioFile: null, hasReport: false,
     title: 'Séance #13b — Écoute active', paymentMethod: 'virement', paymentReceived: false
   },
   {
     id: 's25', coupleId: 'c6', date: '2026-03-20T21:00:00', duration: 60,
-    phase: 'integration', status: 'completed', audioFile: null, hasReport: false,
     title: 'Séance #19 — Suivi à distance', paymentMethod: 'virement', paymentReceived: true
   },
   {
     id: 's1', coupleId: 'c1', date: '2026-03-19T14:00:00', duration: 75,
-    phase: 'analyse', status: 'completed', audioFile: null, hasReport: false,
     title: 'Séance #13 — Communication non violente', paymentMethod: 'cheque', paymentReceived: false
   },
   {
     id: 's2', coupleId: 'c1', date: '2026-03-05T14:00:00', duration: 90,
-    phase: 'analyse', status: 'completed', audioFile: 'session_12.m4a', hasReport: true,
     title: 'Séance #12 — Patterns d\'évitement', summary: 'Évitement conflits', paymentMethod: 'cheque', paymentReceived: true, needsInvoice: true
   },
   {
     id: 's3', coupleId: 'c1', date: '2026-02-19T14:00:00', duration: 80,
-    phase: 'analyse', status: 'completed', audioFile: 'session_11.m4a', hasReport: true,
     title: 'Séance #11 — Gestion de la colère', summary: 'Colère et triggers', paymentMethod: 'virement', paymentReceived: true
   },
   {
     id: 's4', coupleId: 'c2', date: '2026-03-19T16:00:00', duration: 60,
-    phase: 'debut', status: 'completed', audioFile: null, hasReport: false,
     title: 'Séance #4 — Besoins fondamentaux', paymentMethod: 'especes', paymentReceived: true
   },
   {
     id: 's5', coupleId: 'c3', date: '2026-03-14T10:00:00', duration: 70,
-    phase: 'integration', status: 'completed', audioFile: 'session_15.m4a', hasReport: true,
     title: 'Séance #15 — Bilan de mi-parcours', summary: 'Bilan mi-parcours', paymentMethod: 'especes', paymentReceived: true
   },
   {
     id: 's6', coupleId: 'c5', date: '2026-03-19T18:30:00', duration: 90,
-    phase: 'debut', status: 'completed', audioFile: null, hasReport: false,
     title: 'Séance #3 — Accueil et écoute', paymentMethod: 'especes', paymentReceived: true
   },
   {
     id: 's7', coupleId: 'c4', date: '2026-03-12T11:00:00', duration: 85,
-    phase: 'analyse', status: 'completed', audioFile: 'session_8.m4a', hasReport: true,
     title: 'Séance #8 — Parentalité et équilibre', summary: 'Charge parentale', paymentMethod: 'virement', paymentReceived: false, needsInvoice: true
   },
   {
     id: 's8', coupleId: 'c6', date: '2026-03-19T21:00:00', duration: 60,
-    phase: 'integration', status: 'completed', audioFile: null, hasReport: false,
     title: 'Séance #17 — Autonomie et bilan', paymentMethod: 'cheque', paymentReceived: true
   },
   {
     id: 's9', coupleId: 'c2', date: '2026-03-12T16:00:00', duration: 55,
-    phase: 'debut', status: 'completed', audioFile: 'session_3_c2.m4a', hasReport: true,
     title: 'Séance #3 — Identifier les schémas', summary: 'Schémas relationnels', paymentMethod: 'cheque', paymentReceived: false
   },
   {
     id: 's10', coupleId: 'c3', date: '2026-03-07T10:00:00', duration: 75,
-    phase: 'integration', status: 'completed', audioFile: null, hasReport: false,
     title: 'Séance #14 — Rituels de reconnexion', paymentMethod: 'especes', paymentReceived: false
   },
   {
     id: 's11', coupleId: 'c4', date: '2026-03-05T11:00:00', duration: 80,
-    phase: 'analyse', status: 'completed', audioFile: 'session_7_c4.m4a', hasReport: true,
     title: 'Séance #7 — Charge mentale', summary: 'Répartition tâches', paymentMethod: 'virement', paymentReceived: true, needsInvoice: true, invoiceSent: true
   },
   {
     id: 's12', coupleId: 'c6', date: '2026-03-17T21:00:00', duration: 65,
-    phase: 'integration', status: 'completed', audioFile: 'session_16_c6.m4a', hasReport: true,
     title: 'Séance #16 — Consolidation acquis', summary: 'Acquis consolidés', paymentMethod: 'cheque', paymentReceived: false, paymentStatus: 'deferred'
   },
   {
     id: 's13', coupleId: 'c2', date: '2026-03-05T16:00:00', duration: 60,
-    phase: 'debut', status: 'completed', audioFile: null, hasReport: false,
     title: 'Séance #2 — Écoute et reformulation', paymentMethod: 'especes', paymentReceived: false
   },
   {
     id: 's14', coupleId: 'c1', date: '2026-02-05T14:00:00', duration: 85,
-    phase: 'analyse', status: 'completed', audioFile: 'session_10.m4a', hasReport: true,
     title: 'Séance #10 — Attachement et sécurité', summary: 'Attachement secure', paymentMethod: 'virement', paymentReceived: true
   },
   {
     id: 's15', coupleId: 'c4', date: '2026-02-26T11:00:00', duration: 70,
-    phase: 'analyse', status: 'completed', audioFile: null, hasReport: false,
     title: 'Séance #6 — Écoute des besoins', paymentMethod: 'cheque', paymentReceived: true
   },
   {
     id: 's16', coupleId: 'c2', date: '2026-03-17T16:00:00', duration: 60,
-    phase: 'debut', status: 'cancelled', audioFile: null, hasReport: false,
     title: 'Séance #4 — Annulée par le client', paymentMethod: null
   },
   {
     id: 's17', coupleId: 'c1', date: '2026-03-10T14:00:00', duration: 75,
-    phase: 'analyse', status: 'cancelled', audioFile: null, hasReport: false,
     title: 'Séance #12bis — Report pour maladie', paymentMethod: null
   },
   {
     id: 's18', coupleId: 'c3', date: '2026-03-21T10:00:00', duration: 70,
-    phase: 'integration', status: 'completed', audioFile: null, hasReport: false,
     title: 'Séance #16 — Consolidation finale', paymentMethod: 'especes', paymentReceived: true
   },
   {
     id: 's19', coupleId: 'c4', date: '2026-03-22T11:00:00', duration: 85,
-    phase: 'analyse', status: 'scheduled', audioFile: null, hasReport: false,
     title: 'Séance #9 — Reprise du dialogue', paymentMethod: null
   },
   {
     id: 's20', coupleId: 'c1', date: '2026-03-26T14:00:00', duration: 75,
-    phase: 'analyse', status: 'scheduled', audioFile: null, hasReport: false,
     title: 'Séance #14 — Bilan analyse', paymentMethod: null
   },
   {
     id: 's21', coupleId: 'c2', date: '2026-03-28T16:00:00', duration: 60,
-    phase: 'debut', status: 'scheduled', audioFile: null, hasReport: false,
     title: 'Séance #5 — Expression des besoins', paymentMethod: null
   },
   {
     id: 's22', coupleId: 'c6', date: '2026-04-02T21:00:00', duration: 60,
-    phase: 'integration', status: 'scheduled', audioFile: null, hasReport: false,
     title: 'Séance #18 — Clôture de suivi', paymentMethod: null
   },
   {
     id: 's26', coupleId: 'c1', date: '2026-04-15T09:00:00', duration: 75,
-    phase: 'analyse', status: 'scheduled', audioFile: null, hasReport: false,
     title: 'Séance #15 — Évaluation mi-parcours', paymentMethod: null
   },
   {
     id: 's27', coupleId: 'c3', date: '2026-04-15T11:00:00', duration: 60,
-    phase: 'integration', status: 'scheduled', audioFile: null, hasReport: false,
     title: 'Séance #17 — Autonomie relationnelle', paymentMethod: null
   },
   {
     id: 's28', coupleId: 'c4', date: '2026-04-15T14:00:00', duration: 85,
-    phase: 'analyse', status: 'scheduled', audioFile: null, hasReport: false,
     title: 'Séance #10 — Confiance et engagement', paymentMethod: null
   },
   {
     id: 's29', coupleId: 'c2', date: '2026-04-15T17:00:00', duration: 60,
-    phase: 'debut', status: 'scheduled', audioFile: null, hasReport: false,
     title: 'Séance #6 — Attentes et objectifs', paymentMethod: null
   },
   {
     id: 's30', coupleId: 'c6', date: '2026-04-15T21:00:00', duration: 60,
-    phase: 'integration', status: 'scheduled', audioFile: null, hasReport: false,
     title: 'Séance #20 — Bilan trimestriel', paymentMethod: null
   }
 ];

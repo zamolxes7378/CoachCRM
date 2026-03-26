@@ -34,7 +34,7 @@ function adaptClient(c) {
     nextSession: c.next_session,
     lastSession: c.last_session,
     emotionalMaturity: c.emotional_maturity,
-    emotionalMaturityHistory: c.emotional_maturity_history || [],
+
     prospectStage: c.prospect_stage,
     referredBy: c.referred_by,
     clientLinks: c.client_links || c.clientLinks || [],
@@ -54,7 +54,7 @@ function adaptSession(s) {
     ...s,
     date: stripTz(s.date),
     coupleId: s.client_id,
-    audioFile: s.audio_file,
+
     hasReport: s.has_report,
     paymentMethod: s.payment_method,
     paymentReceived: s.payment_received,
@@ -114,7 +114,7 @@ function unadaptClient(c) {
   if ('nextSession' in c) { out.next_session = c.nextSession; delete out.nextSession }
   if ('lastSession' in c) { out.last_session = c.lastSession; delete out.lastSession }
   if ('emotionalMaturity' in c) { out.emotional_maturity = c.emotionalMaturity; delete out.emotionalMaturity }
-  if ('emotionalMaturityHistory' in c) { out.emotional_maturity_history = c.emotionalMaturityHistory; delete out.emotionalMaturityHistory }
+
   if ('prospectStage' in c) { out.prospect_stage = c.prospectStage; delete out.prospectStage }
   if ('referredBy' in c) { out.referred_by = c.referredBy; delete out.referredBy }
   if ('clientLinks' in c) { out.client_links = c.clientLinks; delete out.clientLinks }
@@ -128,7 +128,7 @@ function unadaptClient(c) {
 function unadaptSession(s) {
   const out = { ...s }
   if ('coupleId' in s) { out.client_id = s.coupleId; delete out.coupleId }
-  if ('audioFile' in s) { out.audio_file = s.audioFile; delete out.audioFile }
+
   if ('hasReport' in s) { out.has_report = s.hasReport; delete out.hasReport }
   if ('paymentMethod' in s) { out.payment_method = s.paymentMethod; delete out.paymentMethod }
   if ('paymentReceived' in s) { out.payment_received = s.paymentReceived; delete out.paymentReceived }
