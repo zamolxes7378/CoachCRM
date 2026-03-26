@@ -13,10 +13,10 @@ export async function getCurrentUser(email) {
   return data
 }
 
-export async function upsertUser({ name, email, role = 'therapist', photo_url = null }) {
+export async function upsertUser({ id, name, email, role = 'therapist', photo_url = null }) {
   const { data, error } = await supabase
     .from('users')
-    .upsert({ name, email, role, photo_url }, { onConflict: 'email' })
+    .upsert({ id, name, email, role, photo_url }, { onConflict: 'email' })
     .select()
     .single()
   if (error) console.error('upsertUser error:', error.message)

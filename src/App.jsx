@@ -54,6 +54,7 @@ export default function App() {
     // New user — default to therapist
     console.log('[Auth] creating new user as therapist')
     const dbUser = await upsertUser({
+      id: authUser.id,
       name: meta.full_name || meta.name || authUser.email,
       email: authUser.email,
       role: 'therapist',
