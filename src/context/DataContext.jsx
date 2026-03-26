@@ -7,9 +7,7 @@ import {
   sessionRates as defaultRates, prospectStages,
   getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel,
   getComputedStatus, getProspectStageInfo, getClientType, clientTypeLabels,
-  formatDate, formatTime, formatRelativeDate, getTodaySessions,
-  mockCouples as demoClients, mockSessions as demoSessions,
-  mockReports as demoReports, mockProfessionals as demoProfessionals
+  formatDate, formatTime, formatRelativeDate, getTodaySessions
 } from '../data/mockData'
 
 const DataContext = createContext(null)
@@ -147,7 +145,6 @@ function unadaptSession(s) {
 }
 
 export function DataProvider({ user, children }) {
-  const isDemo = user?.id === 'demo-user'
   const [rawClients, setRawClients] = useState([])
   const [rawSessions, setRawSessions] = useState([])
   const [rawReports, setRawReports] = useState([])
@@ -159,33 +156,6 @@ export function DataProvider({ user, children }) {
     if (!user?.id) return
     setLoading(true)
     try {
-      if (isDemo) {
-        // Demo mode: use mockData arrays directly (no Supabase)
-        // Auto-complete past scheduled sessions (same logic as production)
-        const now = new Date()
-        for (const sess of demoSessions) {
-          if (sess.status === 'scheduled' && sess.date) {
-            const endTime = new Date(new Date(sess.date).getTime() + (sess.duration || 60) * 60000)
-            if (endTime <= now) {
-              sess.status = 'completed'
-              // Auto-transition: prospect → client if session is free or has payment
-              const client = demoClients.find(cl => cl.id === (sess.client_id || sess.coupleId))
-              if (client && client.phase === 'prospect') {
-                const effectiveAmount = sess.payment_amount ?? sess.paymentAmount ?? sessionRates[client.type] ?? null
-                const isFreeOrPaid = (sess.payment_method || sess.paymentMethod) || effectiveAmount === 0
-                if (isFreeOrPaid) {
-                  client.phase = defaultPhaseKey
-                }
-              }
-            }
-          }
-        }
-        setRawClients(demoClients)
-        setRawSessions(demoSessions)
-        setRawReports(demoReports)
-        setRawProfessionals(demoProfessionals)
-        setSettings(null)
-      } else {
       const [c, s, r, st, p] = await Promise.all([
         ds.getClients(user.id),
         ds.getSessions(user.id),
@@ -220,7 +190,6 @@ export function DataProvider({ user, children }) {
       setRawReports(r)
       setSettings(st)
       setRawProfessionals(p)
-      }
     } catch (err) {
       console.error('DataProvider load error:', err)
     } finally {
@@ -289,76 +258,23 @@ export function DataProvider({ user, children }) {
     getComputedStatus, getProspectStageInfo, getClientType, clientTypeLabels,
     formatDate, formatTime, formatRelativeDate, getTodaySessions,
     // Actions (handle reverse adapting automatically)
-    // In demo mode, skip Supabase calls entirely (mock data is in-memory only)
     refreshData: loadData,
     updateClient: async (id, updates) => {
-      if (isDemo) return true
       const result = await ds.updateClient(id, unadaptClient(updates))
       if (result) await loadData()
       return result
     },
     createClient: async (client) => {
-      if (isDemo) return true
       const result = await ds.createClient({ ...unadaptClient(client), user_id: user.id })
       if (result) await loadData()
       return result
     },
     deleteClient: async (id) => {
-      if (isDemo) {
-        const idx = rawClients.findIndex(c => c.id === id)
-        if (idx >= 0) rawClients.splice(idx, 1)
-        setRawClients([...rawClients])
-        return true
-      }
       const result = await ds.deleteClient(id)
       if (result) await loadData()
       return result
     },
     updateSession: async (id, updates) => {
-      if (isDemo) {
-        // Demo mode: mutate in-memory data
-        const sessionIdx = rawSessions.findIndex(s => s.id === id)
-        if (sessionIdx === -1) return true
-        const session = rawSessions[sessionIdx]
-        const merged = { ...session, ...updates }
-        // Auto-persist completion for past sessions
-        if (!updates.status && session.status === 'scheduled' && session.date) {
-          const endTime = new Date(new Date(session.date).getTime() + (session.duration || 60) * 60000)
-          if (endTime <= new Date()) merged.status = 'completed'
-        }
-        rawSessions[sessionIdx] = merged
-        // Auto-transition: prospect → client
-        const clientIdx = rawClients.findIndex(c => c.id === (session.client_id || session.coupleId))
-        if (clientIdx >= 0) {
-          const client = rawClients[clientIdx]
-          const mergedAmount = merged.payment_amount ?? merged.paymentAmount
-          const isFreeOrPaid = (merged.payment_method || merged.paymentMethod) || mergedAmount === 0
-          if (client.phase === 'prospect' && merged.status === 'completed' && isFreeOrPaid) {
-            rawClients[clientIdx] = { ...client, phase: defaultPhaseKey }
-          }
-          // Reverse: client → prospect if no validated session remains (completed + payment)
-          if (merged.status === 'cancelled' && client.phase !== 'prospect') {
-            const validated = rawSessions.filter(s => (s.client_id || s.coupleId) === client.id && s.id !== id && s.status === 'completed' && ((s.payment_method || s.paymentMethod) || (s.payment_amount ?? s.paymentAmount) === 0))
-            if (validated.length === 0) rawClients[clientIdx] = { ...client, phase: 'prospect' }
-          }
-          // Reverse: client → prospect when payment method is removed
-          if (('paymentMethod' in updates || 'payment_method' in updates) && !(merged.payment_method || merged.paymentMethod) && client.phase !== 'prospect') {
-            const validated = rawSessions.filter(s => (s.client_id || s.coupleId) === client.id && s.id !== id && s.status === 'completed' && ((s.payment_method || s.paymentMethod) || (s.payment_amount ?? s.paymentAmount) === 0))
-            if (validated.length === 0) rawClients[clientIdx] = { ...client, phase: 'prospect' }
-          }
-          // Reverse: client → prospect when session amount changes from 0 to > 0
-          if (('paymentAmount' in updates || 'payment_amount' in updates) && client.phase !== 'prospect') {
-            const mergedAmount = merged.payment_amount ?? merged.paymentAmount
-            if (mergedAmount > 0 && !(merged.payment_method || merged.paymentMethod)) {
-              const validated = rawSessions.filter(s => (s.client_id || s.coupleId) === client.id && s.id !== id && s.status === 'completed' && ((s.payment_method || s.paymentMethod) || (s.payment_amount ?? s.paymentAmount) === 0))
-              if (validated.length === 0) rawClients[clientIdx] = { ...client, phase: 'prospect' }
-            }
-          }
-        }
-        setRawSessions([...rawSessions])
-        setRawClients([...rawClients])
-        return true
-      }
       // Auto-persist completion: if the session is past its end time and still 'scheduled',
       // automatically mark it as 'completed' in the DB alongside the requested update
       if (!updates.status) {
@@ -435,54 +351,39 @@ export function DataProvider({ user, children }) {
       return result
     },
     createSession: async (session) => {
-      if (isDemo) {
-        const demoSession = { ...session, id: `s_demo_${Date.now()}`, created_at: new Date().toISOString() }
-        // Convert camelCase fields for in-memory storage consistency
-        if (demoSession.coupleId) { demoSession.client_id = demoSession.coupleId; delete demoSession.coupleId }
-        rawSessions.unshift(demoSession)
-        setRawSessions([...rawSessions])
-        return demoSession
-      }
       const result = await ds.createSession({ ...unadaptSession(session), user_id: user.id })
       if (result) await loadData()
       return result
     },
     createContact: async (contact) => {
-      if (isDemo) return true
       const result = await ds.createContact({ ...contact, user_id: user.id })
       if (result) await loadData()
       return result
     },
     updateContact: async (...args) => {
-      if (isDemo) return true
       return ds.updateContact(...args)
     },
     deleteContact: async (id) => {
-      if (isDemo) return true
       const result = await ds.deleteContact(id)
       if (result) await loadData()
       return result
     },
     upsertSettings: async (settingsData) => {
-      if (isDemo) return true
       const result = await ds.upsertSettings(user.id, settingsData)
       if (result) setSettings(result)
       return result
     },
     createProfessional: async (professional) => {
-      if (isDemo) return true
       const result = await ds.createProfessional({ ...unadaptProfessional(professional), user_id: user.id })
       if (result) await loadData()
       return result
     },
     updateProfessional: async (id, updates) => {
-      if (isDemo) return true
       const result = await ds.updateProfessional(id, unadaptProfessional(updates))
       if (result) await loadData()
       return result
     },
     deleteProfessional: async (id) => {
-      if (isDemo) return true
       const result = await ds.deleteProfessional(id)
       if (result) await loadData()
       return result

@@ -290,22 +290,8 @@ export default function LoginPage() {
             En vous connectant, vous acceptez nos <span style={{ color: 'rgba(218,165,32,0.6)', cursor: 'pointer' }}>conditions d'utilisation</span> et notre <span style={{ color: 'rgba(218,165,32,0.6)', cursor: 'pointer' }}>politique de confidentialité</span>.
           </p>
 
-          {/* Quick access — dev/demo shortcut */}
-          <div style={{ marginTop: 16, textAlign: 'center' }}>
-            <a
-              href="/demo"
-              onClick={(e) => {
-                e.preventDefault()
-                localStorage.setItem('coachcrm_demo', '1')
-                window.location.href = '/'
-              }}
-              style={{ fontSize: '0.643rem', color: 'rgba(255,255,255,0.2)', textDecoration: 'none', cursor: 'pointer', transition: 'color 0.2s' }}
-              onMouseEnter={e => e.currentTarget.style.color = 'rgba(218,165,32,0.5)'}
-              onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.2)'}
-            >
-              Accès rapide →
-            </a>
-          </div>
+
+
         </div>
       </div>
     </div>
