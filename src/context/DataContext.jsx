@@ -76,7 +76,7 @@ function adaptReport(r) {
     ...r,
     sessionId: r.session_id,
     coupleId: r.client_id,
-    coupleName: r.couple_name,
+    coupleName: r.client_name,
     sessionNumber: r.session_number,
     pedagogicalContent: r.pedagogical_content || [],
     emotionsA: r.emotions_a || [],

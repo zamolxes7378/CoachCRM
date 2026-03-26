@@ -149,7 +149,7 @@ Analyse structurée d'une séance, générée automatiquement.
 | `id` | UUID (auto) | Identifiant unique |
 | `session_id` | UUID → sessions | Séance source |
 | `client_id` | UUID → clients | Client concerné |
-| `couple_name` | text | Nom du couple (snapshot) |
+| `client_name` | text | Nom du client (snapshot) |
 | `session_number` | integer | Numéro de la séance |
 | `date` | date | Date de la séance |
 | `phase` | text | Phase thérapeutique |

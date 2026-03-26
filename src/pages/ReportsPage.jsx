@@ -19,7 +19,7 @@ export default function ReportsPage() {
               <FileText />
             </div>
             <div className="report-info">
-              <div className="report-title">Couple {report.coupleName} · Séance #{report.sessionNumber}</div>
+              <div className="report-title">{report.coupleName} · Séance #{report.sessionNumber}</div>
               <div className="report-meta">
                 {formatRelativeDate(report.date)} · {report.duration} ·
                 <span className={`badge badge-${report.phase}`} style={{ marginLeft: 8 }}>{getPhaseLabel(report.phase)}</span>
