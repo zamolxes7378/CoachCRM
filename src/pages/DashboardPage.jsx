@@ -10,7 +10,7 @@ import { useConfirm } from '../context/ConfirmContext'
 
 export default function DashboardPage({ user }) {
   const navigate = useNavigate()
-  const { clients, sessions, reports, phaseIcons, phaseColors, isProspect, getCoupleName, formatTime, formatDate, formatRelativeDate, getPhaseLabel, getComputedStatus, createSession, deleteSession, deleteSessions, sessionRates, defaultPhaseKey, getPhaseColor, getPhaseIcon } = useData()
+  const { clients, sessions, reports, phaseIcons, phaseColors, isProspect, getCoupleName, formatTime, formatDate, formatRelativeDate, formatDashboardDate, getPhaseLabel, getComputedStatus, createSession, deleteSession, deleteSessions, sessionRates, defaultPhaseKey, getPhaseColor, getPhaseIcon } = useData()
   const confirm = useConfirm()
   const [visibleCount, setVisibleCount] = useState(10)
   const [sessionView, setSessionView] = useState('future') // 'past' | 'future'
@@ -214,7 +214,7 @@ export default function DashboardPage({ user }) {
           <div style={{ padding: 'var(--space-md)', flex: 1 }}>
             <div className="tabs" style={{ marginBottom: 'var(--space-md)', display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
               <button className={`tab ${sessionView === 'future' ? 'active' : ''}`} onClick={() => { setSessionView('future'); setVisibleCount(10); exitSelectMode() }}>
-                Séances à venir ({upcomingSessions.length})
+                En cours ({upcomingSessions.length})
               </button>
               <button className={`tab ${sessionView === 'past' ? 'active' : ''}`} onClick={() => { setSessionView('past'); setVisibleCount(10); exitSelectMode() }}>
                 Historique récent ({pastSessions.length})
@@ -249,7 +249,7 @@ export default function DashboardPage({ user }) {
                       borderBottom: '1px solid var(--primary-50)',
                       marginBottom: 'var(--space-sm)'
                     }}>
-                      {formatRelativeDate(dateKey)}
+                      {formatDashboardDate(dateKey)}
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
                       {sessions

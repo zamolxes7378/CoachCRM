@@ -79,7 +79,15 @@ export function getComputedStatus(couple) {
 
 export function formatDate(dateStr) {
   const date = new Date(dateStr)
-  return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+  return date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+}
+
+export function formatDashboardDate(dateStr) {
+  const now = new Date().toISOString().split('T')[0]
+  if (dateStr === now) return 'Aujourd\'hui'
+  const date = new Date(dateStr)
+  const formatted = date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+  return formatted.charAt(0).toUpperCase() + formatted.slice(1)
 }
 
 export function formatTime(dateStr) {

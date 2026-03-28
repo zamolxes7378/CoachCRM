@@ -12,7 +12,7 @@ import {
 import {
   getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel,
   getComputedStatus, getProspectStageInfo, getClientType,
-  formatDate, formatTime, formatRelativeDate, getTodaySessions
+  formatDate, formatTime, formatRelativeDate, formatDashboardDate, getTodaySessions
 } from '../data/helpers'
 
 const DataContext = createContext(null)
@@ -136,7 +136,7 @@ export function DataProvider({ user, children }) {
     prospectStages,
     getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel,
     getComputedStatus, getProspectStageInfo, getClientType, clientTypeLabels,
-    formatDate, formatTime, formatRelativeDate, getTodaySessions,
+    formatDate, formatTime, formatRelativeDate, formatDashboardDate, getTodaySessions,
     refreshData: loadData,
     updateClient: async (id, updates) => {
       try {
