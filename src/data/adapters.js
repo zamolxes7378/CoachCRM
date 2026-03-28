@@ -24,6 +24,7 @@ export function adaptClient(c) {
     externalReferrer: c.external_referrer || c.externalReferrer || null,
     deletedAt: c.deleted_at,
     deleted: !!c.deleted_at,
+    sessionRate: c.session_rate,
   }
 }
 
@@ -93,6 +94,7 @@ export function unadaptClient(c) {
   if ('clientLinks' in c) { out.client_links = c.clientLinks; delete out.clientLinks }
   if ('externalReferrer' in c) { out.external_referrer = c.externalReferrer; delete out.externalReferrer }
   if ('deletedAt' in c) { out.deleted_at = c.deletedAt; delete out.deletedAt }
+  if ('sessionRate' in c) { out.session_rate = c.sessionRate; delete out.sessionRate }
   delete out.deleted
   delete out.children
   return out

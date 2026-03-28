@@ -81,9 +81,10 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
     objectifs: couple?.noteObjectifs || ''
   })
   const defaultRate = couple?.type === 'individual' ? sessionRates.individual : sessionRates.couple
-  const [therapyCycles, setTherapyCycles] = useState([{ id: 'tc1', startDate: couple?.startDate || '2025-01-01', rate: defaultRate, totalSessions: couple?.totalSessions || 20, phase: couple?.phase || (therapyPhasesData[0]?.key || 'debut') }])
+  const initialRate = couple?.sessionRate ?? defaultRate
+  const [therapyCycles, setTherapyCycles] = useState([{ id: 'tc1', startDate: couple?.startDate || '2025-01-01', rate: initialRate, totalSessions: couple?.totalSessions || 20, phase: couple?.phase || (therapyPhasesData[0]?.key || 'debut') }])
   const activeCycle = therapyCycles[therapyCycles.length - 1]
-  const [sessionRate, setSessionRate] = useState(activeCycle.rate)
+  const [sessionRate, setSessionRate] = useState(initialRate)
   const [editingRate, setEditingRate] = useState(false)
   const [tempRate, setTempRate] = useState(activeCycle.rate)
   const rateInputRef = useRef(null)
@@ -692,7 +693,14 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                   ref={rateInputRef}
                   type="number" min="0" step="5" value={tempRate}
                   onChange={e => setTempRate(e.target.value)}
-                  onBlur={() => { const v = parseFloat(tempRate); if (v > 0) setSessionRate(v); setEditingRate(false) }}
+                  onBlur={() => { 
+                     const v = parseFloat(tempRate); 
+                     if (!isNaN(v) && v >= 0) { 
+                       setSessionRate(v); 
+                       updateClient(couple.id, { sessionRate: v });
+                     } 
+                     setEditingRate(false); 
+                   }}
                   onKeyDown={e => e.key === 'Enter' && e.target.blur()}
                   onClick={e => e.stopPropagation()}
                   style={{ width: 50, border: '2px solid #E67E22', borderRadius: 6, textAlign: 'center', fontSize: '1.286rem', fontWeight: 700, padding: '1px 2px', background: '#FFF3E0', color: '#E67E22', outline: 'none' }}

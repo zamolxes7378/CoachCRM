@@ -79,7 +79,8 @@ export function DataProvider({ user, children }) {
           const clientSess = s.filter(sess => sess.client_id === client.id)
           const validSessions = clientSess.filter(sess => {
             if (sess.status !== 'completed') return false
-            const effectiveAmount = sess.payment_amount ?? rates[client.type] ?? null
+            // Use session's own amount, else client's specific rate, else global default rate
+            const effectiveAmount = sess.payment_amount ?? client.session_rate ?? rates[client.type] ?? null
             return !!sess.payment_method || effectiveAmount === 0
           })
           if (validSessions.length === 0) {

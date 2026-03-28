@@ -10,9 +10,10 @@ import * as ds from './dataService'
  * Vérifie si une session valide l'alliance thérapeutique.
  * Alliance = séance completed + (mode de paiement choisi OU montant = 0)
  */
-function isAllianceValidated(session, sessionRates, clientType) {
+function isAllianceValidated(session, sessionRates, client) {
   if (session.status !== 'completed') return false
-  const effectiveAmount = session.payment_amount ?? sessionRates[clientType] ?? null
+  // Use session amount, then client rate, then global rate
+  const effectiveAmount = session.payment_amount ?? client.session_rate ?? sessionRates[client.type] ?? null
   return !!session.payment_method || effectiveAmount === 0
 }
 
@@ -20,11 +21,11 @@ function isAllianceValidated(session, sessionRates, clientType) {
  * Compte les séances qui valident l'alliance pour un client donné,
  * en excluant optionnellement une séance spécifique (celle en cours de modification).
  */
-function countValidatedSessions(rawSessions, clientId, excludeSessionId, sessionRates, clientType) {
+function countValidatedSessions(rawSessions, clientId, excludeSessionId, sessionRates, client) {
   return rawSessions.filter(
     s => s.client_id === clientId &&
          s.id !== excludeSessionId &&
-         isAllianceValidated(s, sessionRates, clientType)
+         isAllianceValidated(s, sessionRates, client)
   ).length
 }
 
@@ -73,7 +74,7 @@ export async function checkAllianceTransition(result, updates, rawClients, rawSe
     (('paymentAmount' in updates || 'payment_amount' in updates) && result.payment_amount > 0 && !result.payment_method)
 
   if (shouldCheckReverse) {
-    const validCount = countValidatedSessions(rawSessions, client.id, sessionId, sessionRates, client.type)
+    const validCount = countValidatedSessions(rawSessions, client.id, sessionId, sessionRates, client)
     if (validCount === 0) {
       await ds.updateClient(client.id, { phase: 'prospect' })
     }
@@ -109,7 +110,7 @@ export async function checkAllianceAfterBatchDelete(deletedSessionIds, rawSessio
     if (!client || client.phase === 'prospect') continue // Already prospect, skip
 
     const validCount = remainingSessions.filter(
-      s => s.client_id === clientId && isAllianceValidated(s, sessionRates, client.type)
+      s => s.client_id === clientId && isAllianceValidated(s, sessionRates, client)
     ).length
 
     if (validCount === 0) {
