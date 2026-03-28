@@ -68,9 +68,9 @@ export async function checkAllianceTransition(result, updates, rawClients, rawSe
   if (client.phase === 'prospect') return // Déjà prospect, rien à faire
 
   const shouldCheckReverse =
-    updates.status === 'cancelled' ||
-    ('paymentMethod' in updates || 'payment_method' in updates) && !result.payment_method ||
-    ('paymentAmount' in updates || 'payment_amount' in updates) && result.payment_amount > 0 && !result.payment_method
+    (updates.status && updates.status !== 'completed') ||
+    (('paymentMethod' in updates || 'payment_method' in updates) && !result.payment_method) ||
+    (('paymentAmount' in updates || 'payment_amount' in updates) && result.payment_amount > 0 && !result.payment_method)
 
   if (shouldCheckReverse) {
     const validCount = countValidatedSessions(rawSessions, client.id, sessionId, sessionRates, client.type)

@@ -22,20 +22,18 @@ stateDiagram-v2
 
 ### Réversion Client → Prospect
 
-#### 1. Par annulation de séance
-- **Déclencheur** : une séance est annulée (`cancelled`)
-- **Condition** : aucune autre séance du client ne valide l'alliance
-- **Résultat** : le client redevient prospect
+#### 1. Par annulation ou report de séance
+- **Déclencheur** : une séance est annulée (`cancelled`) ou remise en attente (`scheduled`).
+- **Condition** : si après ce changement, le nombre de séances validées (payées ou offertes) tombe à **0**.
+- **Effet** : le client redevient automatiquement `prospect`.
 
 #### 2. Par suppression du moyen de paiement
-- **Déclencheur** : le moyen de paiement d'une séance est supprimé (mis à null)
-- **Condition** : aucune autre séance du client ne valide l'alliance
-- **Résultat** : le client redevient prospect
+- **Déclencheur** : suppression du `paymentMethod` sur une séance `completed`.
+- **Effet** : déclenche le recalcul. Si plus aucune séance n'est validée, retour au statut `prospect`.
 
-#### 3. Par modification du montant (séance offerte → payante)
-- **Déclencheur** : le montant d'une séance passe de 0 à > 0 (et aucun moyen de paiement n'est renseigné)
-- **Condition** : aucune autre séance du client ne valide l'alliance
-- **Résultat** : le client redevient prospect
+#### 3. Par audit automatique (Curatif)
+- **Déclencheur** : chargement de l'application (`loadData`).
+- **Logique** : l'application vérifie systématiquement la cohérence Phase/Séances. Tout client non-prospect n'ayant aucune séance validée est réinitialisé en `prospect`.
 
 > **Alliance thérapeutique** = au moins 1 séance `completed` + (`paymentMethod` renseigné OU `paymentAmount = 0`)
 
@@ -321,6 +319,18 @@ flowchart TD
 ### Persistance
 - `clientLinks` persisté en DB via colonne `client_links` (JSONB)
 - `externalReferrer` persisté en DB via colonne `external_referrer` (JSONB)
+- **Adresse de facturation** : doit être persistée dans la colonne racine `billing_address` (type `text`) et **NON** à l'intérieur du JSONB `partner_a`.
+
+## Sécurisation et Persistance des Données
+
+### 1. Robustesse des appels asynchrones
+- **Règle d'or** : Tout appel à une fonction de modification (`updateClient`, `updateSession`, etc.) **DOIT** être précédé de `await` dans les composants UI.
+- **Feedback visuel** : Un indicateur de chargement (ex: `isSaving`) doit être utilisé pour désactiver les boutons d'action et informer l'utilisateur durant le temps de réponse de Supabase.
+- **Gestion des erreurs** : En cas d'échec de la requête, la modale d'édition doit **rester ouverte** pour ne pas faire perdre sa saisie à l'utilisateur.
+
+### 2. Intégrité de l'état React
+- **Interdiction de mutation directe** : Il est strictement interdit de modifier directement les propriétés d'un objet client (ex: `couple.partnerA = ...`) présent dans l'état global.
+- **Flux de mise à jour** : Les modifications doivent être envoyées à la base de données, et c'est le rafraîchissement global (`loadData`) qui doit mettre à jour l'interface avec les données de vérité provenant de Supabase.
 
 ## Avatars
 - **Client inactif** : initiales en **blanc** sur fond `primary-200`
@@ -334,7 +344,7 @@ flowchart TD
 - **Règle d'or** : Tout composant ou helper manipulant des données provenant de Supabase **DOIT** utiliser des gardes (`optional chaining ?.`) et des fallbacks.
 - **Dates** : Interdiction d'appeler `.split('T')` ou `.startsWith()` sur un champ date sans vérifier sa présence : `session.date?.split('T')[0] || ''`.
 - **Tri** : Les tris via `localeCompare` doivent toujours avoir des fallbacks de chaîne vide pour éviter les crashs sur des valeurs `null`.
-- **SessionCard** : Ce composant étant central, il doit être ultra-résilient. Toutes les variables de calcul (`isPast`, `isPlanned`, `sessionPAmount`) sont isolées en début de composant avec des gardes strictes.
+- **Validation post-sauvegarde** : Après chaque succès (toast vert), le système doit garantir que l'objet en mémoire est identique à celui en base via un re-fetch ou un update d'état immuable.
 
 ### 2. Authentification
 - **Timeout de sécurité** : Un délai de **10 secondes** est configuré dans `App.jsx` pour permettre la synchronisation complète des données utilisateur (Goole Auth → Table `users`) avant de basculer sur l'interface principale.

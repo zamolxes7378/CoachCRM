@@ -12,6 +12,7 @@ export default function useEditIdentityState({ couple, getClientType }) {
   const [editType, setEditType] = useState(couple ? getClientType(couple) : 'individual')
   const [editReferents, setEditReferents] = useState(['A'])
   const [editSource, setEditSource] = useState(couple?.source || '')
+  const [editBillingAddress, setEditBillingAddress] = useState(couple?.billingAddress || '')
 
   // Modal UI state
   const [showEditModal, setShowEditModal] = useState(false)
@@ -24,6 +25,7 @@ export default function useEditIdentityState({ couple, getClientType }) {
   const [modalSelectedReferrer, setModalSelectedReferrer] = useState(null)
   const [modalShowReferrerDropdown, setModalShowReferrerDropdown] = useState(false)
   const [modalExternalReferrer, setModalExternalReferrer] = useState(couple?.externalReferrer || null)
+  const [isSaving, setIsSaving] = useState(false)
 
   // Reset all edit fields to original values
   const resetToOriginal = useCallback(() => {
@@ -33,6 +35,7 @@ export default function useEditIdentityState({ couple, getClientType }) {
     setEditChildren(couple.children || [])
     setEditType(getClientType(couple))
     setEditSource(couple?.source || '')
+    setEditBillingAddress(couple?.billingAddress || '')
     setModalSelectedReferrer(null)
     setModalReferrerSearch('')
     setModalExternalReferrer(couple?.externalReferrer || null)
@@ -47,6 +50,7 @@ export default function useEditIdentityState({ couple, getClientType }) {
     setEditPartnerB(couple.partnerB ? { ...couple.partnerB } : {})
     setEditChildren(couple.children || [])
     setEditType(getClientType(couple))
+    setEditBillingAddress(couple?.billingAddress || '')
     setShowEditModal(true)
   }, [couple, getClientType])
 
@@ -58,6 +62,7 @@ export default function useEditIdentityState({ couple, getClientType }) {
       editType,
       editReferents,
       editSource,
+      editBillingAddress,
       showEditModal,
       showDeleteConfirm,
       modalShowAddLink,
@@ -66,6 +71,7 @@ export default function useEditIdentityState({ couple, getClientType }) {
       modalSelectedReferrer,
       modalShowReferrerDropdown,
       modalExternalReferrer,
+      isSaving,
     },
     actions: {
       setEditPartnerA,
@@ -74,6 +80,7 @@ export default function useEditIdentityState({ couple, getClientType }) {
       setEditType,
       setEditReferents,
       setEditSource,
+      setEditBillingAddress,
       setShowEditModal,
       setShowDeleteConfirm,
       setModalShowAddLink,
@@ -82,6 +89,7 @@ export default function useEditIdentityState({ couple, getClientType }) {
       setModalSelectedReferrer,
       setModalShowReferrerDropdown,
       setModalExternalReferrer,
+      setIsSaving,
       resetToOriginal,
       openEditModal,
     }

@@ -19,6 +19,7 @@ export function adaptClient(c) {
     emotionalMaturity: c.emotional_maturity,
     prospectStage: c.prospect_stage,
     referredBy: c.referred_by,
+    billingAddress: c.billing_address || (c.partner_a?.billingAddress) || '',
     clientLinks: c.client_links || c.clientLinks || [],
     externalReferrer: c.external_referrer || c.externalReferrer || null,
     deletedAt: c.deleted_at,
@@ -88,10 +89,12 @@ export function unadaptClient(c) {
   if ('emotionalMaturity' in c) { out.emotional_maturity = c.emotionalMaturity; delete out.emotionalMaturity }
   if ('prospectStage' in c) { out.prospect_stage = c.prospectStage; delete out.prospectStage }
   if ('referredBy' in c) { out.referred_by = c.referredBy; delete out.referredBy }
+  if ('billingAddress' in c) { out.billing_address = c.billingAddress; delete out.billingAddress }
   if ('clientLinks' in c) { out.client_links = c.clientLinks; delete out.clientLinks }
   if ('externalReferrer' in c) { out.external_referrer = c.externalReferrer; delete out.externalReferrer }
   if ('deletedAt' in c) { out.deleted_at = c.deletedAt; delete out.deletedAt }
   delete out.deleted
+  delete out.children
   return out
 }
 

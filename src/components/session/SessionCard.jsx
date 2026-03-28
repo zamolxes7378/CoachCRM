@@ -259,7 +259,7 @@ function SessionCard({
       <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
         {hasReport && (isPast || session.status !== 'scheduled') ? (
           <>
-            {!showClientName && reportSummary && !isExpanded && (
+            {!showClientName && reportSummary && (
               <span style={{
                 fontSize: '0.643rem', color: 'var(--text-secondary)',
                 maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'

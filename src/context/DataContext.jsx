@@ -73,6 +73,22 @@ export function DataProvider({ user, children }) {
           }
         }
       }
+      // Global Alliance Audit (Curative)
+      for (const client of c) {
+        if (client.phase !== 'prospect') {
+          const clientSess = s.filter(sess => sess.client_id === client.id)
+          const validSessions = clientSess.filter(sess => {
+            if (sess.status !== 'completed') return false
+            const effectiveAmount = sess.payment_amount ?? rates[client.type] ?? null
+            return !!sess.payment_method || effectiveAmount === 0
+          })
+          if (validSessions.length === 0) {
+            console.log(`[AllianceAudit] Reverting ${client.id} to prospect (0 valid sessions)`)
+            await ds.updateClient(client.id, { phase: 'prospect' })
+            client.phase = 'prospect'
+          }
+        }
+      }
       setRawClients(c)
       setRawSessions(s)
       setRawReports(r)

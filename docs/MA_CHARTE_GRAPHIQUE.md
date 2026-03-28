@@ -234,7 +234,10 @@ npm install lucide-react
 |------|------------|----------------------|-------|---------|-------|
 | **Actif** | `.btn-accent` | `#D69E2E` | blanc (`#FFFFFF`) | `pointer` | aucune |
 | **Inactif (disabled)** | `.btn:disabled` | fond + `opacity: 0.45` | blanc + `opacity: 0.45` | `not-allowed` | aucune |
+| **Chargement (Saving)** | `.btn-saving` | fond + `opacity: 0.7` | "Enregistrement..." + icône spin | `wait` | aucune |
 | **Hover** | `.btn-accent:hover` | `#B7791F` (accent-dark) | blanc (`#FFFFFF`) | `pointer` | `0 2px 8px rgba(0,0,0,0.15)` |
+
+> **Règle absolue — Feedback de sauvegarde** : Tout bouton déclenchant une opération asynchrone (Sauvegarder, Enregistrer) doit passer en état **Chargement** (inactif + texte modifié + curseur d'attente) jusqu'à la résolution de la promesse.
 
 > S'applique à **toutes les variantes** : Primary, Accent, Danger utilisent `opacity: 0.45` au disabled ; Secondary et Ghost utilisent `opacity: 0.5`.
 
@@ -300,8 +303,9 @@ Propriétés :
 > **Règle absolue — Affichage de l'heure et icônes sur SessionCard :**
 > - Pour les **séances planifiées** : 
 >   - L'heure est **masquée** dans la zone de titre pour être affichée à **droite**.
->   - L'icône de compte-rendu (`FileText`) est **systématiquement masquée** (elle ne doit apparaître que pour les séances passées/complétées).
->   - La **note de préparation** (champ `summary`) s'affiche en texte gris à côté de la phase : `[Phase] Note : [Texte]`. Le texte est **limité à 30 caractères** (`slice(0, 30) + '…'`) pour garantir l'alignement propre sur une seule ligne.
+>   - L'icône de document (`FileText`) ne s'affiche **que** pour les séances passées ayant un contenu. Elle est masquée pour les séances futures pour éviter toute confusion avec une note de préparation.
+>   - **Aperçu systématique** : Pour les séances passées ayant un compte rendu, l'aperçu du texte (limitée à l'espace disponible) doit **toujours** être visible sur la carte, y compris lorsque celle-ci est sélectionnée (`isExpanded`).
+>   - La note de préparation s'affiche toujours en texte à côté du badge de phase pour les séances planifiées. Le texte est **limité à 30 caractères** (via `slice(0, 30) + '…'`) pour garantir la lisibilité propre sur une seule ligne.
 >   - L'ordre des éléments à droite est : `[Espaceur flexible] [Heure] [🕐 Clock (bord droit)]`.
 > - Pour les **séances passées** : l'heure reste dans le titre (à côté du nom/date).
 > - **Alignement** : Un espaceur flexible (`flex: 1`) garantit que le bloc d'icônes/heure de droite est toujours collé au bord droit de la carte.

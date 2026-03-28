@@ -5,6 +5,7 @@ import { ArrowLeft, TrendingUp, PenTool, CheckCircle, XCircle, Clock, AlertTrian
 // professionals removed — now from DataContext
 import { useData } from '../context/DataContext'
 import { useConfirm } from '../context/ConfirmContext'
+import { useToast } from '../context/ToastContext'
 import { findDuplicateClients, findDuplicatePros } from '../utils/duplicateUtils'
 import DuplicateAlert from '../components/DuplicateAlert'
 import DeleteConfirmModal from '../components/client/DeleteConfirmModal'
@@ -26,13 +27,14 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const from = location.state?.from
-  const { clients, sessions: allSessions, reports: allReports, recruitmentSources, sessionRates, therapyPhases: therapyPhasesData, phaseIcons, phaseColors, defaultPhaseKey, getPhaseColor, getPhaseIcon, getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel, getClientType, isProspect, formatDate, formatTime, updateSession, updateClient, createSession, deleteSession, refreshData, professionals, createProfessional: createPro, updateProfessional: updatePro } = useData()
+  const { clients, sessions: allSessions, reports: allReports, recruitmentSources, sessionRates, therapyPhases: therapyPhasesData, phaseIcons, phaseColors, defaultPhaseKey, getPhaseColor, getPhaseIcon, getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel, getClientType, isProspect, formatDate, formatTime, updateSession, updateClient, createClient, createSession, deleteSession, refreshData, professionals, createProfessional: createPro, updateProfessional: updatePro } = useData()
+  const { showToast } = useToast()
   const confirm = useConfirm()
   const couple = clients.find(c => c.id === id)
-  // Sanitize: remove self-referencing clientLinks
-  if (couple?.clientLinks) {
-    couple.clientLinks = couple.clientLinks.filter(l => l.clientId !== couple.id)
-  }
+  // Sanitize: compute non-self-referencing clientLinks without mutation
+  const sanitizedClientLinks = useMemo(() => {
+    return couple?.clientLinks?.filter(l => l.clientId !== couple.id) || []
+  }, [couple])
   // Session modal state (from hook)
   const { state: sessionModalState, actions: sessionModalActions } = useSessionModalState({ sessions: allSessions.filter(s => s.coupleId === id), updateSession, sessionRate: couple?.type === 'individual' ? sessionRates.individual : sessionRates.couple, originalRate: couple?.type === 'individual' ? sessionRates.individual : sessionRates.couple })
   const { sessionUpdates, expandedSessionId, rateOverrides, recordingSessionId, recordingStep, editingCoveredSessions, editingInvoiceSessions } = sessionModalState
@@ -1594,7 +1596,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
           editActions={editIdentityActions}
           therapy={{ phasesData: therapyPhasesData, phaseIcons, phaseColors, getPhaseColor, getPhaseIcon, phase, setPhase, status }}
           data={{ clients, professionals, recruitmentSources }}
-          utils={{ updateClient, updatePro, createPro, navigate, getCoupleName, getClientType, getCoupleInitials, findDuplicateClients, findDuplicatePros, DuplicateAlert, formatDate, getPhaseLabel }}
+          utils={{ updateClient, createClient, updatePro, createPro, navigate, getCoupleName, getClientType, getCoupleInitials, findDuplicateClients, findDuplicatePros, DuplicateAlert, formatDate, getPhaseLabel, showToast }}
         />
       )}
 
@@ -1605,8 +1607,6 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
           coupleName={getCoupleName(couple)}
           onConfirm={async () => {
             const now = new Date().toISOString()
-            couple.deleted = true
-            couple.deletedAt = now
             if (updateClient) {
               await updateClient(couple.id, { deleted: true, deletedAt: now })
             }
