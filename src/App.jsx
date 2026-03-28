@@ -89,7 +89,7 @@ export default function App() {
         console.warn('[Auth] Safety timeout — forcing loading=false')
         setLoading(false)
       }
-    }, 3000)
+    }, 10000)
 
     // Single auth state listener — handles both initial session and sign-in
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {

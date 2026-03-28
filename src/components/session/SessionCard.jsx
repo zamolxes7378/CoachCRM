@@ -17,6 +17,7 @@ function SessionCard({
   phaseLabel,       // "Analyse", "Intégration", etc.
   showClientName = false,
   clientName = null,
+  isProspect = false,
   sessionRate = 60,
   isExpanded = false,
   onClick,
@@ -30,12 +31,13 @@ function SessionCard({
   dimmed = false,
   onDelete,           // callback(sessionId) — for cancelled sessions, makes X clickable
 }) {
-  const isPast = new Date(session.date) <= new Date()
-  const pc = phaseColor
-  const sessionPAmount = session.paymentAmount ?? sessionRate
-  const isOffered = sessionPAmount === 0 && session.status !== 'cancelled'
-  const needsConfirm = (session.status === 'completed' || (isPast && session.status === 'scheduled'))
-    && !session.paymentMethod && sessionPAmount > 0
+  const isPast = session?.date ? new Date(session.date) <= new Date() : false
+  const isPlanned = session?.status === 'scheduled' && !isPast
+  const pc = phaseColor || { bg: 'var(--primary-50)', color: 'var(--primary-700)' }
+  const sessionPAmount = session?.paymentAmount ?? sessionRate
+  const isOffered = sessionPAmount === 0 && session?.status !== 'cancelled'
+  const needsConfirm = (session?.status === 'completed' || (isPast && session?.status === 'scheduled'))
+    && !session?.paymentMethod && sessionPAmount > 0
 
   // Card background & border
   const cardBg = isExpanded && showExpandedStyle ? 'rgba(218, 165, 32, 0.12)'
@@ -53,19 +55,20 @@ function SessionCard({
         display: 'flex',
         alignItems: 'center',
         gap: 'var(--space-sm)',
-        padding: 'var(--space-sm) var(--space-md)',
+        padding: 'var(--space-sm)',
+        width: '100%',
         background: cardBg,
         border: cardBorder,
         borderLeft: isExpanded && showExpandedStyle ? '3px solid var(--accent-main)' : undefined,
         borderRadius: 'var(--radius-lg)',
         marginBottom: 'var(--space-xs)',
         cursor: onClick ? 'pointer' : undefined,
-        transition: 'box-shadow 0.15s ease, transform 0.15s ease',
-        boxShadow: isExpanded && showExpandedStyle ? '0 1px 4px rgba(196, 167, 103, 0.25)' : '0 1px 2px rgba(0,0,0,0.04)',
+        transition: 'box-shadow 200ms ease, transform 200ms ease',
+        boxShadow: isExpanded && showExpandedStyle ? '0 1px 4px rgba(196, 167, 103, 0.25)' : '0 1px 3px rgba(0,0,0,0.08)',
         opacity: dimmed ? 0.5 : 1,
       }}
-      onMouseOver={onClick ? e => { e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)'; e.currentTarget.style.transform = 'translateY(-1px)' } : undefined}
-      onMouseOut={onClick ? e => { e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.04)'; e.currentTarget.style.transform = 'none' } : undefined}
+      onMouseOver={onClick ? e => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.12)'; e.currentTarget.style.transform = 'translateY(-2px)' } : undefined}
+      onMouseOut={onClick ? e => { e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.08)'; e.currentTarget.style.transform = 'none' } : undefined}
     >
       {/* Phase icon avatar */}
       <div style={{ position: 'relative', flexShrink: 0 }}>
@@ -76,23 +79,10 @@ function SessionCard({
         }}>
           <PhaseIcon size={20} />
         </div>
-        {sessionNumber && (
-          <span style={{
-            position: 'absolute', top: -4, right: -4,
-            minWidth: 18, height: 18,
-            borderRadius: 'var(--radius-full)',
-            background: pc.color, color: 'white',
-            fontSize: '0.643rem', fontWeight: 700,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: '0 4px',
-            border: '2px solid white',
-            lineHeight: 1
-          }}>{sessionNumber}</span>
-        )}
       </div>
 
       {/* Main info */}
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ minWidth: 0, marginRight: 'var(--space-md)' }}>
         {/* First line: client name + time (dashboard) or date/time (client page) */}
         {showClientName ? (
           <div style={{
@@ -102,7 +92,8 @@ function SessionCard({
             display: 'flex', alignItems: 'baseline', gap: 8
           }}>
             <span>{clientName || 'Client inconnu'}</span>
-            <span style={{ fontSize: '0.786rem', fontWeight: 500, color: 'var(--text-secondary)' }}>{formatTime(session.date)}</span>
+            {isProspect && <span className="badge badge-prospect" style={{ fontSize: '0.643rem', padding: '1px 6px', height: 'fit-content' }}>PROSPECT</span>}
+            {session.status !== 'scheduled' && <span style={{ fontSize: '0.786rem', fontWeight: 500, color: 'var(--text-secondary)' }}>{formatTime(session.date)}</span>}
           </div>
         ) : (
           <div style={{
@@ -111,7 +102,7 @@ function SessionCard({
             display: 'flex', alignItems: 'baseline', gap: 6
           }}>
             <span>{formatDate(session.date)}</span>
-            <span style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>{formatTime(session.date)}</span>
+            {session.status !== 'scheduled' && <span style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>{formatTime(session.date)}</span>}
           </div>
         )}
 
@@ -129,21 +120,31 @@ function SessionCard({
           {(() => {
             if (!phaseLabel) return null
             const effectiveColor = pc
-            const isPlanned = session.status === 'scheduled' && !isPast
             if (isPlanned) {
               return (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  {sessionNumber && <span style={{
-                    minWidth: 18, height: 18, borderRadius: '50%',
-                    background: effectiveColor.bg, color: effectiveColor.color,
-                    fontSize: '0.643rem', fontWeight: 800,
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    lineHeight: 1, padding: '0 3px'
-                  }}>{sessionNumber}</span>}
-                  <span style={{ fontSize: '0.571rem', fontWeight: 600, color: effectiveColor.color }}>
-                    {phaseLabel}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, overflow: 'hidden' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                    {sessionNumber && <span style={{
+                      minWidth: 18, height: 18, borderRadius: '50%',
+                      background: effectiveColor.bg, color: effectiveColor.color,
+                      fontSize: '0.643rem', fontWeight: 800,
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      lineHeight: 1, padding: '0 3px'
+                    }}>{sessionNumber}</span>}
+                    <span style={{ fontSize: '0.571rem', fontWeight: 600, color: effectiveColor.color }}>
+                      {phaseLabel}
+                    </span>
                   </span>
-                </span>
+                  {reportSummary && (
+                    <span style={{ 
+                      fontSize: '0.643rem', color: 'var(--text-secondary)', 
+                      marginLeft: 4, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap',
+                      flex: 1
+                    }}>
+                      Note : {reportSummary.length > 30 ? reportSummary.slice(0, 30) + '…' : reportSummary}
+                    </span>
+                  )}
+                </div>
               )
             }
             return (
@@ -166,12 +167,7 @@ function SessionCard({
             )
           })()}
 
-          {/* Planned badge (future sessions) */}
-          {session.status === 'scheduled' && !isPast && (
-            <span style={{ color: 'var(--text-tertiary)', display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-              <Clock size={10} /> Planifiée
-            </span>
-          )}
+
 
           {/* Cancelled badge */}
           {session.status === 'cancelled' && (
@@ -244,23 +240,24 @@ function SessionCard({
         </div>
       </div>
 
-      {/* Report summary (dashboard only — when report exists) */}
-      {showClientName && hasReport && reportSummary ? (
+      {/* Flexible spacer or report summary (dashboard past sessions only) */}
+      {showClientName && hasReport && reportSummary && !isPlanned ? (
         <div style={{
           fontSize: '0.786rem', color: 'var(--text-secondary)',
-          minWidth: 120, maxWidth: 280,
+          minWidth: 120,
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          flexShrink: 0
+          flex: 1, 
+          marginLeft: 'var(--space-md)'
         }} title={`Séance ${sessionNumber || '?'} : ${reportSummary}`}>
-          {(() => { const full = `S${sessionNumber || '?'} : ${reportSummary}`; return full.length > 40 ? full.slice(0, 40) + '…' : full })()}
+          {(() => { const full = `S${sessionNumber || '?'} : ${reportSummary}`; return full.length > 60 ? full.slice(0, 60) + '…' : full })()}
         </div>
-      ) : showClientName ? (
-        <div style={{ minWidth: 120, maxWidth: 160, flexShrink: 0 }} />
-      ) : null}
+      ) : (
+        <div style={{ flex: 1 }} />
+      )}
 
       {/* Right side: report icon / Rédiger CR / Clock / XCircle */}
       <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-        {hasReport ? (
+        {hasReport && (isPast || session.status !== 'scheduled') ? (
           <>
             {!showClientName && reportSummary && !isExpanded && (
               <span style={{
@@ -271,6 +268,12 @@ function SessionCard({
               </span>
             )}
             <FileText size={showClientName ? 16 : 18} style={{ color: '#2B6CB0' }} title="Compte-rendu disponible" />
+            {session.status === 'scheduled' && !isPast && (
+              <>
+                <span style={{ fontSize: '0.786rem', fontWeight: 500, color: 'var(--text-secondary)' }}>{formatTime(session.date)}</span>
+                <Clock size={showClientName ? 16 : 18} style={{ color: 'var(--text-tertiary)' }} />
+              </>
+            )}
           </>
         ) : session.status === 'cancelled' ? (
           onDelete ? (
@@ -292,16 +295,19 @@ function SessionCard({
           )
         ) : isPast && (session.status === 'completed' || session.status === 'scheduled') ? (
           <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 3,
-            background: '#FFF3E0', color: '#E67E22',
-            borderRadius: 12, padding: '3px 8px',
-            fontSize: '0.643rem', fontWeight: 600,
-            border: '1px solid #E67E2240'
-          }}>
-            <Mic size={11} /> Rédiger CR
-          </span>
+              display: 'inline-flex', alignItems: 'center', gap: 3,
+              background: '#FFF3E0', color: '#E67E22',
+              borderRadius: 12, padding: '3px 8px',
+              fontSize: '0.643rem', fontWeight: 600,
+              border: '1px solid #E67E2240'
+            }}>
+              <Mic size={11} /> Rédiger CR
+            </span>
         ) : (
-          <Clock size={showClientName ? 16 : 18} style={{ color: 'var(--text-tertiary)' }} />
+          <>
+            <span style={{ fontSize: '0.786rem', fontWeight: 500, color: 'var(--text-secondary)' }}>{formatTime(session.date)}</span>
+            <Clock size={showClientName ? 16 : 18} style={{ color: 'var(--text-tertiary)' }} />
+          </>
         )}
       </div>
     </div>

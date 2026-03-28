@@ -218,6 +218,7 @@ export function DataProvider({ user, children }) {
         const result = await ds.createSession(payload)
         console.log('[createSession] result:', result)
         if (result) {
+          await checkAllianceTransition(result, session, rawClients, rawSessions, sessionRates, defaultPhaseKey)
           await loadData()
           showToast('Séance créée avec succès.', 'success')
         }
@@ -244,6 +245,7 @@ export function DataProvider({ user, children }) {
       try {
         const result = await ds.deleteSession(id)
         if (result) {
+          await checkAllianceAfterBatchDelete([id], rawSessions, rawClients, sessionRates)
           await loadData()
           showToast('Séance supprimée.', 'success')
         }
@@ -307,6 +309,19 @@ export function DataProvider({ user, children }) {
       } catch (err) {
         console.error('deleteProfessional error:', err)
         showToast('Erreur lors de la suppression du professionnel.', 'error')
+      }
+    },
+    deleteProfessionals: async (ids) => {
+      try {
+        const result = await ds.deleteProfessionals(ids)
+        if (result) {
+          await loadData()
+          showToast(`${ids.length} professionnel${ids.length > 1 ? 's' : ''} supprimé${ids.length > 1 ? 's' : ''}.`, 'success')
+        }
+        return result
+      } catch (err) {
+        console.error('deleteProfessionals error:', err)
+        showToast('Erreur lors de la suppression groupée.', 'error')
       }
     }
   }

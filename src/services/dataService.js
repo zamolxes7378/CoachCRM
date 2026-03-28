@@ -270,3 +270,10 @@ export async function deleteProfessional(professionalId) {
   if (error) console.error('deleteProfessional error:', error.message)
   return !error
 }
+
+export async function deleteProfessionals(professionalIds) {
+  if (!professionalIds?.length) return false
+  const { error } = await supabase.from('professionals').delete().in('id', professionalIds)
+  if (error) console.error('deleteProfessionals error:', error.message)
+  return !error
+}

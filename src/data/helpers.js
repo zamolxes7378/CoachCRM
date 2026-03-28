@@ -105,7 +105,7 @@ export function formatRelativeDate(dateStr) {
 export function getTodaySessions(sessions, couples) {
   const today = new Date().toISOString().split('T')[0]
   return sessions
-    .filter(s => s.date.startsWith(today))
+    .filter(s => s.date?.startsWith(today))
     .sort((a, b) => a.date.localeCompare(b.date))
     .map(s => ({
       ...s,

@@ -181,7 +181,7 @@ export default function LoginPage() {
             Commencez maintenant
           </h2>
           <p style={{ fontSize: '0.857rem', color: 'rgba(255,255,255,0.5)', marginBottom: 32, lineHeight: 1.5 }}>
-            Moins d'administratif, plus de temps pour vos clients. Rejoignez les praticiens qui modernisent leur pratique avec CoachCRM.
+            Moins d'administratif, plus de temps pour vos clients.
           </p>
 
           {/* Google Login Button */}

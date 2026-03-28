@@ -7,6 +7,7 @@ import { useConfirm } from '../context/ConfirmContext'
 import { findDuplicateClients } from '../utils/duplicateUtils'
 import DuplicateAlert from '../components/DuplicateAlert'
 import ReferrerSection from '../components/client/ReferrerSection'
+import NewClientButton from '../components/NewClientButton'
 
 
 
@@ -28,7 +29,7 @@ export default function CouplesPage() {
   const [externalReferrer, setExternalReferrer] = useState(null)
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'clients')
   const [statusFilter, setStatusFilter] = useState('all')
-  const [viewMode, setViewMode] = useState('cards')
+  const [viewMode, setViewMode] = useState(searchParams.get('view') || 'cards')
   const [selected, setSelected] = useState(new Set())
   const [archiving, setArchiving] = useState(false)
   const [wizardStep, setWizardStep] = useState(0)
@@ -68,6 +69,12 @@ export default function CouplesPage() {
         } catch (e) { /* ignore parse error */ }
       }
     }
+    
+    // Sync tab and view from URL
+    const tabParam = searchParams.get('tab')
+    if (tabParam) setActiveTab(tabParam)
+    const viewParam = searchParams.get('view')
+    if (viewParam) setViewMode(viewParam)
   }, [searchParams])
 
   const activeClients = clients.filter(c => !c.deleted)
@@ -129,9 +136,7 @@ export default function CouplesPage() {
     <div>
       <div className="page-header">
         <h1 className="page-title">Mes Clients</h1>
-        <button className="btn btn-accent" onClick={() => { setWizardStep(0); setNewClientType(''); setNewChildren([]); setShowModal(true) }}>
-          <Plus size={18} /> Nouveau client
-        </button>
+        <NewClientButton onClick={() => { setWizardStep(0); setNewClientType(''); setNewChildren([]); setShowModal(true) }} />
       </div>
 
       <div className="tabs">
@@ -388,32 +393,32 @@ export default function CouplesPage() {
       ) : (<>
         {/* LIST VIEW */}
         <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', border: '1px solid var(--border-light)' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.857rem' }}>
+          <table className="table-standard">
             <thead>
-              <tr style={{ background: 'var(--primary-50)', textAlign: 'left' }}>
-                <th style={{ padding: '10px 8px 10px 14px', width: 36 }}>
+              <tr>
+                <th style={{ width: 36 }}>
                   <button
                     onClick={() => {
                       if (selected.size === filtered.length) setSelected(new Set())
                       else setSelected(new Set(filtered.map(c => c.id)))
                     }}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center', color: selected.size === filtered.length && filtered.length > 0 ? 'var(--primary-600)' : 'var(--text-tertiary)' }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center', color: selected.size === filtered.length && filtered.length > 0 ? 'var(--error)' : 'var(--text-tertiary)' }}
                     title={selected.size === filtered.length ? 'Tout désélectionner' : 'Tout sélectionner'}
                   >
                     {selected.size === filtered.length && filtered.length > 0 ? <CheckSquare size={16} /> : <Square size={16} />}
                   </button>
                 </th>
-                <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.714rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Nom</th>
+                <th>Nom</th>
                 {activeTab === 'clients' ? (<>
-                  <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.714rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Phase</th>
-                  <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.714rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Séances</th>
-                  <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.714rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Dernier RDV</th>
-                  <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.714rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Prochain RDV</th>
-                  <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.714rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Parrain de</th>
+                  <th>Phase</th>
+                  <th>Séances</th>
+                  <th>Dernier RDV</th>
+                  <th>Prochain RDV</th>
+                  <th>Parrain de</th>
                 </>) : (<>
-                  <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.714rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Premier contact</th>
-                  <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.714rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Source</th>
-                  <th style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.714rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Recommandé par</th>
+                  <th>Premier contact</th>
+                  <th>Source</th>
+                  <th>Recommandé par</th>
                 </>)}
               </tr>
             </thead>
@@ -425,22 +430,23 @@ export default function CouplesPage() {
                 const referrer = couple.referredBy ? clients.find(c => c.id === couple.referredBy) : null
                 const isChecked = selected.has(couple.id)
                 return (
-                  <tr
-                    key={couple.id}
-                    onClick={() => navigate(`/couples/${couple.id}`)}
-                    style={{ cursor: 'pointer', borderBottom: '1px solid var(--border-light)', transition: 'background 0.1s', background: isChecked ? 'var(--primary-50)' : 'transparent' }}
+                  <tr key={couple.id} style={{
+                    cursor: 'pointer',
+                    background: isChecked ? 'var(--primary-50)' : 'transparent',
+                    transition: 'background 0.1s'
+                  }}
                     onMouseEnter={e => { if (!isChecked) e.currentTarget.style.background = 'var(--primary-50)' }}
                     onMouseLeave={e => { if (!isChecked) e.currentTarget.style.background = 'transparent' }}
                   >
-                    <td style={{ padding: '10px 8px 10px 14px', width: 36 }}>
+                    <td style={{ width: 36 }}>
                       <button
                         onClick={e => { e.stopPropagation(); setSelected(prev => { const s = new Set(prev); s.has(couple.id) ? s.delete(couple.id) : s.add(couple.id); return s }) }}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center', color: isChecked ? 'var(--primary-600)' : 'var(--text-tertiary)' }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center', color: isChecked ? 'var(--error)' : 'var(--text-tertiary)' }}
                       >
                         {isChecked ? <CheckSquare size={16} /> : <Square size={16} />}
                       </button>
                     </td>
-                    <td style={{ padding: '10px 14px', fontWeight: 600 }}>
+                    <td style={{ fontWeight: 600 }} onClick={() => navigate(`/couples/${couple.id}`)}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <div className="couple-avatar" style={{ width: 32, height: 32, fontSize: '0.714rem', ...(getComputedStatus(couple) === 'inactive' || couple.phase === 'completed' ? { background: 'var(--primary-200)', color: 'white' } : couple.phase === 'prospect' ? { background: '#E8D8FE', color: '#6B46C1' } : {}) }}>
                           {getCoupleInitials(couple)}
@@ -450,16 +456,16 @@ export default function CouplesPage() {
                       </div>
                     </td>
                     {activeTab === 'clients' ? (<>
-                      <td style={{ padding: '10px 14px' }}>
+                      <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <PhaseIcon size={14} style={{ color: pc }} />
                           <span style={{ color: pc, fontWeight: 500, fontSize: '0.786rem' }}>{couple.phase === 'completed' ? 'Terminé' : getPhaseLabel(couple.phase)}</span>
                         </div>
                       </td>
-                      <td style={{ padding: '10px 14px', color: 'var(--text-secondary)' }}>{couple.sessionsCount}/{couple.totalSessions}</td>
-                      <td style={{ padding: '10px 14px', color: 'var(--text-secondary)' }}>{getLastSession(couple.id) ? formatDate(getLastSession(couple.id)) : '—'}</td>
-                      <td style={{ padding: '10px 14px', color: 'var(--text-secondary)' }}>{getNextSession(couple.id) ? formatDate(getNextSession(couple.id)) : '—'}</td>
-                      <td style={{ padding: '10px 14px' }}>
+                      <td style={{ color: 'var(--text-secondary)' }}>{couple.sessionsCount}/{couple.totalSessions}</td>
+                      <td style={{ color: 'var(--text-secondary)' }}>{getLastSession(couple.id) ? formatDate(getLastSession(couple.id)) : '—'}</td>
+                      <td style={{ color: 'var(--text-secondary)' }}>{getNextSession(couple.id) ? formatDate(getNextSession(couple.id)) : '—'}</td>
+                      <td>
                         {referrals.length > 0 ? (
                           <span style={{ color: '#6B46C1', fontWeight: 500, fontSize: '0.786rem' }}>
                             <Award size={12} style={{ verticalAlign: -2, marginRight: 3 }} />
@@ -468,9 +474,9 @@ export default function CouplesPage() {
                         ) : '—'}
                       </td>
                     </>) : (<>
-                      <td style={{ padding: '10px 14px', color: 'var(--text-secondary)' }}>{formatDate(couple.startDate)}</td>
-                      <td style={{ padding: '10px 14px', color: 'var(--text-secondary)' }}>{(() => { if (couple.referrerType === 'particulier') return 'Parrain externe'; const hasExternalParrain = (couple.clientLinks || []).some(l => l.type === 'parrainage' && l.role === 'filleul' && (() => { const ref = clients.find(c => c.id === l.clientId); return ref?.referrerType === 'particulier' })()); return hasExternalParrain ? 'Parrain externe' : (recruitmentSources.find(s => s.key === couple.source) || {}).label || couple.source || '—' })()}</td>
-                      <td style={{ padding: '10px 14px' }}>
+                      <td style={{ color: 'var(--text-secondary)' }}>{formatDate(couple.startDate)}</td>
+                      <td style={{ color: 'var(--text-secondary)' }}>{(() => { if (couple.referrerType === 'particulier') return 'Parrain externe'; const hasExternalParrain = (couple.clientLinks || []).some(l => l.type === 'parrainage' && l.role === 'filleul' && (() => { const ref = clients.find(c => c.id === l.clientId); return ref?.referrerType === 'particulier' })()); return hasExternalParrain ? 'Parrain externe' : (recruitmentSources.find(s => s.key === couple.source) || {}).label || couple.source || '—' })()}</td>
+                      <td>
                         {referrer ? (
                           <span style={{ color: '#6B46C1', fontWeight: 500, fontSize: '0.786rem' }}>
                             <Link2 size={12} style={{ verticalAlign: -2, marginRight: 3 }} />
@@ -499,7 +505,7 @@ export default function CouplesPage() {
             zIndex: 100,
             animation: 'bulkBarIn 0.2s ease-out'
           }}>
-            <span style={{ fontSize: '0.857rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+            <span style={{ fontSize: '0.857rem', fontWeight: 600, color: 'var(--error)' }}>
               {selected.size} sélectionné{selected.size > 1 ? 's' : ''}
             </span>
             <div style={{ width: 1, height: 20, background: 'var(--border-light)' }} />
@@ -532,7 +538,7 @@ export default function CouplesPage() {
                 display: 'flex', alignItems: 'center', gap: 6,
                 padding: '8px 16px', borderRadius: 'var(--radius-md)',
                 fontSize: '0.857rem', fontWeight: 700,
-                background: '#DC2626', color: 'white',
+                background: 'var(--error)', color: 'white',
                 border: 'none', cursor: archiving ? 'wait' : 'pointer',
                 transition: 'all 0.15s',
                 opacity: archiving ? 0.6 : 1
@@ -852,7 +858,7 @@ export default function CouplesPage() {
                           padding: 'var(--space-md)', borderRadius: 'var(--radius-md)',
                           background: '#FFFBEB', border: '1px solid #FDE68A'
                         }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-sm)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 'var(--space-sm)' }}>
                             <h4 style={{ fontSize: '0.786rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: 6 }}>
                               <Baby size={14} /> Enfants
                             </h4>

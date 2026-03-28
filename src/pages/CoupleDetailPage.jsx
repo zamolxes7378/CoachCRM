@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom'
+import AddSessionButton from '../components/AddSessionButton'
 import { ArrowLeft, TrendingUp, PenTool, CheckCircle, XCircle, Clock, AlertTriangle, FileText, Calendar, Mic, MicOff, Loader, CreditCard, Landmark, Banknote, Phone, Mail, MessageSquare, Plus, Share2, Edit3, Sparkles, RefreshCw, Globe, Hourglass, Euro, X, Trash2, BookOpen, ChevronRight, Heart, AlertCircle, Crosshair, Check, HelpCircle, Link2, Users, User, Star, Baby, Briefcase, Sprout, Search, Target, Award, UserPlus } from 'lucide-react'
 // professionals removed — now from DataContext
 import { useData } from '../context/DataContext'
@@ -22,7 +23,10 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
   const params = useParams()
   const id = coupleIdProp || params.id
   const navigate = useNavigate()
-  const { clients, sessions: allSessions, reports: allReports, recruitmentSources, sessionRates, therapyPhases: therapyPhasesData, phaseIcons, phaseColors, defaultPhaseKey, getPhaseColor, getPhaseIcon, getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel, getClientType, formatDate, formatTime, updateSession, updateClient, createSession, deleteSession, refreshData, professionals, createProfessional: createPro, updateProfessional: updatePro } = useData()
+  const location = useLocation()
+  const [searchParams] = useSearchParams()
+  const from = location.state?.from
+  const { clients, sessions: allSessions, reports: allReports, recruitmentSources, sessionRates, therapyPhases: therapyPhasesData, phaseIcons, phaseColors, defaultPhaseKey, getPhaseColor, getPhaseIcon, getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel, getClientType, isProspect, formatDate, formatTime, updateSession, updateClient, createSession, deleteSession, refreshData, professionals, createProfessional: createPro, updateProfessional: updatePro } = useData()
   const confirm = useConfirm()
   const couple = clients.find(c => c.id === id)
   // Sanitize: remove self-referencing clientLinks
@@ -93,6 +97,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
   const [showAddLink, setShowAddLink] = useState(false)
   const [addLinkType, setAddLinkType] = useState('dossier')
   const [addLinkSearch, setAddLinkSearch] = useState('')
+  const [editingStartDate, setEditingStartDate] = useState(false)
 
   // Determine which cycle a session belongs to
   const getSessionCycle = (session) => {
@@ -105,6 +110,12 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
   useEffect(() => {
     if (editingTotal && totalInputRef.current) totalInputRef.current.focus()
   }, [editingTotal])
+
+  // Auto-expand session from query param (e.g. navigating from dashboard)
+  useEffect(() => {
+    const sid = searchParams.get('sessionId')
+    if (sid) setExpandedSessionId(sid)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!couple) {
     return <div className="empty-state"><p>Couple non trouvé</p></div>
@@ -119,12 +130,12 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
       if (endTime <= new Date() && paymentCondition) return { ...s, status: 'completed' }
     }
     return s
-  }).sort((a, b) => b.date.localeCompare(a.date))
+  }).sort((a, b) => (b.date || '').localeCompare(a.date || ''))
   const reports = allReports.filter(r => r.coupleId === id)
   const PhaseIcon = getPhaseIcon(phase)
 
   // Compute session numbers chronologically
-  const sortedSessions = [...sessions].filter(s => s.status !== 'cancelled').sort((a, b) => a.date.localeCompare(b.date))
+  const sortedSessions = [...sessions].filter(s => s.status !== 'cancelled').sort((a, b) => (a.date || '').localeCompare(b.date || ''))
   const sessionNumbers = {}
   // Number sessions per therapy cycle so each new therapy starts from 1
   const cycleCounters = {}
@@ -139,13 +150,14 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
   const activeCycleSessions = sessions.filter(s => getSessionCycle(s)?.id === activeCycle.id)
   const completedCount = activeCycleSessions.filter(s => s.status === 'completed').length
   const reportsCount = activeCycleSessions.filter(s => s.hasReport || sessionUpdates[s.id]?.hasReport).length
+  const pendingReportsCount = activeCycleSessions.filter(s => s.status === 'completed' && !(s.hasReport || sessionUpdates[s.id]?.hasReport)).length
 
   // Compute next/last session
   const now = new Date()
   const futureSessions = sessions.filter(s => new Date(s.date) > now && s.status !== 'cancelled')
   const pastSessions = sessions.filter(s => new Date(s.date) <= now && s.status !== 'cancelled')
-  const nextSessionDate = futureSessions.length > 0 ? futureSessions.sort((a, b) => a.date.localeCompare(b.date))[0].date : null
-  const lastSessionDate = pastSessions.length > 0 ? pastSessions.sort((a, b) => b.date.localeCompare(a.date))[0].date : null
+  const nextSessionDate = futureSessions.length > 0 ? futureSessions.sort((a, b) => (a.date || '').localeCompare(b.date || ''))[0].date : null
+  const lastSessionDate = pastSessions.length > 0 ? pastSessions.sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0].date : null
 
   const handleSaveTotal = () => {
     const val = parseInt(tempTotal)
@@ -217,7 +229,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
     ...sessions.map(s => ({ ...s, itemType: 'session' })),
     ...contacts.filter(c => c.type !== 'parrainage').map(c => ({ ...c, itemType: 'contact' })),
     ...parrainageEvents
-  ].sort((a, b) => b.date.localeCompare(a.date))
+  ].sort((a, b) => (b.date || '').localeCompare(a.date || ''))
 
   // Insert cycle separators — consider both sessions and contacts for cycle boundaries
   const timelineItems = []
@@ -250,7 +262,15 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
 
   return (
     <div>
-      <button className="btn btn-ghost" onClick={() => onClose ? onClose() : navigate(couple.phase === 'prospect' ? '/couples?tab=prospects' : '/couples')} style={{ marginBottom: 'var(--space-md)' }}>
+      <button className="btn btn-ghost" onClick={() => {
+        if (onClose) {
+          onClose()
+        } else if (from) {
+          navigate(from)
+        } else {
+          navigate(couple.phase === 'prospect' ? '/couples?tab=prospects' : '/couples')
+        }
+      }} style={{ marginBottom: 'var(--space-md)' }}>
         <ArrowLeft size={18} /> Retour
       </button>
 
@@ -525,8 +545,8 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
             // Derive display phase from nearest future session (or most recent past)
             const nowTs = new Date().toISOString()
             const activeSess = sessions.filter(s => s.status !== 'cancelled' && getSessionCycle(s)?.id === activeCycle.id)
-            const futureFirst = activeSess.filter(s => s.date > nowTs).sort((a, b) => a.date.localeCompare(b.date))[0]
-            const pastFirst = activeSess.filter(s => s.date <= nowTs).sort((a, b) => b.date.localeCompare(a.date))[0]
+            const futureFirst = activeSess.filter(s => s.date && s.date > nowTs).sort((a, b) => (a.date || '').localeCompare(b.date || ''))[0]
+            const pastFirst = activeSess.filter(s => s.date && s.date <= nowTs).sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0]
             const displayPhase = futureFirst?.phase || pastFirst?.phase || phase
             const DisplayIcon = getPhaseIcon(displayPhase)
             return (
@@ -710,9 +730,9 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
             <div className="stat-label" style={{ fontSize: '0.643rem' }}>Fréquence</div>
           </div>
           <div className="card" style={{ textAlign: 'center', padding: 'var(--space-sm)' }}>
-            <FileText size={24} style={{ color: 'var(--info)', marginBottom: 4 }} />
-            <div className="stat-value" style={{ fontSize: '1.286rem' }}>{reportsCount}</div>
-            <div className="stat-label" style={{ fontSize: '0.643rem' }}>CR</div>
+            <FileText size={24} style={{ color: pendingReportsCount > 0 ? 'var(--warning)' : 'var(--info)', marginBottom: 4 }} />
+            <div className="stat-value" style={{ fontSize: '1.286rem', color: pendingReportsCount > 0 ? 'var(--warning)' : undefined }}>{pendingReportsCount}</div>
+            <div className="stat-label" style={{ fontSize: '0.643rem' }}>CR en attente</div>
           </div>
         </div>
       </div>
@@ -733,16 +753,14 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
               >
                 <Plus size={14} /> Contact
               </button>
-              <button
-                className="btn btn-accent"
-                onClick={async () => {
+              <AddSessionButton label="Séance" onClick={async () => {
                   // Default date = today, time = current hour
                   const now = new Date()
                   const h = now.getHours()
                   const dateStr = now.toISOString().split('T')[0]
                   const timeStr = `${String(h).padStart(2, '0')}:00`
                   // Inherit phase
-                  const recentSessions = sessions.filter(s => s.coupleId === id && s.status !== 'cancelled').sort((a, b) => b.date.localeCompare(a.date))
+                  const recentSessions = sessions.filter(s => s.coupleId === id && s.status !== 'cancelled').sort((a, b) => (b.date || '').localeCompare(a.date || ''))
                   const lastSessionPhase = recentSessions[0]?.phase
                   const couplePhase = couple?.phase !== 'prospect' ? couple?.phase : null
                   const inheritedPhase = lastSessionPhase || couplePhase || (therapyPhasesData[0]?.key || 'debut')
@@ -757,10 +775,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                   if (newSession?.id) {
                     setExpandedSessionId(newSession.id)
                   }
-                }}
-              >
-                <Plus size={18} style={{ color: 'white' }} /> Séance
-              </button>
+                }} />
             </div>
           </div>
 
@@ -1093,6 +1108,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                     formatTime={formatTime}
                     onClick={() => setExpandedSessionId(session.id)}
                     dimmed={therapyCycles.length > 1 && getSessionCycle(session)?.id !== activeCycle.id}
+                    isProspect={isProspect(couple)}
                     onDelete={session.status === 'cancelled' ? async (sid) => {
                       const ok = await confirm('Supprimer définitivement cette séance annulée ?\nElle disparaîtra du timeline et du calendrier.', { variant: 'destructive' })
                       if (!ok) return
@@ -1106,18 +1122,63 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
 
           {/* Creation date marker — always visible at bottom */}
           <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
             gap: 'var(--space-sm)',
             padding: 'var(--space-xs) var(--space-sm)',
             borderTop: '1px dashed var(--border-light)',
             marginTop: 'var(--space-xs)',
             flexShrink: 0
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
-              <UserPlus size={16} style={{ color: '#E67E22', flexShrink: 0 }} />
-              <span style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-tertiary)' }}>
-                Création du dossier · {formatDate(couple.startDate)}
-              </span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+                <UserPlus size={16} style={{ color: '#E67E22', flexShrink: 0 }} />
+                {editingStartDate ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-tertiary)' }}>Création du dossier ·</span>
+                    <input
+                      type="date"
+                      className="input"
+                      defaultValue={couple.startDate?.split('T')[0]}
+                      autoFocus
+                      style={{ fontSize: '0.714rem', padding: '2px 6px', width: 130 }}
+                      onBlur={async (e) => {
+                        const newDate = e.target.value
+                        if (newDate && newDate !== couple.startDate?.split('T')[0]) {
+                          const ok = await confirm('Modifier la date de création du dossier ? Cela affecte l\'historique du client.', { variant: 'danger' })
+                          if (ok) {
+                            couple.startDate = newDate
+                            await updateClient(couple.id, { startDate: newDate })
+                          }
+                        }
+                        setEditingStartDate(false)
+                      }}
+                      onKeyDown={e => { if (e.key === 'Escape') setEditingStartDate(false) }}
+                    />
+                  </div>
+                ) : (
+                  <span
+                    style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-tertiary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+                    onClick={() => setEditingStartDate(true)}
+                    title="Cliquer pour modifier la date de création"
+                  >
+                    Création du dossier · {formatDate(couple.startDate)}
+                    <Edit3 size={10} style={{ opacity: 0.4 }} />
+                  </span>
+                )}
+              </div>
+              {editingStartDate && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '3px 8px', marginLeft: 24,
+                  background: '#FFFBEB', borderRadius: 'var(--radius-sm)',
+                  border: '1px solid #FEF3C7'
+                }}>
+                  <AlertTriangle size={10} style={{ color: '#D97706', flexShrink: 0 }} />
+                  <span style={{ fontSize: '0.571rem', color: '#D97706', fontWeight: 500 }}>
+                    Cette date impacte l'historique et les cycles de thérapie
+                  </span>
+                </div>
+              )}
             </div>
             {completedCount > 0 && (
               <button
@@ -1258,11 +1319,23 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
             {(() => {
               const completedSessions = sessions.filter(s => s.status === 'completed')
               const scheduledSessions = sessions.filter(s => s.status === 'scheduled')
+              const now = new Date()
               const cancelledWithPayment = sessions.filter(s => s.status === 'cancelled' && s.paymentAmount && s.paymentAmount > 0)
               const allBillableSessions = [...completedSessions, ...scheduledSessions, ...cancelledWithPayment]
               const pAmountOf = s => s.paymentAmount ?? getRate(s.id)
-              const totalBilled = completedSessions.reduce((sum, s) => sum + getRate(s.id), 0) + cancelledWithPayment.reduce((sum, s) => sum + pAmountOf(s), 0)
-              const totalPlanned = scheduledSessions.reduce((sum, s) => sum + getRate(s.id), 0)
+              
+              // totalBilled (Honoraires dûs) = completed + past scheduled + cancelled-with-payment
+              const totalBilled = sessions.filter(s => 
+                s.status === 'completed' || 
+                (s.status === 'scheduled' && new Date(s.date) <= now) ||
+                (s.status === 'cancelled' && s.paymentAmount > 0)
+              ).reduce((sum, s) => sum + pAmountOf(s), 0)
+
+              // totalPlanned (Honoraires planifiés) = future scheduled sessions
+              const totalPlanned = sessions.filter(s => 
+                s.status === 'scheduled' && new Date(s.date) > now
+              ).reduce((sum, s) => sum + pAmountOf(s), 0)
+              
               const totalForecast = totalBilled + totalPlanned
               const paidSessions = allBillableSessions.filter(s => s.paymentReceived)
               const totalCollected = paidSessions.reduce((sum, s) => sum + pAmountOf(s), 0)
@@ -1389,7 +1462,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                   <div style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)', fontWeight: 600, marginTop: 'var(--space-xs)', marginBottom: 4 }}>Détail par séance</div>
                   <div style={{ maxHeight: 160, overflowY: 'auto' }}>
                     {(() => {
-                      const sortedBillable = [...allBillableSessions].sort((a, b) => b.date.localeCompare(a.date))
+                      const sortedBillable = [...allBillableSessions].sort((a, b) => (b.date || '').localeCompare(a.date || ''))
                       let lastFinCycleId = null
                       return sortedBillable.map((s, idx) => {
                       const sCycle = getSessionCycle(s)

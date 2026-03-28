@@ -80,7 +80,7 @@ export default function FinancesPage() {
     // Nouveaux clients: 1ère séance de ce client est dans ce mois
     const clientIds = [...new Set(ms.map(s => s.coupleId))]
     const nouveaux = clientIds.filter(cid => {
-      const allClientSessions = sessions.filter(s => s.coupleId === cid && s.status !== 'cancelled').sort((a, b) => a.date.localeCompare(b.date))
+      const allClientSessions = sessions.filter(s => s.coupleId === cid && s.status !== 'cancelled').sort((a, b) => (a.date || '').localeCompare(b.date || ''))
       if (allClientSessions.length === 0) return false
       const first = new Date(allClientSessions[0].date)
       return first.getMonth() === m && first.getFullYear() === y
@@ -212,8 +212,8 @@ export default function FinancesPage() {
           const caPlanned = ca + scheduled.reduce((sum, s) => sum + DEFAULT_RATE, 0)
           const clientIds = [...new Set(ys.filter(s => s.status !== 'cancelled').map(s => s.coupleId))]
           const newClients = clientIds.filter(cid => {
-            const all = sessions.filter(s => s.coupleId === cid && s.status !== 'cancelled').sort((a, b) => a.date.localeCompare(b.date))
-            return all.length > 0 && new Date(all[0].date).getFullYear() === y
+            const all = sessions.filter(s => s.coupleId === cid && s.status !== 'cancelled').sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+            return all.length > 0 && s.date && new Date(all[0].date).getFullYear() === y
           })
           const paid = completed.filter(s => s.paymentReceived)
           const encaisse = paid.reduce((sum, s) => sum + (s.paymentAmount || DEFAULT_RATE), 0)
@@ -448,18 +448,18 @@ export default function FinancesPage() {
 
         {/* Table */}
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.786rem' }}>
+          <table className="table-standard">
             <thead>
-              <tr style={{ borderBottom: '2px solid var(--border-light)' }}>
+              <tr>
                 {['Date', 'Client', 'Source', 'Type', 'Statut', 'Montant', 'Paiement', 'Encaissé', 'Facture'].map(h => (
-                  <th key={h} style={{ padding: '8px 6px', textAlign: 'left', fontWeight: 700, color: 'var(--text-tertiary)', fontSize: '0.643rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                  <th key={h} style={{ textAlign: 'left' }}>
                     {h}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {currentStats.allSessions.sort((a, b) => b.date.localeCompare(a.date)).map(s => {
+              {currentStats.allSessions.sort((a, b) => (b.date || '').localeCompare(a.date || '')).map(s => {
                 const isCancelled = s.status === 'cancelled'
                 const isScheduled = s.status === 'scheduled'
                 const isPaid = s.paymentReceived
@@ -473,8 +473,8 @@ export default function FinancesPage() {
                     onMouseEnter={e => { if (!isCancelled) e.currentTarget.style.background = 'var(--primary-50)' }}
                     onMouseLeave={e => { e.currentTarget.style.background = isCancelled ? '#FFF5F5' : 'transparent' }}
                   >
-                    <td style={{ padding: '8px 6px', fontWeight: 500, color: 'var(--text-secondary)' }}>{formatDate(s.date)}</td>
-                    <td style={{ padding: '8px 6px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                    <td style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>{formatDate(s.date)}</td>
+                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
                       <span
                         onClick={() => setModalCoupleId(s.coupleId)}
                         style={{ cursor: 'pointer', color: 'var(--primary-600)', textDecoration: 'none', borderBottom: '1px dashed var(--primary-300)' }}
@@ -490,10 +490,10 @@ export default function FinancesPage() {
                         ) : null
                       })()}
                     </td>
-                    <td style={{ padding: '8px 6px' }}>
+                    <td>
                       <span style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)' }}>{getClientSource(s.coupleId)}</span>
                     </td>
-                    <td style={{ padding: '8px 6px' }}>
+                    <td>
                       <span style={{
                         fontSize: '0.643rem', fontWeight: 600, padding: '2px 6px', borderRadius: 'var(--radius-sm)',
                         background: getClientType(s.coupleId) === 'individuel' ? '#FAF5FF' : '#EBF8FF',
@@ -502,7 +502,7 @@ export default function FinancesPage() {
                         {getClientType(s.coupleId) === 'individuel' ? 'Individuel' : 'Couple'}
                       </span>
                     </td>
-                    <td style={{ padding: '8px 6px' }}>
+                    <td>
                       <span style={{
                         fontSize: '0.643rem', fontWeight: 600, padding: '2px 6px', borderRadius: 'var(--radius-sm)',
                         background: isCancelled ? '#FED7D7' : isScheduled ? '#F0F0F0' : (!s.paymentMethod ? '#FEFCBF' : '#C6F6D5'),
@@ -511,10 +511,10 @@ export default function FinancesPage() {
                         {isCancelled ? 'Annulée' : isScheduled ? 'Planifiée' : 'Réalisée'}
                       </span>
                     </td>
-                    <td style={{ padding: '8px 6px', fontWeight: 700, color: isPaid ? '#276749' : isCancelled ? 'var(--error)' : 'var(--text-primary)' }}>
+                    <td style={{ fontWeight: 700, color: isPaid ? '#276749' : isCancelled ? 'var(--error)' : 'var(--text-primary)' }}>
                       {s.paymentAmount || DEFAULT_RATE}€
                     </td>
-                    <td style={{ padding: '8px 6px' }}>
+                    <td>
                       {s.paymentMethod ? (
                         <span style={{ fontSize: '0.643rem', fontWeight: isPaid ? 700 : 400, color: isPaid ? 'var(--success)' : 'var(--text-tertiary)' }}>
                           {{ cheque: 'Chèque', virement: 'Virement', especes: 'Espèces' }[s.paymentMethod]}
@@ -527,14 +527,14 @@ export default function FinancesPage() {
                         )
                       )}
                     </td>
-                    <td style={{ padding: '8px 6px', textAlign: 'center' }}>
+                    <td style={{ textAlign: 'center' }}>
                       {isScheduled || isCancelled ? '—' : isPaid ? (
                         <span style={{ fontSize: '0.643rem', fontWeight: 600, padding: '2px 8px', borderRadius: 'var(--radius-sm)', background: '#C6F6D5', color: '#276749' }}>€</span>
                       ) : (
                         <span style={{ fontSize: '0.643rem', fontWeight: 600, padding: '2px 8px', borderRadius: 'var(--radius-sm)', background: '#FED7D7', color: '#C53030' }}>Non</span>
                       )}
                     </td>
-                    <td style={{ padding: '8px 6px', textAlign: 'center' }}>
+                    <td style={{ textAlign: 'center' }}>
                       {s.needsInvoice ? (
                         <span style={{ fontSize: '0.571rem', fontWeight: 700, color: s.invoiceSent ? 'var(--success)' : 'var(--error)', letterSpacing: '0.02em' }}>
                           FACTURE{s.invoiceSent ? ' ✓' : ''}
@@ -547,17 +547,17 @@ export default function FinancesPage() {
             </tbody>
             {/* Totals */}
             <tfoot>
-              <tr style={{ borderTop: '2px solid var(--primary-200)', background: 'var(--primary-50)' }}>
-                <td colSpan={5} style={{ padding: '8px 6px', fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.786rem' }}>
+              <tr style={{ background: 'var(--primary-50)', borderTop: '2px solid var(--primary-100)' }}>
+                <td colSpan={5} style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.786rem' }}>
                   Total — {MONTHS_FR[selectedMonth]}
                 </td>
-                <td style={{ padding: '8px 6px', fontWeight: 800, color: '#276749', fontSize: '0.857rem' }}>
+                <td style={{ fontWeight: 800, color: '#276749', fontSize: '0.857rem' }}>
                   {currentStats.caRealise}€
                 </td>
-                <td colSpan={2} style={{ padding: '8px 6px', fontSize: '0.714rem', color: 'var(--text-tertiary)' }}>
+                <td colSpan={2} style={{ fontSize: '0.714rem', color: 'var(--text-tertiary)' }}>
                   {currentStats.paid.length}/{currentStats.completed.length} encaissé{currentStats.paid.length > 1 ? 's' : ''}
                 </td>
-                <td style={{ padding: '8px 6px', fontSize: '0.643rem', color: 'var(--text-tertiary)' }}>
+                <td style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)' }}>
                   {currentStats.allSessions.filter(s => s.needsInvoice).length} facture{currentStats.allSessions.filter(s => s.needsInvoice).length > 1 ? 's' : ''}
                 </td>
               </tr>
@@ -719,7 +719,7 @@ export default function FinancesPage() {
                 })
                 const rows = [
                   ['Date', 'Client', 'Type', 'Statut', 'Montant', 'Paiement', 'Encaissé', 'Facture'],
-                  ...filtered.sort((a, b) => b.date.localeCompare(a.date)).map(s => [
+                  ...filtered.sort((a, b) => (b.date || '').localeCompare(a.date || '')).map(s => [
                     formatDate(s.date),
                     getClientName(s.coupleId),
                     getClientType(s.coupleId),

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Briefcase, Phone, Mail, Calendar, Users, Search, Plus, X, Edit3, Trash2, Award, MapPin, Globe, Building2, FileText, Save, ChevronDown, ChevronUp, ArrowUpAZ, ArrowDownUp, LayoutGrid, List, ChevronsUpDown, UserPlus } from 'lucide-react'
+import { Briefcase, Phone, Mail, Calendar, Users, Search, Plus, X, Edit3, Trash2, Award, MapPin, Globe, Building2, FileText, Save, ChevronDown, ChevronUp, ArrowUpAZ, ArrowDownUp, LayoutGrid, List, ChevronsUpDown, UserPlus, Square, CheckSquare, Trash } from 'lucide-react'
 // professionals removed — now from DataContext
 import { useData } from '../context/DataContext'
 
@@ -42,11 +42,12 @@ export default function ReseauProPage() {
   const [viewMode, setViewMode] = useState('cards')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [createForm, setCreateForm] = useState({})
+  const [selected, setSelected] = useState(new Set())
   const [, forceUpdate] = useState(0)
 
   const navigate = useNavigate()
 
-  const { clients, professionals, createProfessional, updateProfessional: updatePro } = useData()
+  const { clients, professionals, createProfessional, updateProfessional: updatePro, deleteProfessionals } = useData()
 
   let filtered = professionals.filter(p => {
     if (!search) return true
@@ -109,6 +110,27 @@ export default function ReseauProPage() {
     })
     setShowCreateModal(false)
     setCreateForm({})
+  }
+
+  const toggleSelect = (id) => {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    if (selected.size === filtered.length) setSelected(new Set())
+    else setSelected(new Set(filtered.map(p => p.id)))
+  }
+
+  const handleDeleteSelected = async () => {
+    if (window.confirm(`Supprimer ${selected.size} partenaire(s) professionnel(s) ?`)) {
+      await deleteProfessionals(Array.from(selected))
+      setSelected(new Set())
+    }
   }
 
   return (
@@ -347,131 +369,213 @@ export default function ReseauProPage() {
         </div>
       ) : (
         /* ===== LIST VIEW ===== */
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
-          {filtered.map(pro => {
-            const isExpanded = expandedIds.has(pro.id)
-            const isEditing = editingId === pro.id
-            return (
-              <div key={pro.id} style={{
-                background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)',
-                border: '1px solid var(--border-light)',
-                overflow: 'hidden', transition: 'box-shadow 0.2s',
-                boxShadow: isExpanded ? '0 4px 16px rgba(0,0,0,0.08)' : 'none'
-              }}>
-                <div
-                  onClick={() => { if (!isEditing) setExpandedIds(prev => { const next = new Set(prev); if (next.has(pro.id)) next.delete(pro.id); else next.add(pro.id); return next }) }}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 'var(--space-sm)',
-                    padding: 'var(--space-sm) var(--space-md)',
-                    cursor: isEditing ? 'default' : 'pointer', transition: 'background 0.15s'
-                  }}
-                  onMouseEnter={e => { if (!isEditing) e.currentTarget.style.background = '#FAF5FF' }}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                >
-                  <div style={{
-                    width: 38, height: 38, borderRadius: '50%',
-                    background: 'linear-gradient(135deg, #8B5CF6, #A78BFA)',
-                    color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '0.786rem', fontWeight: 700, flexShrink: 0
-                  }}>
-                    {(pro.firstName || '')[0]}{(pro.lastName || '')[0]}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: '0.857rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                      {pro.firstName} {pro.lastName}
-                      {pro.company && <span style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)', fontWeight: 400 }}>· {pro.company}</span>}
-                    </div>
-                    <div style={{ fontSize: '0.714rem', color: 'var(--text-tertiary)', marginTop: 1 }}>
-                      {pro.specialty || pro.note || 'Professionnel'}
-                    </div>
-                  </div>
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: 4,
-                    padding: '3px 8px', borderRadius: 'var(--radius-sm)',
-                    background: '#F5F0FF', color: '#8B5CF6',
-                    fontSize: '0.643rem', fontWeight: 600
-                  }}>
-                    <Award size={11} />
-                    {(pro.referrals || []).length} reco{(pro.referrals || []).length > 1 ? 's' : ''}
-                  </div>
-                  <span style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
-                    {new Date(pro.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
-                  </span>
-                  {!isEditing && (
-                    <button onClick={e => { e.stopPropagation(); startEdit(pro) }}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 4 }}
-                      onMouseEnter={e => e.currentTarget.style.color = '#8B5CF6'}
-                      onMouseLeave={e => e.currentTarget.style.color = 'var(--text-tertiary)'}
-                      title="Modifier"><Edit3 size={14} /></button>
-                  )}
-                </div>
-                {isExpanded && !isEditing && (
-                  <div style={{ padding: 'var(--space-sm) var(--space-md) var(--space-md)', borderTop: '1px solid var(--border-light)' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px', marginBottom: 'var(--space-md)' }}>
-                      {pro.email && <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.786rem', color: 'var(--text-secondary)' }}><Mail size={13} style={{ color: 'var(--text-tertiary)' }} />{pro.email}</div>}
-                      {pro.phone && <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.786rem', color: 'var(--text-secondary)' }}><Phone size={13} style={{ color: 'var(--text-tertiary)' }} />{pro.phone}</div>}
-                      {pro.company && <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.786rem', color: 'var(--text-secondary)' }}><Building2 size={13} style={{ color: 'var(--text-tertiary)' }} />{pro.company}</div>}
-                      {pro.specialty && <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.786rem', color: 'var(--text-secondary)' }}><Briefcase size={13} style={{ color: 'var(--text-tertiary)' }} />{pro.specialty}</div>}
-                      {pro.address && <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.786rem', color: 'var(--text-secondary)', gridColumn: 'span 2' }}><MapPin size={13} style={{ color: 'var(--text-tertiary)' }} />{pro.address}</div>}
-                      {pro.website && <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.786rem', color: 'var(--text-secondary)' }}><Globe size={13} style={{ color: 'var(--text-tertiary)' }} />{pro.website}</div>}
-                    </div>
-                    {pro.note && <div style={{ fontSize: '0.786rem', color: 'var(--text-secondary)', marginBottom: 'var(--space-md)', padding: '6px 10px', background: '#FAFAFA', borderRadius: 'var(--radius-sm)', borderLeft: '3px solid #C4B5FD' }}>{pro.note}</div>}
-                    <div>
-                      <div style={{ fontSize: '0.643rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#8B5CF6', marginBottom: 6 }}>Clients recommandés</div>
-                      {(pro.referrals || []).length === 0 ? (
-                        <div style={{ fontSize: '0.786rem', color: 'var(--text-tertiary)', fontStyle: 'italic' }}>Aucune recommandation.</div>
-                      ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          {(pro.referrals || []).map((r, idx) => (
-                            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px', borderRadius: 'var(--radius-sm)', background: '#F5F0FF', fontSize: '0.786rem' }}>
-                              <Users size={12} color="#8B5CF6" />
-                              <span onClick={() => r.clientId && navigate(`/couples/${r.clientId}`)} style={{ fontWeight: 500, color: '#8B5CF6', cursor: r.clientId ? 'pointer' : 'default' }}
-                                onMouseEnter={e => { if (r.clientId) e.currentTarget.style.textDecoration = 'underline' }}
-                                onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}>{r.clientName}</span>
-                              <span style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)', marginLeft: 'auto' }}>{new Date(r.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                            </div>
-                          ))}
+        <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', border: '1px solid var(--border-light)' }}>
+          <table className="table-standard">
+            <thead>
+              <tr>
+                <th style={{ width: 44 }}>
+                  <button
+                    onClick={toggleSelectAll}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center', color: selected.size === filtered.length && filtered.length > 0 ? 'var(--error)' : 'var(--text-tertiary)' }}
+                  >
+                    {selected.size === filtered.length && filtered.length > 0 ? <CheckSquare size={18} /> : <Square size={18} />}
+                  </button>
+                </th>
+                <th>Partenaire</th>
+                <th>Spécialité / Société</th>
+                <th style={{ textAlign: 'center' }}>Recommandations</th>
+                <th>Date d'ajout</th>
+                <th style={{ textAlign: 'right' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(pro => {
+                const isChecked = selected.has(pro.id)
+                const isExpanded = expandedIds.has(pro.id)
+                const isEditing = editingId === pro.id
+
+                return (
+                  <>
+                    <tr key={pro.id} style={{
+                      background: isChecked ? 'var(--primary-50)' : 'transparent',
+                      transition: 'background 0.1s'
+                    }}>
+                      <td style={{ width: 44 }}>
+                        <button
+                          onClick={() => toggleSelect(pro.id)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center', color: isChecked ? 'var(--error)' : 'var(--text-tertiary)' }}
+                        >
+                          {isChecked ? <CheckSquare size={18} /> : <Square size={18} />}
+                        </button>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{
+                            width: 32, height: 32, borderRadius: '50%',
+                            background: 'linear-gradient(135deg, #8B5CF6, #A78BFA)',
+                            color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: '0.714rem', fontWeight: 700
+                          }}>
+                            {(pro.firstName || '')[0]}{(pro.lastName || '')[0]}
+                          </div>
+                          <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{pro.firstName} {pro.lastName}</span>
                         </div>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => navigate(`/couples?newClient=1&proRef=${encodeURIComponent(JSON.stringify({ proId: pro.id, firstName: pro.firstName, lastName: pro.lastName }))}`)}
-                      style={{
-                        marginTop: 10, background: 'none', border: '1px dashed #C4B5FD', borderRadius: 'var(--radius-md)',
-                        cursor: 'pointer', color: '#8B5CF6', padding: '6px 12px',
-                        fontSize: '0.714rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6,
-                        transition: 'all 0.15s', width: '100%', justifyContent: 'center'
-                      }}
-                      onMouseEnter={e => { e.currentTarget.style.background = '#F5F0FF'; e.currentTarget.style.borderColor = '#8B5CF6' }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.borderColor = '#C4B5FD' }}
-                    >
-                      <UserPlus size={14} /> Nouveau client recommandé
-                    </button>
-                  </div>
-                )}
-                {isEditing && (
-                  <div style={{ padding: 'var(--space-sm) var(--space-md) var(--space-md)', borderTop: '1px solid #C4B5FD', background: '#FDFCFF' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
-                      <ProField icon={null} label="Prénom" field="firstName" placeholder="Prénom" editForm={editForm} setEditForm={setEditForm} />
-                      <ProField icon={null} label="Nom" field="lastName" placeholder="Nom *" editForm={editForm} setEditForm={setEditForm} />
-                      <ProField icon={Building2} label="Société" field="company" placeholder="Cabinet..." editForm={editForm} setEditForm={setEditForm} />
-                      <ProField icon={Briefcase} label="Spécialité" field="specialty" placeholder="Psychiatre..." editForm={editForm} setEditForm={setEditForm} />
-                      <ProField icon={Mail} label="Email" field="email" placeholder="email@..." editForm={editForm} setEditForm={setEditForm} />
-                      <ProField icon={Phone} label="Téléphone" field="phone" placeholder="01 23..." editForm={editForm} setEditForm={setEditForm} />
-                      <ProField icon={Globe} label="Site web" field="website" placeholder="https://..." editForm={editForm} setEditForm={setEditForm} />
-                      <ProField icon={MapPin} label="Adresse" field="address" placeholder="Adresse" editForm={editForm} setEditForm={setEditForm} />
-                    </div>
-                    <ProField icon={FileText} label="Notes" field="note" placeholder="Notes..." type="textarea" editForm={editForm} setEditForm={setEditForm} />
-                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 'var(--space-md)' }}>
-                      <button className="btn btn-ghost" onClick={cancelEdit} style={{ fontSize: '0.786rem', padding: '6px 14px' }}>Annuler</button>
-                      <button className="btn btn-accent" onClick={saveEdit} disabled={!editForm.lastName?.trim()}
-                        style={{ fontSize: '0.786rem', padding: '6px 14px', opacity: !editForm.lastName?.trim() ? 0.5 : 1 }}><Save size={13} /> Enregistrer</button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )
-          })}
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontSize: '0.857rem', color: 'var(--text-secondary)' }}>{pro.specialty || 'Professionnel'}</span>
+                          {pro.company && <span style={{ fontSize: '0.714rem', color: 'var(--text-tertiary)' }}>{pro.company}</span>}
+                        </div>
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <div style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 4,
+                          padding: '2px 8px', borderRadius: 'var(--radius-sm)',
+                          background: '#F5F0FF', color: '#8B5CF6',
+                          fontSize: '0.643rem', fontWeight: 600
+                        }}>
+                          <Award size={11} />
+                          {(pro.referrals || []).length}
+                        </div>
+                      </td>
+                      <td style={{ color: 'var(--text-tertiary)', fontSize: '0.857rem' }}>
+                        {new Date(pro.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
+                          <button
+                            onClick={() => setExpandedIds(prev => { const next = new Set(prev); if (next.has(pro.id)) next.delete(pro.id); else next.add(pro.id); return next })}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 4 }}
+                            title="Détails"
+                          >
+                            {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                          </button>
+                          <button
+                            onClick={() => startEdit(pro)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 4 }}
+                            title="Modifier"
+                          >
+                            <Edit3 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    {isExpanded && (
+                      <tr key={`${pro.id}-details`} style={{ background: '#FDFCFF' }}>
+                        <td colSpan={6} style={{ padding: 'var(--space-md) var(--space-lg)' }}>
+                          {isEditing ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                                <ProField icon={null} label="Prénom" field="firstName" placeholder="Prénom" editForm={editForm} setEditForm={setEditForm} />
+                                <ProField icon={null} label="Nom" field="lastName" placeholder="Nom *" editForm={editForm} setEditForm={setEditForm} />
+                                <ProField icon={Building2} label="Société" field="company" placeholder="Cabinet..." editForm={editForm} setEditForm={setEditForm} />
+                                <ProField icon={Briefcase} label="Spécialité" field="specialty" placeholder="Psychiatre..." editForm={editForm} setEditForm={setEditForm} />
+                                <ProField icon={Mail} label="Email" field="email" placeholder="email@..." editForm={editForm} setEditForm={setEditForm} />
+                                <ProField icon={Phone} label="Téléphone" field="phone" placeholder="01 23..." editForm={editForm} setEditForm={setEditForm} />
+                                <ProField icon={Globe} label="Site web" field="website" placeholder="https://..." editForm={editForm} setEditForm={setEditForm} />
+                                <ProField icon={MapPin} label="Adresse" field="address" placeholder="Adresse" editForm={editForm} setEditForm={setEditForm} />
+                              </div>
+                              <ProField icon={FileText} label="Notes" field="note" placeholder="Notes..." type="textarea" editForm={editForm} setEditForm={setEditForm} />
+                              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                                <button className="btn btn-ghost" onClick={cancelEdit}>Annuler</button>
+                                <button className="btn btn-accent" onClick={saveEdit} disabled={!editForm.lastName?.trim()}
+                                  style={{ opacity: !editForm.lastName?.trim() ? 0.5 : 1 }}>
+                                  <Save size={14} /> Enregistrer
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-md)' }}>
+                                {pro.email && <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.857rem' }}><Mail size={14} style={{ color: 'var(--text-tertiary)' }} /> {pro.email}</div>}
+                                {pro.phone && <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.857rem' }}><Phone size={14} style={{ color: 'var(--text-tertiary)' }} /> {pro.phone}</div>}
+                                {pro.website && <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.857rem' }}><Globe size={14} style={{ color: 'var(--text-tertiary)' }} /> {pro.website}</div>}
+                                {pro.address && <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.857rem', gridColumn: 'span 3' }}><MapPin size={14} style={{ color: 'var(--text-tertiary)' }} /> {pro.address}</div>}
+                              </div>
+                              {pro.note && <div style={{ padding: 'var(--space-sm) var(--space-md)', background: '#FAFAFA', borderRadius: 'var(--radius-sm)', borderLeft: '3px solid #C4B5FD', fontSize: '0.857rem', color: 'var(--text-secondary)' }}>{pro.note}</div>}
+                              
+                              <div>
+                                <div style={{ fontSize: '0.643rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#8B5CF6', marginBottom: 8 }}>Clients recommandés</div>
+                                {(pro.referrals || []).length === 0 ? (
+                                  <div style={{ fontSize: '0.786rem', color: 'var(--text-tertiary)', fontStyle: 'italic' }}>Aucune recommandation.</div>
+                                ) : (
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                                    {(pro.referrals || []).map((r, idx) => (
+                                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 10px', borderRadius: 'var(--radius-md)', background: '#F5F0FF', fontSize: '0.786rem' }}>
+                                        <Users size={12} color="#8B5CF6" />
+                                        <span onClick={() => r.clientId && navigate(`/couples/${r.clientId}`)} style={{ fontWeight: 500, color: '#8B5CF6', cursor: r.clientId ? 'pointer' : 'default' }}>{r.clientName}</span>
+                                        <span style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)' }}>{new Date(r.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+
+                              <button
+                                onClick={() => navigate(`/couples?newClient=1&proRef=${encodeURIComponent(JSON.stringify({ proId: pro.id, firstName: pro.firstName, lastName: pro.lastName }))}`)}
+                                className="btn btn-ghost"
+                                style={{ alignSelf: 'flex-start', color: '#8B5CF6', borderColor: '#C4B5FD', fontSize: '0.786rem' }}
+                              >
+                                <UserPlus size={14} /> Nouveau client recommandé
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                  </>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Floating bulk action bar */}
+      {selected.size > 0 && (
+        <div style={{
+          position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+          display: 'flex', alignItems: 'center', gap: 'var(--space-md)',
+          background: 'var(--error)', padding: '10px 24px', borderRadius: 'var(--radius-full)',
+          boxShadow: '0 10px 30px rgba(239, 68, 68, 0.3)', color: 'white', zIndex: 100
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{
+              width: 24, height: 24, borderRadius: '50%', background: 'rgba(255,255,255,0.2)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.786rem', fontWeight: 700
+            }}>
+              {selected.size}
+            </div>
+            <span style={{ fontWeight: 600, fontSize: '0.857rem' }}>Sélectionné{selected.size > 1 ? 's' : ''}</span>
+          </div>
+
+          <div style={{ width: 1, height: 24, background: 'rgba(255,255,255,0.2)' }} />
+
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={handleDeleteSelected}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer', color: 'white',
+                display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px',
+                fontSize: '0.786rem', fontWeight: 600, borderRadius: 'var(--radius-md)',
+                transition: 'background 0.2s'
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'none'}
+            >
+              <Trash2 size={16} /> Supprimer
+            </button>
+            <button
+              onClick={() => setSelected(new Set())}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer', color: 'white',
+                display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px',
+                fontSize: '0.786rem', fontWeight: 600, borderRadius: 'var(--radius-md)', opacity: 0.8
+              }}
+            >
+              Annuler
+            </button>
+          </div>
         </div>
       )}
 

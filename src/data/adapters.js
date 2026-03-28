@@ -46,6 +46,7 @@ export function adaptSession(s) {
     invoiceDate: s.invoice_date,
     invoiceCoveredSessionIds: s.invoice_covered_session_ids,
     coveredSessionIds: s.covered_session_ids,
+    duration: s.duration,
   }
 }
 
@@ -109,6 +110,7 @@ export function unadaptSession(s) {
   if ('invoiceDate' in s) { out.invoice_date = s.invoiceDate; delete out.invoiceDate }
   if ('invoiceCoveredSessionIds' in s) { out.invoice_covered_session_ids = s.invoiceCoveredSessionIds; delete out.invoiceCoveredSessionIds }
   if ('coveredSessionIds' in s) { out.covered_session_ids = s.coveredSessionIds; delete out.coveredSessionIds }
+  if ('duration' in s) { out.duration = s.duration }
   return out
 }
 

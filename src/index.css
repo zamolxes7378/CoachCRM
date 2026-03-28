@@ -1139,31 +1139,59 @@ select:focus {
   border-bottom-color: var(--primary-700);
 }
 
-/* --- Admin Table --- */
-.admin-table {
+/* --- Tableau Standard (Design System Rule) --- */
+.table-standard {
   width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
+  border-collapse: collapse;
 }
 
-.admin-table th {
+.table-standard thead tr {
+  background: var(--primary-50);
   text-align: left;
-  padding: var(--space-sm) var(--space-md);
-  font-size: 0.786rem;
+}
+
+.table-standard th {
+  padding: 10px 14px;
+  font-size: 0.714rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.04em;
   color: var(--text-secondary);
   border-bottom: 1px solid var(--border-light);
 }
 
+.table-standard td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-light);
+  font-size: 0.875rem;
+  vertical-align: middle;
+}
+
+.table-standard tbody tr:hover {
+  background: var(--primary-50);
+}
+
+/* --- Legacy Admin Table (Redirected to Standard) --- */
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.admin-table thead tr { background: var(--primary-50); }
+.admin-table th {
+  padding: 10px 14px;
+  font-size: 0.714rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-light);
+}
 .admin-table td {
-  padding: var(--space-md);
+  padding: 10px 14px;
   border-bottom: 1px solid var(--border-light);
   font-size: 0.929rem;
 }
-
-.admin-table tr:hover td {
+.admin-table tr:hover {
   background: var(--primary-50);
 }
 

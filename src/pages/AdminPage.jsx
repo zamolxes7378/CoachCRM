@@ -71,7 +71,7 @@ export default function AdminPage() {
           <Crown size={22} style={{ color: 'var(--accent-main)' }} />
           <h3>Administrateur(s)</h3>
         </div>
-        <table className="admin-table">
+        <table className="table-standard">
           <thead>
             <tr>
               <th>Nom</th>
@@ -107,7 +107,7 @@ export default function AdminPage() {
             Aucun thérapeute inscrit pour le moment
           </div>
         ) : (
-          <table className="admin-table">
+          <table className="table-standard">
             <thead>
               <tr>
                 <th>Thérapeute</th>

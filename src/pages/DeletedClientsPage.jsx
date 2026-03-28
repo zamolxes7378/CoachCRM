@@ -99,23 +99,22 @@ export default function DeletedClientsPage() {
       ) : (
         <>
           <div className="card" style={{ overflow: 'hidden' }}>
-            <table className="table" style={{ width: '100%' }}>
+            <table className="table-standard">
               <thead>
                 <tr>
-                  <th style={{ padding: '12px 16px', width: 44, borderBottom: '1px solid var(--border-light)' }}>
+                  <th style={{ width: 44 }}>
                     <button
-                      onClick={toggleAll}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center', color: allSelected ? 'var(--primary-600)' : 'var(--text-tertiary)' }}
-                      title={allSelected ? 'Tout désélectionner' : 'Tout sélectionner'}
+                      onClick={toggleSelectAll}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center', color: allSelected ? 'var(--error)' : 'var(--text-tertiary)' }}
                     >
                       {allSelected ? <CheckSquare size={18} /> : <Square size={18} />}
                     </button>
                   </th>
-                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '0.714rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border-light)' }}>Client</th>
-                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '0.714rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border-light)' }}>Type</th>
-                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '0.714rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border-light)' }}>Créé le</th>
-                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '0.714rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border-light)' }}>Archivé le</th>
-                  <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '0.714rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border-light)' }}>Action</th>
+                  <th>Client</th>
+                  <th>Type</th>
+                  <th>Créé le</th>
+                  <th>Archivé le</th>
+                  <th style={{ textAlign: 'right' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -123,19 +122,18 @@ export default function DeletedClientsPage() {
                   const isChecked = selected.has(client.id)
                   return (
                     <tr key={client.id} style={{
-                      borderBottom: '1px solid var(--border-light)',
                       background: isChecked ? 'var(--primary-50)' : 'transparent',
                       transition: 'background 0.1s'
                     }}>
-                      <td style={{ padding: '12px 16px', width: 44 }}>
+                      <td style={{ width: 44 }}>
                         <button
                           onClick={() => toggleSelect(client.id)}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center', color: isChecked ? 'var(--primary-600)' : 'var(--text-tertiary)' }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center', color: isChecked ? 'var(--error)' : 'var(--text-tertiary)' }}
                         >
                           {isChecked ? <CheckSquare size={18} /> : <Square size={18} />}
                         </button>
                       </td>
-                      <td style={{ padding: '12px 16px' }}>
+                      <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
                           <div style={{
                             width: 36, height: 36, borderRadius: 'var(--radius-full)',
@@ -156,7 +154,7 @@ export default function DeletedClientsPage() {
                           </span>
                         </div>
                       </td>
-                      <td style={{ padding: '12px 16px' }}>
+                      <td>
                         <span style={{
                           fontSize: '0.857rem', fontWeight: 600, padding: '3px 0',
                           color: 'var(--text-tertiary)',
@@ -176,13 +174,13 @@ export default function DeletedClientsPage() {
                           {(typeConfig[client.type] || typeConfig.couple).label}
                         </span>
                       </td>
-                      <td style={{ padding: '12px 16px', fontSize: '0.857rem', color: 'var(--text-secondary)' }}>
+                      <td style={{ padding: '10px 14px', fontSize: '0.857rem', color: 'var(--text-secondary)' }}>
                         {client.startDate ? formatDate(client.startDate) : '—'}
                       </td>
-                      <td style={{ padding: '12px 16px', fontSize: '0.857rem', color: 'var(--text-secondary)' }}>
+                      <td style={{ padding: '10px 14px', fontSize: '0.857rem', color: 'var(--text-secondary)' }}>
                         {client.deletedAt ? formatDate(client.deletedAt) : '—'}
                       </td>
-                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                      <td style={{ padding: '10px 14px', textAlign: 'right' }}>
                         <button
                           className="btn btn-ghost"
                           style={{ fontSize: '0.786rem', padding: '5px 12px', color: 'var(--accent-main)' }}
@@ -204,21 +202,21 @@ export default function DeletedClientsPage() {
               position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
               display: 'flex', alignItems: 'center', gap: 'var(--space-md)',
               padding: '12px 24px',
-              background: 'var(--bg-card)',
+              background: 'var(--error-bg)',
               borderRadius: 'var(--radius-xl)',
               boxShadow: '0 8px 32px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08)',
-              border: '1px solid var(--border-light)',
+              border: '1px solid var(--error)',
               zIndex: 100,
               animation: 'ncFadeIn 0.2s ease-out'
             }}>
-              <span style={{ fontSize: '0.857rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+              <span style={{ fontSize: '0.857rem', fontWeight: 600, color: 'var(--error)' }}>
                 {selected.size} sélectionné{selected.size > 1 ? 's' : ''}
               </span>
-              <div style={{ width: 1, height: 20, background: 'var(--border-light)' }} />
+              <div style={{ width: 1, height: 20, background: '#F87171', opacity: 0.3 }} />
               <button
                 onClick={() => setSelected(new Set())}
                 className="btn btn-ghost"
-                style={{ fontSize: '0.786rem', padding: '5px 10px' }}
+                style={{ fontSize: '0.786rem', padding: '5px 10px', color: 'var(--error)' }}
               >
                 Désélectionner
               </button>

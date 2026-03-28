@@ -1,9 +1,9 @@
 # CoachCRM — Design System
 ## Charte Graphique & Système de Design
 
-> **Date** : 19 mars 2026
-> **Basé sur** : Interview préférences graphiques fondatrice
-> **Mots-clés** : Bienveillant · Simple · Créatif
+> **Date** : 27 mars 2026
+> **Basé sur** : Interview préférences graphiques fondatrice + Optimisations Pilotage Intelligent
+> **Mots-clés** : Bienveillant · Simple · Créatif · Proactif
 > **Iconographie** : Lucide React (pas d'emojis — icônes professionnelles et plus grandes)
 
 ---
@@ -165,6 +165,9 @@ npm install lucide-react
 | **Inline (texte)** | 16px | 1.5px |
 | **Dashboard stats** | 28px | 1.75px |
 
+### Mise en page Dashboard
+- **Grille principale** : 65% / 35% (`grid-template-columns: 65fr 35fr`). La colonne de gauche contient le calendrier des séances, la colonne de droite contient les statistiques et actions secondaires.
+
 ### Mapping des icônes
 
 | Concept | Icône Lucide | Nom |
@@ -264,7 +267,7 @@ Propriétés :
 - Ombre : 0 1px 3px rgba(0,0,0,0.08)
 - Ombre hover : 0 4px 12px rgba(0,0,0,0.12)
 - Radius : 12px
-- Padding : 16px
+- Padding : 8px
 - Transition hover : 200ms ease
 
 **Hiérarchie date/heure dans les cartes séance :**
@@ -276,6 +279,7 @@ Propriétés :
 
 | Phase | Couleur fond | Couleur texte | Icône Lucide |
 |-------|-------------|---------------|-------------|
+| **Prospect** | `#F5F0FF` | `#6B46C1` | — |
 | **Début** | `#EBF8FF` | `#2B6CB0` | `Sprout` (16px) |
 | **Analyse** | `#FEFCBF` | `#975A16` | `Search` (16px) |
 | **Intégration** | `#F0FFF4` | `#276749` | `Target` (16px) |
@@ -289,8 +293,137 @@ Propriétés :
 > Le rendu d'une carte de séance (accueil, fiche client, ou toute autre vue) doit **toujours** utiliser le composant `src/components/session/SessionCard.jsx`.
 > Il est **interdit** de dupliquer le JSX de rendu de séance dans les pages consommatrices.
 > Toute modification visuelle d'une carte de séance doit se faire **exclusivement** dans `SessionCard.jsx`.
-> Les différences contextuelles (nom du client, style étendu) sont gérées par les props `showClientName`, `showExpandedStyle`, `dimmed`.
+> **Contrainte de dimension** : La carte doit toujours avoir `width: 100%` pour remplir son conteneur et permettre l'alignement correct des icônes à droite.
+> Les différences contextuelles (nom du client, style étendu) sont gérées par les props `showClientName`, `showExpandedStyle`, `dimmed`, `isProspect`.
+> - **Badge Prospect** : Si le client est un prospect, un badge violet « PROSPECT » s'affiche à côté de son nom (quand `showClientName` est activé).
 
+> **Règle absolue — Affichage de l'heure et icônes sur SessionCard :**
+> - Pour les **séances planifiées** : 
+>   - L'heure est **masquée** dans la zone de titre pour être affichée à **droite**.
+>   - L'icône de compte-rendu (`FileText`) est **systématiquement masquée** (elle ne doit apparaître que pour les séances passées/complétées).
+>   - La **note de préparation** (champ `summary`) s'affiche en texte gris à côté de la phase : `[Phase] Note : [Texte]`. Le texte est **limité à 30 caractères** (`slice(0, 30) + '…'`) pour garantir l'alignement propre sur une seule ligne.
+>   - L'ordre des éléments à droite est : `[Espaceur flexible] [Heure] [🕐 Clock (bord droit)]`.
+> - Pour les **séances passées** : l'heure reste dans le titre (à côté du nom/date).
+> - **Alignement** : Un espaceur flexible (`flex: 1`) garantit que le bloc d'icônes/heure de droite est toujours collé au bord droit de la carte.
+
+> **Règle absolue — Composant NewClientButton unique :**
+> Le bouton « Nouveau client » doit **toujours** utiliser le composant `src/components/NewClientButton.jsx`.
+> Style doré `btn-accent`, icône `UserPlus` blanche. Utilisé sur Dashboard et Mes Clients.
+> Props : `onClick`, `label` (défaut « Nouveau client »).
+> Les boutons de création client dans d'autres contextes (Réseau Pro) ne sont **pas** des boutons « Nouveau client » et ne doivent pas utiliser ce composant.
+
+> **Règle absolue — Composant AddSessionButton unique :**
+> Le bouton « Ajouter une séance » doit **toujours** utiliser le composant `src/components/AddSessionButton.jsx`.
+> Style bleu secondaire : `background: var(--primary-100)`, `color: var(--primary-700)`, `border: 1px solid var(--primary-200)`, icône `Plus`.
+> Props : `onClick`, `label` (défaut « Ajouter une séance »).
+
+### Carte séance active (timeline thérapie)
+
+Quand l'utilisateur clique sur une séance dans la timeline de la fiche client, la carte passe en surbrillance dorée et le panneau `SessionDetailModal` s'ouvre à droite. Props : `isExpanded={true}`, `showExpandedStyle={true}`.
+
+```
+  Carte inactive :
+  ┌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┐
+  ╎  [●]  26 mars 2026  14:00                   🎤  ╎  ← Bordure dashed, fond blanc/bleu pâle
+  └╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┘
+
+  Carte active (sélectionnée) :
+  ┃ ┌──────────────────────────────────────────────┐
+  ┃ │  [●]  26 mars 2026  14:00                 🎤  │  ← Fond doré, bordure dorée, barre gauche
+  ┃ └──────────────────────────────────────────────┘
+```
+
+| Propriété | Carte inactive | Carte active (`isExpanded`) |
+|-----------|---------------|----------------------------|
+| **Fond** | `white` (future) / `var(--primary-50)` (passée) | `rgba(218, 165, 32, 0.12)` |
+| **Bordure** | `1px dashed var(--border-light)` (future) / `none` (passée) | `1px solid var(--accent-main)` |
+| **Bordure gauche** | aucune | `3px solid var(--accent-main)` |
+| **Ombre** | `0 1px 3px rgba(0,0,0,0.08)` | `0 1px 4px rgba(196, 167, 103, 0.25)` |
+
+> La surbrillance dorée reprend la couleur `--accent-main` (`#D69E2E`) du design system, assurant la cohérence avec les autres accents chauds de l'interface.
+
+### Mode sélection (suppression groupée)
+
+Disponible uniquement sur l'onglet **« En cours »** du calendrier d'accueil.
+
+```
+  Mode inactif :
+  ┌──────────────────────────────────────────────┐
+  │  [●]  Nom Client  14:00                  ⏱   │  ← Carte normale, clic = navigation
+  └──────────────────────────────────────────────┘
+
+  Mode sélection actif :
+  ☐ ┌──────────────────────────────────────────────┐
+     │  [●]  Nom Client  14:00                  ⏱   │  ← Clic = sélection (pas de navigation)
+     └──────────────────────────────────────────────┘
+
+  Séance sélectionnée :
+  ☑ ┌──────────────────────────────────────────────┐
+     │  [●]  Nom Client  14:00                  ⏱   │  ← Checkbox cochée en rouge
+     └──────────────────────────────────────────────┘
+```
+
+| Élément | État non sélectionné | État sélectionné |
+|---------|---------------------|-----------------|
+| **Checkbox** | Icône `Square` (18px) | Icône `CheckSquare` (18px) |
+| **Couleur checkbox** | `var(--text-tertiary)` | `var(--error)` |
+| **Transition** | `color 0.15s ease` | `color 0.15s ease` |
+| **Carte séance** | Style normal (aucun changement) | Style normal (aucun changement) |
+| **Clic sur carte** | `toggleSelect(session.id)` | `toggleSelect(session.id)` |
+
+#### Bouton « Sélectionner / Annuler »
+
+| État | Texte | Icône | Couleur | Bordure |
+|------|-------|-------|---------|---------|
+| **Inactif** | « Sélectionner » | `CheckSquare` (12px) | `var(--text-secondary)` | `1px solid var(--border-light)` |
+| **Actif** | « Annuler » | `X` (12px) | `var(--error)` | `1px solid var(--error)` |
+
+#### Barre d'action flottante (Sélection groupée)
+
+| Propriété | Aucune sélection | Sélection active |
+|-----------|-----------------|----------------------|
+| **Fond** | `var(--primary-50)` | `var(--error-bg)` (Rouge pâle) |
+| **Bordure** | `1px solid var(--border-light)` | `1px solid var(--error)` |
+| **Texte compteur** | `var(--text-secondary)` | `var(--error)` |
+| **Boutons d'action** | `opacity: 0.5` | `opacity: 1`, couleur `white` sur fond rouge |
+
+- **Usage** : Ce composant est le standard pour **tous** les traitements de masse (Suppression groupée dans les Archives, le Calendrier, ou le Réseau Pro).
+- **Position** : Fixe en bas de l'écran, centré.
+- **Radius** : `var(--radius-full)` (forme pilule).
+- **Ombre** : `0 10px 30px rgba(239, 68, 68, 0.3)`.
+- **Confirmation** : Toute action destructive via cette barre nécessite une validation par `ConfirmDialog`.
+
+## Tableaux de données (Tableau Standard)
+
+Le format « Tableau Standard » s'applique à **tous** les tableaux de l'application (listes de clients, finances, rapports, etc.), qu'ils supportent la sélection multiple ou non. Il garantit une lisibilité maximale et une cohérence visuelle.
+
+### Structure et Conteneur
+- **Enveloppe** : Le tableau doit être contenu dans une `card` avec `overflow: hidden` et `border: 1px solid var(--border-light)`.
+- **Largeur** : Toujours `width: 100%` avec `border-collapse: collapse`.
+
+### En-tête (Header)
+- **Ligne d'en-tête (`thead tr`)** : Fond bleu clair obligatoire : `background: var(--primary-50)`.
+- **Cellules d'en-tête (`th`)** :
+    - **Typography** : `fontSize: 0.714rem`, `fontWeight: 600`, `textTransform: uppercase`, `letterSpacing: 0.04em`.
+    - **Couleur** : `var(--text-secondary)`.
+    - **Padding** : `10px 14px`.
+    - **Alignement** : Gauche par défaut (`textAlign: left`), sauf pour les colonnes d'actions (droite).
+
+### Corps du tableau (Body)
+- **Cellules (`td`)** :
+    - **Padding** : `10px 14px` (identique au header pour l'alignement vertical).
+    - **Typographie** : `Body` (14px) pour les noms, `Body Small` (13px) pour les données secondaires.
+    - **Alignement vertical** : `verticalAlign: middle`.
+- **Bordures** : Séparation des lignes par `border-bottom: 1px solid var(--border-light)`.
+- **Survol (Hover)** : La ligne entière change de fond au survol : `background: var(--primary-50)` (transition `100ms`).
+
+### États de sélection
+- **Ligne sélectionnée** : Fond `var(--primary-50)` permanent tant que la ligne est cochée.
+- **Checkbox** : Lucide `Square` / `CheckSquare`, passe en rouge `var(--error)` dès qu'elle est cochée.
+
+### Flexibilité des colonnes
+- La structure des colonnes doit s'adapter aux besoins (ex: « Dernier RDV », « Spécialité »).
+- Les colonnes `NOM` (avec avatar) et `PHASE` (avec badge) restent les points d'ancrage visuels quand elles sont présentes.
 
 ### Notifications & Alertes
 
@@ -314,6 +447,15 @@ Couleur unique `#D97706` (ambre) utilisée **systématiquement** pour l'icône E
 | **Modale détail séance** | Message « Séance à confirmer — Veuillez renseigner le mode de paiement. » | `#D97706` |
 
 **Fond commun** : `#FFFBEB` — **Bordure** : `#FEF3C7`
+
+### Badge « FACTURE »
+
+| État | Couleur Texte | Fond | Icône Lucide |
+|------|---------------|------|--------------|
+| **À ENVOYER** | `#1A365D` (Bleu profond) | transparent | — |
+| **ENVOYÉE** | `var(--success)` (#38A169) | transparent | `CheckCircle` (9px) |
+
+**Propriétés** : `fontSize: 0.643rem`, `fontWeight: 600`, `letterSpacing: 0.02em`.
 
 > ⚠️ **Règle absolue** : ne jamais utiliser `#92400E` ou toute autre nuance de brun pour ces éléments. La couleur `#D97706` est la référence unique pour toute la signalétique de confirmation.
 
@@ -412,6 +554,33 @@ Remplace les `confirm()` et `alert()` natifs du navigateur. Toutes les fenêtres
 | **alert** | Doré | `.btn-primary` + texte "Compris" | Messages informatifs (pas de bouton Annuler) |
 | **danger** | Rouge (`--error-bg` / `--error`) | `.btn-danger` (rouge) | Actions destructives irréversibles |
 
+### 11. Barre d'action flottante (Sélection Multiple)
+- **Couleur** : Bordure `var(--error)`, texte d'état `var(--error)`.
+- **Bouton** : `.btn-danger` (rouge).
+- **Position** : Collé au bas du tableau ou de la zone de contenu s'il y a une sélection active.
+
+---
+
+## Modèles de Pages Spécifiques
+
+### Tableau de Bord (Pilotage)
+- **Layout** : Grid principal `66fr 34fr`.
+- **Action requise (Side-block)** :
+  - Bloc d'alerte prioritaire en haut de la colonne de droite.
+  - Items : `.card` interne ou div avec background thématique (Orange/Ambre/Bleu).
+  - Hover : Translation horizontale (`translateX(4px)`) et renforcement de la bordure (`1px solid var(--color)`).
+  - Icônes : `AlertCircle` (18px) pour le header, icônes thématiques pour les items.
+- **Mon agenda** :
+  - Section principale à gauche.
+  - Titre épuré : "Mon agenda" (icône Calendar var(--primary-700)).
+  - Boutons d'action rapides (Ajouter séance, Nouveau client) alignés à droite dans le header.
+- **Blocs de Pilotage (Relance prospects)** :
+  - Sous les actions urgentes.
+  - Lignes interactives : fond `var(--primary-50)` par défaut, au survol : fond `white` + bordure `1px solid var(--border-medium)`.
+- **Navigation Contextuelle (Smart Back)** :
+  - Les pages de détail (fiche client, rapport) mémorisent leur provenance via `location.state.from`.
+  - Le bouton **« Retour »** s'adapte : il renvoie au Dashboard direct si l'utilisateur en vient (Pilotage), sinon il remonte à la liste parente.
+
 ### Classe CSS : `.confirm-dialog`
 
 ```jsx
@@ -437,6 +606,20 @@ const ok = await confirm('Cette action est irréversible.', {
 | **Mobile** | < 768px | Sidebar cachée (hamburger), layout une colonne |
 | **Tablet** | 768-1024px | Sidebar rétractée (icônes), layout adaptable |
 | **Desktop** | > 1024px | Sidebar complète, layout multi-colonnes |
+
+---
+
+## Identité Visuelle « Administration »
+
+| Élément | Style | Icône |
+|---------|-------|-------|
+| **Logo Admin** | `#D69E2E` (accent-main) | `Crown` |
+| **Badge Admin** | Fond `#FEF5E7`, texte `#B7791F` | `Crown` (12px) |
+| **Statistiques** | Standard stat-card (Icons Success/Error/Primary) | — |
+
+### Page Clients Archivés
+- **Couleur dominante** : `var(--error)` (#C53030) pour les actions destructives.
+- **Barre de masse** : Fond `var(--error-bg)`, bordure `var(--error)`, texte rouge.
 
 ---
 

@@ -263,4 +263,5 @@ La conversion est gérée automatiquement par les fonctions `adaptClient` / `una
 | `paymentMethod` | `payment_method` |
 | `hasReport` | `has_report` |
 | `clientLinks` | `client_links` |
+| `duration` | `duration` |
 | ... | ... |

@@ -157,8 +157,32 @@ export default function SessionDetailModal({
                         updateSession(session.id, { date: e.target.value })
                         setSessionUpdates(prev => ({ ...prev, [session.id]: { ...prev[session.id], _date: Date.now() } }))
                       }}
-                      style={{ fontSize: '0.786rem', flex: '2 1 0' }}
+                      style={{ fontSize: '0.786rem', flex: '1.5 1 0' }}
                     />
+                    
+                    {/* Duration field — discrete and efficient */}
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', flex: '0 0 85px' }}>
+                      <input
+                        type="number"
+                        min="0"
+                        step="5"
+                        className="input"
+                        value={session.duration ?? 60}
+                        onChange={e => {
+                          const v = parseInt(e.target.value) || 0
+                          session.duration = v
+                          updateSession(session.id, { duration: v })
+                          setSessionUpdates(prev => ({ ...prev, [session.id]: { ...prev[session.id], _dur: Date.now() } }))
+                        }}
+                        style={{ fontSize: '0.786rem', paddingRight: '28px', textAlign: 'center', paddingLeft: '8px' }}
+                      />
+                      <span style={{ 
+                        position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+                        fontSize: '0.643rem', color: 'var(--text-tertiary)', pointerEvents: 'none',
+                        fontWeight: 600
+                      }}>min</span>
+                    </div>
+
                     {session.status === 'cancelled' ? (
                       <div
                         onClick={() => {
