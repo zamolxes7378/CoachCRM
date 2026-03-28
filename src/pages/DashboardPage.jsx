@@ -236,7 +236,7 @@ export default function DashboardPage({ user }) {
             </div>
 
             {Object.keys(groupedSessions).length > 0 ? (
-              <div style={{ maxHeight: 600, overflowY: 'auto', paddingRight: 4 }}>
+              <div style={{ flex: 1, overflowY: 'auto', paddingRight: 4, minHeight: 0 }}>
                 {Object.entries(groupedSessions).map(([dateKey, sessions], groupIdx) => (
                   <div key={dateKey} style={{ marginBottom: 'var(--space-md)' }}>
                     <div style={{
