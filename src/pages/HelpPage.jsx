@@ -26,7 +26,7 @@ export default function HelpPage() {
 
   const guides = [
     {
-      icon: Home, color: '#1A365D', bg: '#EBF8FF',
+      icon: Home, color: 'var(--primary-500)', bg: '#EBF8FF',
       title: 'Tableau de bord',
       desc: 'Votre vue d\'ensemble. Retrouvez vos prochaines séances, vos alertes financières et un aperçu rapide de votre activité.',
       tip: 'Les séances à venir sont classées chronologiquement. Cliquez sur une séance pour accéder directement à la fiche client.',
@@ -37,14 +37,14 @@ export default function HelpPage() {
       title: 'Gestion des clients',
       desc: 'Créez et gérez vos dossiers clients. Chaque fiche contient l\'historique complet : séances, contacts, suivi financier et avancement thérapeutique.',
       tip: 'Utilisez le bouton Actif/Inactif pour distinguer vos clients en cours de suivi. Les clients inactifs restent accessibles mais ne génèrent plus d\'alertes.',
-      to: '/couples'
+      to: '/clients'
     },
     {
       icon: FileText, color: '#C05621', bg: '#FFFAF0',
       title: 'Fiche client détaillée',
       desc: 'Le cœur de CoachCRM. Timeline des séances, contacts, suivi financier, synthèses IA — tout est centralisé dans une seule vue.',
       tip: 'Cliquez sur n\'importe quelle séance dans la timeline pour ouvrir le panneau de détail avec compte-rendu, données comptables et facturation.',
-      to: '/couples',
+      to: '/clients',
       subsections: [
         { icon: Calendar, label: 'Timeline', text: 'Chaque séance est cliquable. Le panneau latéral s\'ouvre avec le détail complet.' },
         { icon: Euro, label: 'Suivi financier', text: 'Les honoraires, paiements et factures sont calculés automatiquement.' },
@@ -58,7 +58,7 @@ export default function HelpPage() {
       tip: 'Les trois types d\'alertes vous aident à ne rien oublier : factures à émettre (bleu), séances à confirmer (jaune) et paiements en attente (rouge).',
       to: '/finances',
       alerts: [
-        { color: '#1A365D', bg: '#EBF8FF', text: 'Factures à émettre' },
+        { color: 'var(--primary-500)', bg: '#EBF8FF', text: 'Factures à émettre' },
         { color: '#92400E', bg: '#FFFBEB', text: 'Séances à confirmer' },
         { color: '#C53030', bg: '#FFF5F5', text: 'Paiements en attente' }
       ]
@@ -73,7 +73,7 @@ export default function HelpPage() {
   ]
 
   const faqs = [
-    { q: 'Comment ajouter un nouveau client ?', a: 'Rendez-vous sur la page "Mes Clients" et cliquez sur le bouton doré "+ Nouveau couple" en haut à droite. Remplissez les informations du formulaire et validez.' },
+    { q: 'Comment ajouter un nouveau client ?', a: 'Rendez-vous sur la page "Mes Clients" et cliquez sur le bouton doré "+ Nouveau client" en haut à droite. Remplissez les informations du formulaire et validez.' },
     { q: 'Comment renseigner un paiement ?', a: 'Ouvrez la fiche client, cliquez sur une séance dans la timeline. Dans le panneau de détail, section "Données comptables", sélectionnez le mode de paiement (Espèces, Chèque ou Virement) et renseignez le montant.' },
     { q: 'Comment émettre une facture ?', a: 'Dans le détail d\'une séance, scrollez jusqu\'à la section "Facturation". Cochez "Besoin de facture ?", sélectionnez les séances à couvrir, puis cliquez sur "Émettre la facture".' },
     { q: 'Comment modifier le tarif d\'un client ?', a: 'Sur la fiche client, cliquez sur l\'icône crayon (✎) à côté du montant "Tarif" dans la section d\'en-tête. Attention : la modification du tarif s\'applique uniquement aux séances futures. Les séances passées conservent le tarif en vigueur au moment où elles ont eu lieu.' },

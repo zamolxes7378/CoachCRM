@@ -163,8 +163,61 @@ export async function createReport(report) {
 }
 
 // ============================================
+// Therapy Cycles
+// ============================================
+export async function getTherapyCycles(userId) {
+  const { data, error } = await supabase
+    .from('therapy_cycles')
+    .select('*')
+    .eq('user_id', userId)
+    .order('start_date', { ascending: false })
+  if (error) console.error('getTherapyCycles error:', error.message)
+  return data || []
+}
+
+export async function createTherapyCycle(cycle) {
+  const { data, error } = await supabase
+    .from('therapy_cycles')
+    .insert(cycle)
+    .select()
+    .single()
+  if (error) console.error('createTherapyCycle error:', error.message)
+  return data
+}
+
+export async function updateTherapyCycle(cycleId, updates) {
+  const { data, error } = await supabase
+    .from('therapy_cycles')
+    .update(updates)
+    .eq('id', cycleId)
+    .select()
+    .single()
+  if (error) console.error('updateTherapyCycle error:', error.message)
+  return data
+}
+
+export async function deleteTherapyCycle(cycleId) {
+  const { error } = await supabase
+    .from('therapy_cycles')
+    .delete()
+    .eq('id', cycleId)
+  if (error) console.error('deleteTherapyCycle error:', error.message)
+  return !error
+}
+
+// ============================================
 // Contacts
 // ============================================
+export async function getContacts(userId) {
+  const { data, error } = await supabase
+    .from('contacts')
+    .select('*')
+    .eq('user_id', userId)
+    .order('date', { ascending: false })
+  if (error) console.error('getContacts error:', error.message)
+  return data || []
+}
+
 export async function getContactsByClient(clientId) {
   const { data, error } = await supabase
     .from('contacts')

@@ -20,7 +20,7 @@ export default function AdminPage() {
   const admins = allUsers.filter(u => u.role === 'admin')
   const therapists = allUsers.filter(u => u.role !== 'admin')
 
-  const totalCouples = therapists.length * 10 // placeholder
+  const totalClients = therapists.length * 10 // placeholder
   const totalSessions = therapists.length * 50 // placeholder
   const activeTherapists = therapists.length
 

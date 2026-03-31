@@ -165,8 +165,20 @@ npm install lucide-react
 | **Inline (texte)** | 16px | 1.5px |
 | **Dashboard stats** | 28px | 1.75px |
 
+### Éléments d'interface récurrents
+
+#### 1. Indicateur d'absence / Donnée vide (Dashboard & Tableaux)
+Utilisé lorsqu'une information est manquante ou non applicable pour maintenir la structure sans polluer la lecture.
+
+- **Composant** : `Minus` (Lucide React)
+- **Style** : `size={14}`, `strokeWidth={3}`, `color: var(--primary-300)`
+- **Centrage** : L'indicateur d'absence doit toujours être **centré horizontalement** par rapport à son conteneur (exemple: cellule de tableau), même si le texte de la colonne est aligné à gauche.
+- **Usage** : Colonnes de tableau vides, champs optionnels non renseignés, états futurs.
+- **Règle** : Ne jamais utiliser le caractère texte `—` ou `-`. Toujours utiliser l'icône stylisée pour un rendu "Premium".
+
 ### Mise en page Dashboard
-- **Grille principale** : 65% / 35% (`grid-template-columns: 65fr 35fr`). La colonne de gauche contient le calendrier des séances, la colonne de droite contient les statistiques et actions secondaires.
+- **Grille principale** : **Fixe à 65% / 35%** (`grid-template-columns: 65% 35%`). La colonne de gauche (Mon agenda) occupe 65% de la largeur disponible pour garantir la lisibilité de la timeline.
+- **Troncature des noms** : Tout affichage de nom de client ou de couple dans une liste (agenda, tableaux) doit utiliser `text-overflow: ellipsis` pour éviter de briser le layout.
 
 ### Mapping des icônes
 
@@ -188,7 +200,7 @@ npm install lucide-react
 | Phase Analyse | Loupe | `Search` |
 | Phase Intégration | Cible | `Target` |
 | Couple actif | Coeur | `Heart` |
-| CR en attente | Horloge | `Clock` |
+| CR / Compte-rendu | Document texte | `ReportIcon` (composant) |
 | Exercice | Crayon | `PenTool` |
 | Progrès | Tendance haute | `TrendingUp` |
 | Vigilance | Triangle alerte | `AlertTriangle` |
@@ -197,6 +209,122 @@ npm install lucide-react
 | Nouveau | Plus | `Plus` |
 | Voir plus | Flèche droite | `ArrowRight` |
 | Fermer | X | `X` |
+
+### Header de date « Aujourd'hui » (Agenda)
+
+| Token | Valeur normale | Valeur Aujourd'hui |
+|-------|---------------|-------------------|
+| **Couleur texte** | `var(--primary-400)` | `var(--accent-main)` |
+| **Bordure bottom** | `1px solid var(--primary-50)` | `2px solid var(--accent-main)` |
+| **Point indicateur** | aucun | Cercle 6px `var(--accent-main)` |
+| **Format texte** | `Lundi 30 mars` | `Aujourd'hui – 31 mars` (sans année) |
+
+> **Règle — Affichage de l'année sur les dates de séance :**
+> Lorsqu'une séance est éloignée de **plus de 6 mois** de la date du jour (passée ou future), l'année doit être affichée (ex : `Jeudi 28 septembre 2025`). En dessous de 6 mois, l'année est masquée (ex : `Jeudi 28 septembre`).
+> Cette règle s'applique **partout** dans l'application via `formatDashboardDate` (agenda) et `formatDate` (fiches client).
+
+### Feedback visuel — champs de recherche
+
+| État | Bordure | Icône | Action |
+|------|---------|-------|--------|
+| **Vide** | `none` | `var(--primary-300)` | — |
+| **Rempli** | `1.5px solid #D97706` | `#D97706` (ambre) | Bouton × ambre pour effacer |
+
+### Icône Compte-rendu — `ReportIcon` (composant canonique)
+
+> [!IMPORTANT]
+> **Toute représentation visuelle d'un compte-rendu (CR)** doit utiliser le composant `ReportIcon` (`src/components/ReportIcon.jsx`).
+> Il est **interdit** d'utiliser `FileText`, `Clock`, `Mic` ou toute autre icône Lucide directement pour représenter un CR.
+
+#### Design Tokens
+
+| Token | Valeur |
+|-------|--------|
+| **Icône source** | `FileText` (Lucide) |
+| **Couleur par défaut** | `#2B6CB0` (bleu) |
+| **Épaisseur des traits** | `strokeWidth: 1.6` (−20% vs défaut Lucide de 2) |
+| **Props acceptées** | `size` (default 16), `color` (override), `style`, `...rest` |
+
+#### Placements (5 vues)
+
+| Vue | Fichier | Usage | Props |
+|-----|---------|-------|-------|
+| **Rapport disponible** | `SessionCard.jsx` | Icône à côté du résumé CR | `size={16\|18}` |
+| **Rédiger CR** | `SessionCard.jsx` | Badge orange « Rédiger CR » | `size={11}` |
+| **Carte urgence** | `DashboardPage.jsx` | `N CR à rédiger` (fond `#EBF8FF`) | `size={18}` |
+| **KPI stats** | `ClientDetailPage.jsx` | Compteur « CR en attente » | `size={24} color={warning\|info}` |
+| **Label section** | `SessionDetailModal.jsx` | Titre « Compte-rendu » / « Note de préparation » | `size={14}` |
+
+
+### Icônes de type de client
+
+Chaque client possède un **type** (`individual`, `client/couple`, `family`) affiché par une icône dédiée et des couleurs distinctes.
+
+| Type | Icône | Couleur | Fond | Bordure |
+|------|-------|---------|------|---------|
+| **Individuel** | `User` (Lucide) | `#6366F1` (Indigo) | `#EEF2FF` | `#C7D2FE` |
+| **Couple** | `Users` (Lucide) | `#EC4899` (Rose) | `#FDF2F8` | `#FBCFE8` |
+| **Famille** | SVG custom (2 adultes + 1 enfant) | `#F59E0B` (Ambre) | `#FFFBEB` | `#FDE68A` |
+| **Prospect** (override) | Hérite de l'icône du type | `#7C3AED` (Violet) | `#F3E8FF` | `#E8D8FE` |
+
+> **Règle absolue — Composant `ClientTypeBadge` obligatoire :**
+> Le rendu de toute pastille d'identité client (icône type + couleurs) doit **toujours** utiliser le composant partagé `src/components/ClientTypeBadge.jsx`.
+> Il est **interdit** de dupliquer les couleurs ou le SVG famille inline dans les pages consommatrices.
+> Ce composant expose 3 exports :
+> - `ClientTypeBadge` (default) — pastille circulaire avec icône ou initiales
+> - `ClientTypeIcon` — icône seule (sans cercle)
+> - `CLIENT_TYPE_STYLES` — objet de lookup des tokens couleurs
+
+#### SVG Famille (icône custom — pas de composant Lucide)
+
+L'icône famille est encapsulée dans `ClientTypeBadge.jsx` via le sous-composant `FamilyIcon`. Le SVG source :
+
+```jsx
+<svg width="N" height="N" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+  strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+  <circle cx="7" cy="6" r="2.5"/>
+  <circle cx="17" cy="6" r="2.5"/>
+  <circle cx="12" cy="9" r="2"/>
+  <path d="M1 20v-1.5a4.5 4.5 0 0 1 4.5-4.5h3a4.5 4.5 0 0 1 4.5 4.5V20"/>
+  <path d="M15.5 14h3a4.5 4.5 0 0 1 4.5 4.5V20"/>
+</svg>
+```
+
+> **Règle absolue — Icône famille :**
+> L'icône Lucide `Baby` ne doit **jamais** être utilisée pour représenter le type « Famille ». Seul le SVG custom ci-dessus est autorisé. L'icône `Baby` reste réservée au label « Enfants » dans les formulaires d'édition.
+
+#### Tailles selon le contexte
+
+| Contexte | Taille (width/height) | Export utilisé |
+|----------|-----------------------|----------------|
+| Wizard de création (ClientsPage) | 36–40px | `CLIENT_TYPE_STYLES` |
+| Vue cartes (ClientsPage grid) | 22px | `CLIENT_TYPE_STYLES` |
+| En-tête fiche client (ClientDetailPage) | 18px | `ClientTypeIcon` |
+| Panneau édition (EditIdentityModal) | 15px | `CLIENT_TYPE_STYLES` |
+| **Vignette ronde SessionCard** | 40px | `ClientTypeBadge` |
+| **Vignette ronde ActionDetailPanel** | 40px (avec bordure) | `ClientTypeBadge` + `showBorder` |
+| **Tableau Finances** | 28px | `ClientTypeBadge` |
+
+#### SessionCard — vignette ronde de type client
+
+La vignette ronde (40×40px, `border-radius: 50%`) de chaque `SessionCard` affiche l'icône du type de client via `<ClientTypeBadge type={clientType} size={40} />`.
+
+| Prop `clientType` | Icône | Fond cercle | Couleur icône |
+|-------------------|-------|-------------|---------------|
+| `'individual'` | `User` | `#EEF2FF` | `#6366F1` |
+| `'client'` | `Users` | `#FDF2F8` | `#EC4899` |
+| `'family'` | SVG custom | `#FFFBEB` | `#F59E0B` |
+| `null` (fallback) | `PhaseIcon` | `phaseColor.bg` | `phaseColor.color` |
+
+> Le type est résolu via `getClientType(client)` (jamais `client.type` brut) pour prendre en compte la présence d'enfants et de partnerB.
+
+#### ActionDetailPanel — carte d'identité client
+
+Chaque item du panneau latéral Dashboard affiche une pastille d'identité via `<ClientTypeBadge type={clientType} size={40} initials={initials} isProspect={isProspect} showBorder />`.
+
+- **Avec initiales** : si `clientInitials` est fourni, elles s'affichent en gras à la place de l'icône type.
+- **Mode prospect** : si `isProspect=true`, les couleurs sont overridées par le violet prospect (`#7C3AED` / `#F3E8FF`).
+- **Bordure visible** : `showBorder` ajoute un anneau de 2px dans la couleur de bordure du type.
 
 ---
 
@@ -297,17 +425,22 @@ Propriétés :
 > Il est **interdit** de dupliquer le JSX de rendu de séance dans les pages consommatrices.
 > Toute modification visuelle d'une carte de séance doit se faire **exclusivement** dans `SessionCard.jsx`.
 > **Contrainte de dimension** : La carte doit toujours avoir `width: 100%` pour remplir son conteneur et permettre l'alignement correct des icônes à droite.
-> Les différences contextuelles (nom du client, style étendu) sont gérées par les props `showClientName`, `showExpandedStyle`, `dimmed`, `isProspect`.
+> Les différences contextuelles (nom du client, style étendu) sont gérées par les props `showClientName`, `showExpandedStyle`, `dimmed`, `isProspect`, `clientType`.
 > - **Badge Prospect** : Si le client est un prospect, un badge violet « PROSPECT » s'affiche à côté de son nom (quand `showClientName` est activé).
 
 > **Règle absolue — Affichage de l'heure et icônes sur SessionCard :**
 > - Pour les **séances planifiées** : 
 >   - L'heure est **masquée** dans la zone de titre pour être affichée à **droite**.
 >   - L'icône de document (`FileText`) ne s'affiche **que** pour les séances passées ayant un contenu. Elle est masquée pour les séances futures pour éviter toute confusion avec une note de préparation.
->   - **Aperçu systématique** : Pour les séances passées ayant un compte rendu, l'aperçu du texte (limitée à l'espace disponible) doit **toujours** être visible sur la carte, y compris lorsque celle-ci est sélectionnée (`isExpanded`).
->   - La note de préparation s'affiche toujours en texte à côté du badge de phase pour les séances planifiées. Le texte est **limité à 30 caractères** (via `slice(0, 30) + '…'`) pour garantir la lisibilité propre sur une seule ligne.
+>   - **Aperçu CR / Préparation** : Limité selon le contexte pour préserver l'équilibre visuel.
+>     - **Dashboard / Agenda (Liste)** : **50 caractères**.
+>     - **Timeline thérapie** : **35 caractères** (plus compact).
+>   - **Format** : Aucun préfixe (pas de « S1 : »).
+>     - Pour les **séances programmées** : inclure la durée au format `[DURÉE] MIN : [Texte]`.
+>   - **Position** : Toujours **aligné à droite**, à proximité immédiate de l'icône de document ou de l'horloge.
+>   - **Espace visuel** : Le conteneur doit permettre d'afficher ces caractères (~300-400px de `maxWidth`).
 >   - L'ordre des éléments à droite est : `[Espaceur flexible] [Heure] [🕐 Clock (bord droit)]`.
-> - Pour les **séances passées** : l'heure reste dans le titre (à côté du nom/date).
+> - Pour les **séances passées** (y compris celles encore en statut `scheduled` / « à confirmer ») : l'heure est **toujours** affichée dans le titre (à côté du nom/date).
 > - **Alignement** : Un espaceur flexible (`flex: 1`) garantit que le bloc d'icônes/heure de droite est toujours collé au bord droit de la carte.
 
 > **Règle absolue — Composant NewClientButton unique :**
@@ -320,6 +453,19 @@ Propriétés :
 > Le bouton « Ajouter une séance » doit **toujours** utiliser le composant `src/components/AddSessionButton.jsx`.
 > Style bleu secondaire : `background: var(--primary-100)`, `color: var(--primary-700)`, `border: 1px solid var(--primary-200)`, icône `Plus`.
 > Props : `onClick`, `label` (défaut « Ajouter une séance »).
+
+> **Règle absolue — Composant ViewSwitcher unique :**
+> Tout sélecteur de vue (Liste, Calendrier, Cartes) doit **obligatoirement** utiliser le composant `src/components/layout/ViewSwitcher.jsx`.
+> **Style** : Les boutons utilisent `btn-primary` (fond bleu marine, icône blanche) pour l'état actif et `btn-secondary` (fond clair, icône `--primary-600`) pour l'état inactif.
+> **Icônes standard** : `LayoutList` (Vue liste), `Calendar` (Vue calendrier), `LayoutGrid` (Vue cartes).
+
+### Navigation Temporelle (Contrôles fléchés)
+Utilisé pour naviguer entre les périodes (mois, années) dans les tableaux de bord.
+
+- **Structure** : `[Bouton flèche gauche] [Label central] [Bouton flèche droite]`
+- **Boutons** : `background: white`, `border: 1px solid var(--border-light)`, `borderRadius: var(--radius-sm)`, `padding: 4px`, `cursor: pointer`.
+- **Icônes** : `ChevronLeft` / `ChevronRight` (14px).
+- **Label** : `fontSize: 0.786rem`, `fontWeight: 600`, `minWidth: 60px` (année) à `100px` (mois), `textAlign: center`.
 
 ### Carte séance active (timeline thérapie)
 
@@ -438,28 +584,84 @@ Le format « Tableau Standard » s'applique à **tous** les tableaux de l'applic
 | **Attention** | `AlertTriangle` | `#D69E2E` | `#FFFFF0` |
 | **Urgent** | `AlertCircle` | `#C53030` | `#FFF5F5` |
 
-### Alerte « Séance à confirmer » (signalétique moutarde)
+### Alerte « Séance à confirmer » — Standard canonique
 
-Couleur unique `#D97706` (ambre) utilisée **systématiquement** pour l'icône ET le texte dans toutes les occurrences de cette alerte :
+> [!IMPORTANT]
+> **Ce design est le standard unique** pour toute alerte « à confirmer » dans l'application.
+> Toute nouvelle occurrence doit **obligatoirement** respecter ces tokens exacts.
 
-| Emplacement | Élément | Couleur |
-|------------|---------|---------|
-| **Carte séance (timeline)** | Badge « CONFIRMER » | `#D97706` |
-| **Carte séance (timeline)** | Message « Séance à confirmer — Veuillez renseigner le mode de paiement. » | `#D97706` |
-| **Suivi financier (alerte globale)** | Icône `HelpCircle` + texte « Séances à confirmer : N séances » | `#D97706` |
-| **Suivi financier (détail)** | Badge « CONFIRMER » par séance | `#D97706` |
-| **Modale détail séance** | Message « Séance à confirmer — Veuillez renseigner le mode de paiement. » | `#D97706` |
+#### Design Tokens
 
-**Fond commun** : `#FFFBEB` — **Bordure** : `#FEF3C7`
+| Token | Valeur | Usage |
+|-------|--------|-------|
+| **Couleur texte + icône** | `#D97706` | Icône ET texte — **aucune variante autorisée** (interdit : `#B7791F`, `#92400E`) |
+| **Fond** | `#FFFBEB` | Background bannière, badge compteur, carte urgence |
+| **Bordure** | `1px solid #FEF3C7` | Bordure des bannières d'alerte |
+| **Fond badge compteur** | `#FEF3C7` | Pastille ronde de comptage (ex: « 2 ») |
+| **Icône** | `HelpCircle` (Lucide) | Icône **obligatoire** — taille 9-16px selon le contexte |
+| **Police** | `fontWeight: 600`, `fontSize: 0.643-0.786rem` | Gras semi-bold, taille selon le contexte |
+
+#### Placements obligatoires (7 vues)
+
+| # | Vue | Composant | Élément rendu |
+|---|-----|-----------|---------------|
+| 1 | **SessionCard** (badge) | `SessionCard.jsx` | `<HelpCircle size={9} /> CONFIRMER` |
+| 2 | **Fiche client — alerte globale** | `ClientDetailPage.jsx` | `<HelpCircle size={14} /> Séances à confirmer : N séances` |
+| 3 | **Fiche client — badge par séance** | `ClientDetailPage.jsx` | `<HelpCircle size={9} /> À CONFIRMER / À RÉGLER` |
+| 4 | **Modale détail séance** | `SessionDetailModal.jsx` | `<HelpCircle size={14} /> Séance à confirmer — Veuillez renseigner...` |
+| 5 | **Dashboard — carte urgence** | `DashboardPage.jsx` | Carte `HelpCircle` + `N paiements à confirmer` |
+| 7 | **Finances — tableau détail** | `FinancesPage.jsx` | Badge texte `À confirmer` (fond `#FFFBEB`, couleur `#D97706`) |
+
+### Alerte « Facture à émettre » (signalétique bleu profond)
+
+Icône custom **SVG document + symbole €** utilisée **systématiquement** pour représenter les factures à émettre. Il est **interdit** d'utiliser une icône Lucide standard (`FileText`, `Receipt`) pour cette signalétique.
+
+#### SVG canonique (icône facture)
+
+```jsx
+<svg width="N" height="N" viewBox="0 0 24 24" fill="none" stroke="#1A365D"
+  strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+  <polyline points="14 2 14 8 20 8" />
+  <text x="12" y="17" textAnchor="middle" fill="#1A365D" stroke="none"
+    fontSize="10" fontWeight="800">€</text>
+</svg>
+```
+
+#### Couleurs
+
+| Token | Valeur | Usage |
+|-------|--------|-------|
+| **Couleur icône/texte** | `var(--primary-500)` (Bleu) | Icône SVG, libellés, compteurs |
+| **Fond alerte** | `#EBF8FF` (Bleu très pâle) | Background des bandeaux d'alerte |
+| **Bordure** | `#BEE3F8` | Bordure des bandeaux d'alerte |
+
+#### Emplacements
+
+| Vue | Élément | Taille icône |
+|-----|---------|--------------|
+| **Dashboard — Action requise** | Carte urgence « N facture(s) à envoyer » | 18px |
+| **Fiche client — Comptabilité** | Bandeau alerte « Factures à émettre : N séances » | 16px |
+
+> **Règle absolue** : La couleur `var(--primary-500)` est la référence unique pour toute la signalétique de facturation en attente. Ne jamais utiliser d'autres nuances de bleu non standard pour ces éléments.
 
 ### Badge « FACTURE »
 
-| État | Couleur Texte | Fond | Icône Lucide |
-|------|---------------|------|--------------|
-| **À ENVOYER** | `#1A365D` (Bleu profond) | transparent | — |
-| **ENVOYÉE** | `var(--success)` (#38A169) | transparent | `CheckCircle` (9px) |
+| État | Libellé | Couleur Texte | Fond |
+|------|---------|---------------|------|
+| **À émettre** | « À émettre » | `var(--primary-500)` (Bleu) | `#EBF8FF` + bordure `#BEE3F8` |
+| **Facturée** | « Facturée » | `var(--success)` (#38A169) | transparent |
+
+### Badge « ANNULATION »
+
+| État | Couleur Texte | Fond | Libellé |
+|------|---------------|------|---------|
+| **OFFERTE** | `var(--error)` | transparent | « SÉANCE OFFERTE » |
+| **FACTURÉE** | `var(--error)` | transparent | **« ANNULATION FACTURÉE »** |
 
 **Propriétés** : `fontSize: 0.643rem`, `fontWeight: 600`, `letterSpacing: 0.02em`.
+
+> ⚠️ **Règle absolue** : Le libellé « Annulation tardive » est proscrit. Seul le terme **« Annulation facturée »** doit être utilisé pour les séances annulées avec maintien du tarif.
 
 > ⚠️ **Règle absolue** : ne jamais utiliser `#92400E` ou toute autre nuance de brun pour ces éléments. La couleur `#D97706` est la référence unique pour toute la signalétique de confirmation.
 
@@ -569,8 +771,21 @@ Remplace les `confirm()` et `alert()` natifs du navigateur. Toutes les fenêtres
 
 ### Tableau de Bord (Pilotage)
 - **Layout** : Grid principal `66fr 34fr`.
+- **Bloc Statistiques Globales** :
+  - **Position** : En haut de la colonne de droite, au-dessus des actions requises.
+  - **Structure** : Grille compacte 3×2 de 6 KPIs.
+  - **KPIs** :
+    | KPI | Icône | Couleur icône |
+    |-----|-------|---------------|
+    | Clients actifs | `Heart` | `var(--primary-600)` |
+    | Prospects | `Sprout` | `#7C3AED` |
+    | Séances ce mois | `Calendar` | `var(--accent-main)` |
+    | CA du mois | `Euro` | `var(--success)` |
+    | Tx conversion | `TrendingUp` | `#6366F1` |
+    | Parrains | `UserCheck` | `#EC4899` |
+  - **Style** : Fond `var(--primary-50)`, bordure `var(--border-light)`, radius `var(--radius-md)`, padding compact `8px 10px`.
 - **Action requise (Side-block)** :
-  - Bloc d'alerte prioritaire en haut de la colonne de droite.
+  - Bloc d'alerte prioritaire sous les statistiques.
   - Items : `.card` interne ou div avec background thématique (Orange/Ambre/Bleu).
   - Hover : Translation horizontale (`translateX(4px)`) et renforcement de la bordure (`1px solid var(--color)`).
   - Icônes : `AlertCircle` (18px) pour le header, icônes thématiques pour les items.
@@ -580,10 +795,37 @@ Remplace les `confirm()` et `alert()` natifs du navigateur. Toutes les fenêtres
   - Boutons d'action rapides (Ajouter séance, Nouveau client) alignés à droite dans le header.
 - **Blocs de Pilotage (Relance prospects)** :
   - Sous les actions urgentes.
+  - **Détails prospect** : Affiche le nom (cliquable), et juste en dessous, le dernier contact.
+  - **Icônes de contact** : `Phone` (SMS), `Mail` (Email), `PhoneCall` (Appel). Couleur `var(--text-tertiary)`, taille `12px`.
+  - **Inactivité** : Si aucun contact, affiche « Inactif depuis : Création ».
   - Lignes interactives : fond `var(--primary-50)` par défaut, au survol : fond `white` + bordure `1px solid var(--border-medium)`.
 - **Navigation Contextuelle (Smart Back)** :
   - Les pages de détail (fiche client, rapport) mémorisent leur provenance via `location.state.from`.
   - Le bouton **« Retour »** s'adapte : il renvoie au Dashboard direct si l'utilisateur en vient (Pilotage), sinon il remonte à la liste parente.
+
+### Graphiques et Exports (Finances — Pilotage)
+- **Couleur des icônes** : Les icônes des sections « Canaux d'acquisition », « Types de clients », « Export suivi financier » et « Export Parrainages » sont toutes en **bleu** (`var(--primary-500)`).
+- **Couleur des barres** : Toutes les barres des graphiques sont d'une couleur uniforme **gris** (`#A0AEC0`). Aucune barre colorée par catégorie.
+- **Fond de barre** : `#F0F0F0`, `border-radius: var(--radius-sm)`.
+- **Valeur numérique** : Couleur grise `#A0AEC0`, à droite de la barre.
+
+### Indicateur de Transformation (Finances)
+- **Objectif** : Visualiser l'efficacité de l'onboarding prospect.
+- **Structure** :
+    - **En-tête** : Titre "Transformation Prospects" avec l'icône `Zap` (doré `#D69E2E`) à gauche.
+    - **KPIs** : Aucun pourcentage de conversion affiché (choix de sobriété).
+    - **Liste des transformations** : Liste verticale numérotée (`1. Nom du Client (Date)`).
+    - **Détails** : Affichage de la date de la première séance en texte léger à droite du nom.
+- **Interactivité** : Clic sur le nom du client ouvre son dossier.
+- **Contrainte visuelle** : Pas de lignes de séparation horizontales, pas de sous-titres de type "Dernière transformation".
+- **Structure** : Grid de 7 colonnes (L-D).
+- **Cellules** : Bordure `1px solid var(--border-light)`, aspect ratio carré ou légèrement vertical.
+- **Header** : Nom du jour en `Caption` uppercase.
+- **Contenu** : Chaque séance est une pastille miniature :
+  - **Dossier client** : Fond `var(--primary-50)`, texte `var(--primary-700)`.
+  - **Prospect** : Fond `#F5F0FF`, texte `#6B46C1`.
+  - **Status** : Si `scheduled` et passée sans CR → indicateur ambre discret.
+- **Interactivité** : Clic sur une séance ouvre le `SessionDetailModal`.
 
 ### Classe CSS : `.confirm-dialog`
 
@@ -719,14 +961,29 @@ Icones Lucide React — 22px — couleur #D9E2EC
   - Si le professionnel **n'existe pas** → création dans la table `professionals` via `createPro()`
   - Lien `parrainage-pro` avec `proId` créé sur le client filleul
 
-### Boutons-toggle — Style filigrane (obligatoire)
-- **Règle absolue** : tous les groupes de boutons-toggle (sélection exclusive) utilisent le style **filigrane** (contour coloré uniquement sur l'élément sélectionné)
-- **État non sélectionné** : `border: 2px solid transparent` — aucun contour visible, fond blanc ou `var(--bg-card)`
-- **État sélectionné** : `border: 2px solid ${couleur}` — contour coloré assorti à l'icône, fond légèrement teinté
-- **Hover (non sélectionné)** : bordure à 40% de la couleur (`+ '60'`) + fond teinté léger
-- **Exemples d'application** : mode de paiement (Espèces/Chèque/Virement), type de parrain (Particulier/Professionnel), type de client (Individuel/Couple/Famille)
-- **Exception — boutons Contact et Parrainage** : les boutons type de contact (Appel/Email/SMS/Réseaux/Site web) et type de parrain (Particulier/Professionnel) n'ont **aucun contour** dans aucun état. La sélection est indiquée uniquement par le fond coloré
-- **Anti-pattern** : ne jamais utiliser `1px solid var(--border-light)` sur les boutons non sélectionnés
+### Boutons-toggle & Switches — Style épuré Bleu Marine (obligatoire)
+- **Règle absolue** : tous les groupes de boutons-toggle (sélection exclusive) et les switches de statut utilisent le style **épuré** (pas d'ombres) avec le Bleu Marine comme couleur d'accentuation.
+- **Désactivation des ombres** : il est strictement interdit d'appliquer des `box-shadow` sur les rails ou les boutons/knobs des toggles.
+- **État non sélectionné** : `border: 2px solid transparent` (filigrane) ou `background: var(--primary-100)` (switch), aucun contour visible.
+- **État sélectionné (Actif)** : `background: var(--primary-800)` (Bleu Marine) ou `border: 2px solid var(--primary-800)`.
+- **État sélectionné (Inactif)** : `border: 2px solid var(--primary-300)` (Bleu/Gris) — fond légèrement teinté.
+- **Hover (non sélectionné)** : bordure à 40% de la couleur (`+ '60'`) + fond teinté léger.
+- **Exemples d'application** : Statut client (Actif/Inactif), réglages de notifications, mode de paiement, type de client.
+- **Anti-pattern** : ne jamais utiliser de doré, de vert ou de rouge pour les toggles simples de statut ou de configuration (utiliser exclusivement Bleu Marine / Gris).
+- **Montants (Finances)** :
+    - **Passé/Réalisé** : `var(--text-primary)` (noir/bleu sombre).
+    - **Prévisionnel (Scheduled)** : `var(--text-tertiary)` (gris clair).
+    - **Impayé** : `var(--error)` (rouge).
+- **Statut séance (Finances — colonne Statut)** :
+
+| Statut | Couleur texte | Fond | Libellé |
+|--------|--------------|------|---------|
+| **Réalisée** | `var(--success)` (`#38A169`) | transparent | « Réalisée » |
+| **À confirmer** | `#D97706` (ambre) | `#FFFBEB` | « À confirmer » |
+| **Planifiée** | `var(--text-tertiary)` | `#F0F0F0` | « Planifiée » |
+| **Annulée** | `var(--error)` | `#FED7D7` | « Annulée » / « Annulation facturée » |
+
+> **Règle** : Le vert `var(--success)` (`#38A169`) est la couleur unique pour tout indicateur positif dans le suivi financier : statut « Réalisée », labels de paiement reçu (« Chèque », « Virement »), et badge « Encaissé ».
 
 ---
 

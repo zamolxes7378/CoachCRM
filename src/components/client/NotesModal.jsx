@@ -8,7 +8,7 @@ const CATEGORIES = [
   { key: 'objectifs', icon: Target, color: '#38A169', bg: '#F0FFF4', label: 'Objectifs thérapeutiques', placeholder: 'Objectifs à court/moyen terme, critères de réussite…' }
 ]
 
-export default function NotesModal({ coupleName, noteCategories, setNoteCategories, globalNote, setGlobalNote, onClose }) {
+export default function NotesModal({ clientName, noteCategories, setNoteCategories, globalNote, setGlobalNote, onClose }) {
   return (
     <>
       <div onClick={onClose} style={{
@@ -35,7 +35,7 @@ export default function NotesModal({ coupleName, noteCategories, setNoteCategori
             </div>
             <div>
               <div style={{ fontSize: '0.857rem', fontWeight: 700, color: 'var(--text-primary)' }}>Mes notes du dossier</div>
-              <span style={{ fontSize: '0.714rem', color: 'var(--text-tertiary)' }}>{coupleName}</span>
+              <span style={{ fontSize: '0.714rem', color: 'var(--text-tertiary)' }}>{clientName}</span>
             </div>
           </div>
           <button onClick={onClose} style={{

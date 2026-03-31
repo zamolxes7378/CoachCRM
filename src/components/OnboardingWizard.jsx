@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Heart, ChevronRight, ChevronLeft, Layers, Euro, Users, Plus, Trash2, Check, Sparkles, GripVertical } from 'lucide-react'
-import { therapyPhases, defaultTherapyConfig, sessionRates, recruitmentSources } from '../data/mockData'
+import { therapyPhases, defaultTherapyConfig, sessionRates, recruitmentSources } from '../data/constants'
 
 const STEP_COUNT = 4
 
@@ -219,7 +219,7 @@ export default function OnboardingWizard({ user, onComplete }) {
 
         <div style={{ display: 'flex', gap: 'var(--space-lg)' }}>
           {[
-            { key: 'couple', label: 'Séance couple', icon: '👫', desc: 'Séance duo' },
+            { key: 'client', label: 'Séance client', icon: '👫', desc: 'Séance duo' },
             { key: 'individual', label: 'Séance individuelle', icon: '👤', desc: 'Suivi individuel' }
           ].map(item => (
             <div key={item.key} style={{

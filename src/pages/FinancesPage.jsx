@@ -1,49 +1,81 @@
 import { useState, useMemo, useEffect } from 'react'
-import { Euro, TrendingUp, TrendingDown, Minus, Users, UserPlus, Calendar, AlertTriangle, FileText, Hourglass, HelpCircle, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Download, BarChart3, ArrowUpRight, ArrowDownRight, XCircle, X, RefreshCw, PieChart } from 'lucide-react'
-import { useData } from '../context/DataContext'
-import CoupleDetailPage from './CoupleDetailPage'
-import { countClientsBySource, exportSponsorshipCSV } from '../services/sponsorshipService'
-import { getCoupleName } from '../data/mockData'
+import { Euro, TrendingUp, TrendingDown, Minus, Users, User, UserPlus, Calendar, FileText, Hourglass, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Download, BarChart3, ArrowUpRight, ArrowDownRight, XCircle, X, PieChart, Sprout, UserCheck, Zap } from 'lucide-react'
+import ClientTypeBadge from '../components/ClientTypeBadge'
+import PaymentBadge from '../components/PaymentBadge'
 
-const DEFAULT_RATE = 75 // fallback
+
+import { useData } from '../context/DataContext'
+import ClientDetailPage from './ClientDetailPage'
+import { countClientsBySource, exportSponsorshipCSV } from '../services/sponsorshipService'
+import { getClientName } from '../data/helpers'
+
+const AbsenceDash = () => (
+  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', minHeight: '1em' }}>
+    <Minus size={14} strokeWidth={3} style={{ color: 'var(--primary-300)' }} />
+  </div>
+)
+
+const renderCell = (val) => val === '—' ? <AbsenceDash /> : val
+
+function getDefaultRate(clientId, clients, sessionRates) {
+  const c = clients.find(x => x.id === clientId)
+  if (!c) return sessionRates?.client || 75
+  return c.sessionRate || (c.type === 'individual' ? sessionRates.individual : sessionRates.client) || 75
+}
 
 export default function FinancesPage() {
   const { clients, sessions: allSessions, recruitmentSources, sessionRates } = useData()
 
-  function getDefaultRate(coupleId) {
-    const c = clients.find(x => x.id === coupleId)
-    return c && c.type === 'individual' ? sessionRates.individual : sessionRates.couple
-  }
 
-  function getClientName(coupleId) {
-    const c = clients.find(x => x.id === coupleId)
+  // Moved outside component if possible, but keeping it inside for now to access useData or passing params
+
+  function getClientNameByContext(clientId) {
+    const c = clients.find(x => x.id === clientId)
     if (!c) return '—'
-    if (c.partnerB) return `${c.partnerA.firstName} & ${c.partnerB.firstName} ${c.partnerA.lastName}`
-    return `${c.partnerA.firstName} ${c.partnerA.lastName}`
+    return getClientName(c)
   }
 
-  function getClientType(coupleId) {
-    const c = clients.find(x => x.id === coupleId)
+  function getClientType(clientId) {
+    const c = clients.find(x => x.id === clientId)
     if (!c) return 'couple'
-    return c.type === 'individual' ? 'individuel' : 'couple'
+    const hasChildren = c.children && c.children.length > 0
+    if (c.type === 'family' || hasChildren) return 'famille'
+    if (c.type === 'individual' && !c.partnerB) return 'individuel'
+    return 'couple'
   }
 
-  function getClientSource(coupleId) {
-    const c = clients.find(x => x.id === coupleId)
+  function getClientSource(clientId) {
+    const c = clients.find(x => x.id === clientId)
     if (!c || !c.source) return '—'
-    const src = recruitmentSources.find(s => s.key === c.source)
-    return src ? src.label : c.source
+    const sTerm = c.source.toLowerCase().trim()
+    const src = recruitmentSources.find(s =>
+      s.key.toLowerCase() === sTerm ||
+      s.label.toLowerCase() === sTerm
+    )
+    if (src) return src.label
+    if (sTerm === 'referral') return 'Parrainage'
+    if (sTerm === 'website') return 'Site web'
+    if (sTerm === 'social') return 'Réseaux sociaux'
+    if (sTerm === 'phone') return 'Téléphone'
+    return c.source.charAt(0).toUpperCase() + c.source.slice(1)
   }
 
   function formatDate(d) {
-    const dt = new Date(d)
-    return dt.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
+    if (!d) return '—'
+    try {
+      const dt = new Date(d)
+      if (isNaN(dt.getTime())) return 'Date invalide'
+      return dt.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
+    } catch (e) {
+      return '—'
+    }
   }
 
   const MONTHS_FR = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
   const MONTHS_SHORT = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc']
 
-  const [modalCoupleId, setModalCoupleId] = useState(null)
+  const [modalClientId, setModalClientId] = useState(null)
+  const [modalSessionId, setModalSessionId] = useState(null)
   const now = new Date()
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth())
   const [selectedYear, setSelectedYear] = useState(now.getFullYear())
@@ -55,16 +87,15 @@ export default function FinancesPage() {
   const [expandedAlert, setExpandedAlert] = useState(null) // 'unpaid' | 'deferred' | 'invoices' | null
   const [exportFrom, setExportFrom] = useState(`${now.getFullYear()}-01-01`)
   const [exportTo, setExportTo] = useState(`${now.getFullYear()}-12-31`)
-  const [refreshKey, setRefreshKey] = useState(0)
 
-  // All sessions — spread to force re-evaluation on refresh
-  const sessions = useMemo(() => [...allSessions], [refreshKey])
+  // All sessions
+  const sessions = useMemo(() => [...(allSessions || [])], [allSessions])
 
   // Helper: sessions in a given month/year
   const sessionsInMonth = (m, y) => sessions.filter(s => {
     const d = new Date(s.date)
     return d.getMonth() === m && d.getFullYear() === y
-  })
+  }).sort((a, b) => (a.date || '').localeCompare(b.date || ''))
 
   // Monthly stats calculator
   const monthlyStats = (m, y) => {
@@ -72,34 +103,43 @@ export default function FinancesPage() {
     const completed = ms.filter(s => s.status === 'completed')
     const cancelled = ms.filter(s => s.status === 'cancelled')
     const scheduled = ms.filter(s => s.status === 'scheduled')
-    const caRealise = completed.reduce((sum, s) => sum + (s.paymentAmount || DEFAULT_RATE), 0)
-    const caPrev = caRealise + scheduled.reduce((sum, s) => sum + DEFAULT_RATE, 0)
-    const paid = completed.filter(s => s.paymentReceived)
-    const encaisse = paid.reduce((sum, s) => sum + (s.paymentAmount || DEFAULT_RATE), 0)
+
+    // CA Réalisé inclut les sessions complétées ET les annulations facturées
+    const billable = ms.filter(s => s.status === 'completed' || (s.status === 'cancelled' && s.paymentAmount > 0))
+    const caRealise = billable.reduce((sum, s) => sum + (s.paymentAmount || getDefaultRate(s.clientId, clients, sessionRates)), 0)
+    const caPrev = caRealise + scheduled.reduce((sum, s) => sum + getDefaultRate(s.clientId, clients, sessionRates), 0)
+    const paid = billable.filter(s => s.paymentReceived)
+    const encaisse = paid.reduce((sum, s) => sum + (s.paymentAmount || getDefaultRate(s.clientId, clients, sessionRates)), 0)
 
     // Nouveaux clients: 1ère séance de ce client est dans ce mois
-    const clientIds = [...new Set(ms.map(s => s.coupleId))]
+    const clientIds = [...new Set(ms.map(s => s.clientId))]
+    const nouveauxDates = {}
     const nouveaux = clientIds.filter(cid => {
-      const allClientSessions = sessions.filter(s => s.coupleId === cid && s.status !== 'cancelled').sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+      const allClientSessions = sessions.filter(s => s.clientId === cid && s.status !== 'cancelled').sort((a, b) => (a.date || '').localeCompare(b.date || ''))
       if (allClientSessions.length === 0) return false
-      const first = new Date(allClientSessions[0].date)
-      return first.getMonth() === m && first.getFullYear() === y
-    })
+      const firstDate = allClientSessions[0].date
+      const first = new Date(firstDate)
+      if (first.getMonth() === m && first.getFullYear() === y) {
+        nouveauxDates[cid] = firstDate
+        return true
+      }
+      return false
+    }).sort((a, b) => (nouveauxDates[a] || '').localeCompare(nouveauxDates[b] || ''))
 
     const panierMoyen = clientIds.length > 0 ? Math.round(caRealise / clientIds.length) : 0
     const txAnnulation = (completed.length + cancelled.length) > 0
       ? Math.round((cancelled.length / (completed.length + cancelled.length)) * 100)
       : 0
 
-    return { completed, cancelled, scheduled, caRealise, caPrev, encaisse, nouveaux, panierMoyen, txAnnulation, clientIds, allSessions: ms, paid }
+    return { completed, cancelled, scheduled, caRealise, caPrev, encaisse, nouveaux, nouveauxDates, panierMoyen, txAnnulation, clientIds, allSessions: ms, paid, billable }
   }
 
-  const currentStats = useMemo(() => monthlyStats(selectedMonth, selectedYear), [selectedMonth, selectedYear])
+  const currentStats = useMemo(() => monthlyStats(selectedMonth, selectedYear), [selectedMonth, selectedYear, sessions])
 
   // Previous month for comparison
   const prevMonth = selectedMonth === 0 ? 11 : selectedMonth - 1
   const prevYear = selectedMonth === 0 ? selectedYear - 1 : selectedYear
-  const prevStats = useMemo(() => monthlyStats(prevMonth, prevYear), [prevMonth, prevYear])
+  const prevStats = useMemo(() => monthlyStats(prevMonth, prevYear), [prevMonth, prevYear, sessions])
 
   // 12-month chart data
   const chartData = useMemo(() => {
@@ -112,17 +152,18 @@ export default function FinancesPage() {
       data.push({ month: m, year: y, label: MONTHS_SHORT[m], ca: stats.caRealise, objectif: objectifCA, sessions: stats.completed.length })
     }
     return data
-  }, [objectifCA])
+  }, [objectifCA, sessions])
 
   const maxCA = Math.max(...chartData.map(d => Math.max(d.ca, d.objectif)), 1)
 
   // Alerts
   const alerts = useMemo(() => {
-    const unpaid = sessions.filter(s => s.status === 'completed' && !s.paymentReceived && !s.paymentMethod)
-    const deferred = sessions.filter(s => s.status === 'completed' && s.paymentMethod && !s.paymentReceived)
+    const isActuallyBillable = (s) => s.status === 'completed' || (s.status === 'cancelled' && s.paymentAmount > 0)
+    const unpaid = sessions.filter(s => isActuallyBillable(s) && !s.paymentReceived && !s.paymentMethod)
+    const deferred = sessions.filter(s => isActuallyBillable(s) && s.paymentMethod && !s.paymentReceived)
     const pendingInvoices = sessions.filter(s => s.needsInvoice && !s.invoiceSent)
     return { unpaid, deferred, pendingInvoices }
-  }, [sessions, refreshKey])
+  }, [sessions])
 
   // Trend indicator
   const TrendBadge = ({ current, previous, suffix = '', invert = false }) => {
@@ -138,15 +179,22 @@ export default function FinancesPage() {
     )
   }
 
+  const MIN_YEAR = 2000
+  const MAX_YEAR = now.getFullYear() + 3
+
   // Navigate months
   const goToPrevMonth = () => {
-    if (selectedMonth === 0) { setSelectedMonth(11); setSelectedYear(selectedYear - 1) }
-    else setSelectedMonth(selectedMonth - 1)
+    if (selectedMonth === 0) {
+      if (selectedYear - 1 >= MIN_YEAR) { setSelectedMonth(11); setSelectedYear(selectedYear - 1) }
+    } else setSelectedMonth(selectedMonth - 1)
   }
   const goToNextMonth = () => {
-    if (selectedMonth === 11) { setSelectedMonth(0); setSelectedYear(selectedYear + 1) }
-    else setSelectedMonth(selectedMonth + 1)
+    if (selectedMonth === 11) {
+      if (selectedYear + 1 <= MAX_YEAR) { setSelectedMonth(0); setSelectedYear(selectedYear + 1) }
+    } else setSelectedMonth(selectedMonth + 1)
   }
+  const goToPrevYear = () => { if (selectedYear - 1 >= MIN_YEAR) setSelectedYear(selectedYear - 1) }
+  const goToNextYear = () => { if (selectedYear + 1 <= MAX_YEAR) setSelectedYear(selectedYear + 1) }
 
   return (
     <div>
@@ -161,46 +209,10 @@ export default function FinancesPage() {
             Tableau de bord consolidé de votre activité
           </p>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
-          <button
-            onClick={() => setRefreshKey(k => k + 1)}
-            style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.643rem', fontWeight: 600, color: 'var(--text-tertiary)', background: 'none', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)', padding: '4px 10px', cursor: 'pointer', transition: 'all 0.15s' }}
-          >
-            <RefreshCw size={11} /> Rafraîchir
-          </button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            {[
-              { label: 'Paiements en attente', count: alerts.unpaid.length + alerts.deferred.length, badgeBg: '#FFF5F5', badgeColor: '#C53030', target: 'zone-paiements' },
-              { label: 'Séances à confirmer', count: alerts.unpaid.length, badgeBg: '#FEFCBF', badgeColor: '#B7791F', target: 'zone-seances' },
-              { label: 'Factures à émettre', count: alerts.pendingInvoices.length, badgeBg: '#EBF8FF', badgeColor: '#1A365D', target: 'zone-factures' },
-            ].map((a, i, arr) => (
-              <span key={a.target} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                <span
-                  onClick={() => document.getElementById(a.target)?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 4,
-                    fontSize: '0.643rem', fontWeight: 600, color: 'var(--text-tertiary)',
-                    cursor: 'pointer', transition: 'opacity 0.15s'
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.opacity = '0.7'}
-                  onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-                >
-                  {a.label}
-                  {a.count > 0 && <span style={{ minWidth: 16, height: 16, borderRadius: 'var(--radius-full)', background: a.badgeBg, color: a.badgeColor, fontSize: '0.571rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>{a.count}</span>}
-                </span>
-                {i < arr.length - 1 && <span style={{ color: 'var(--border-light)', fontSize: '0.571rem' }}>·</span>}
-              </span>
-            ))}
-          </div>
-        </div>
       </div>
 
       {(() => {
         const currentYear = now.getFullYear()
-        const availableYears = [...new Set(sessions.map(s => new Date(s.date).getFullYear()))].sort()
-        if (!availableYears.includes(currentYear)) availableYears.push(currentYear)
-        if (!availableYears.includes(currentYear + 1)) availableYears.push(currentYear + 1)
-        availableYears.sort()
 
         // Yearly stats
         const yearStats = (y) => {
@@ -208,27 +220,30 @@ export default function FinancesPage() {
           const completed = ys.filter(s => s.status === 'completed')
           const cancelled = ys.filter(s => s.status === 'cancelled')
           const scheduled = ys.filter(s => s.status === 'scheduled')
-          const ca = completed.reduce((sum, s) => sum + (s.paymentAmount || DEFAULT_RATE), 0)
-          const caPlanned = ca + scheduled.reduce((sum, s) => sum + DEFAULT_RATE, 0)
-          const clientIds = [...new Set(ys.filter(s => s.status !== 'cancelled').map(s => s.coupleId))]
+
+          const billable = ys.filter(s => s.status === 'completed' || (s.status === 'cancelled' && s.paymentAmount > 0))
+          const ca = billable.reduce((sum, s) => sum + (s.paymentAmount || getDefaultRate(s.clientId, clients, sessionRates)), 0)
+          const caPlanned = ca + scheduled.reduce((sum, s) => sum + getDefaultRate(s.clientId, clients, sessionRates), 0)
+          const clientIds = [...new Set(ys.filter(s => s.status !== 'cancelled').map(s => s.clientId))]
           const newClients = clientIds.filter(cid => {
-            const all = sessions.filter(s => s.coupleId === cid && s.status !== 'cancelled').sort((a, b) => (a.date || '').localeCompare(b.date || ''))
-            return all.length > 0 && s.date && new Date(all[0].date).getFullYear() === y
+            const all = sessions.filter(s => s.clientId === cid && s.status !== 'cancelled').sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+            return all.length > 0 && all[0].date && new Date(all[0].date).getFullYear() === y
           })
-          const paid = completed.filter(s => s.paymentReceived)
-          const encaisse = paid.reduce((sum, s) => sum + (s.paymentAmount || DEFAULT_RATE), 0)
+          const paid = billable.filter(s => s.paymentReceived)
+          const encaisse = paid.reduce((sum, s) => sum + (s.paymentAmount || getDefaultRate(s.clientId, clients, sessionRates)), 0)
           const txAnnulation = (completed.length + cancelled.length) > 0
             ? Math.round((cancelled.length / (completed.length + cancelled.length)) * 100) : 0
-          return { ca, caPlanned, completed, cancelled, scheduled, clientIds, newClients, encaisse, txAnnulation, allSessions: ys }
+          return { ca, caPlanned, completed, cancelled, scheduled, clientIds, newClients, encaisse, txAnnulation, allSessions: ys, billable }
         }
 
         // Monthly breakdown for a year
         const monthlyBreakdown = (y) => Array.from({ length: 12 }, (_, m) => {
           const ms = sessions.filter(s => { const d = new Date(s.date); return d.getMonth() === m && d.getFullYear() === y })
+          const billable = ms.filter(s => s.status === 'completed' || (s.status === 'cancelled' && s.paymentAmount > 0))
           const completed = ms.filter(s => s.status === 'completed')
           const scheduled = ms.filter(s => s.status === 'scheduled')
-          const ca = completed.reduce((sum, s) => sum + (s.paymentAmount || DEFAULT_RATE), 0)
-          const caPlanned = scheduled.length * DEFAULT_RATE
+          const ca = billable.reduce((sum, s) => sum + (s.paymentAmount || getDefaultRate(s.clientId, clients, sessionRates)), 0)
+          const caPlanned = scheduled.reduce((sum, s) => sum + getDefaultRate(s.clientId, clients, sessionRates), 0)
           return { month: m, ca, caPlanned, sessions: completed.length }
         })
 
@@ -236,7 +251,7 @@ export default function FinancesPage() {
         const prevYearStats = yearStats(selectedYear - 1)
         const selMonthly = monthlyBreakdown(selectedYear)
         const prevMonthly = monthlyBreakdown(selectedYear - 1)
-        const maxMonthlyCA = Math.max(...selMonthly.map(m => m.ca + m.caPlanned), ...prevMonthly.map(m => m.ca), objectifCA, 1)
+        const maxMonthlyCA = Math.max(...selMonthly.map(m => m.ca + m.caPlanned), ...prevMonthly.map(m => m.ca), objectifCA, 1) * 1.15
         const objH = maxMonthlyCA > 0 ? (objectifCA / maxMonthlyCA) * 100 : 0
 
         // Next year projection
@@ -248,34 +263,16 @@ export default function FinancesPage() {
           <div className="card" style={{ padding: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-md)' }}>
               <span style={{ fontSize: '0.857rem', fontWeight: 700, color: 'var(--text-primary)' }}>Vue consolidée annuelle</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.643rem', color: 'var(--text-tertiary)' }}>
-                  <span style={{ fontWeight: 600 }}>Objectif/mois :</span>
-                  <input
-                    type="number" min="0" step="100"
-                    value={objectifCAByYear[selectedYear] || 2000}
-                    onChange={e => setObjectifCAByYear(prev => ({ ...prev, [selectedYear]: Number(e.target.value) }))}
-                    className="input"
-                    style={{ fontSize: '0.714rem', fontWeight: 700, textAlign: 'center', width: 70, padding: '2px 4px' }}
-                  />
-                  <span style={{ fontWeight: 600 }}>€</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  {availableYears.map(y => (
-                    <button
-                      key={y}
-                      onClick={() => setSelectedYear(y)}
-                      style={{
-                        padding: '5px 14px', borderRadius: 'var(--radius-sm)', fontSize: '0.857rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
-                        background: selectedYear === y ? 'var(--primary-500)' : 'transparent',
-                        color: selectedYear === y ? 'white' : 'var(--text-tertiary)',
-                        border: selectedYear === y ? 'none' : '1px solid var(--border-light)'
-                      }}
-                    >
-                      {y}
-                    </button>
-                  ))}
-                </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <button onClick={goToPrevYear} disabled={selectedYear <= MIN_YEAR} style={{ background: 'white', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)', padding: '4px', cursor: selectedYear <= MIN_YEAR ? 'not-allowed' : 'pointer', display: 'flex', opacity: selectedYear <= MIN_YEAR ? 0.3 : 1 }}>
+                  <ChevronLeft size={14} />
+                </button>
+                <span style={{ fontSize: '0.786rem', fontWeight: 600, color: 'var(--text-primary)', minWidth: 60, textAlign: 'center' }}>
+                  {selectedYear}
+                </span>
+                <button onClick={goToNextYear} disabled={selectedYear >= MAX_YEAR} style={{ background: 'white', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)', padding: '4px', cursor: selectedYear >= MAX_YEAR ? 'not-allowed' : 'pointer', display: 'flex', opacity: selectedYear >= MAX_YEAR ? 0.3 : 1 }}>
+                  <ChevronRight size={14} />
+                </button>
               </div>
             </div>
 
@@ -337,18 +334,13 @@ export default function FinancesPage() {
                       <div style={{ width: '100%', height: 120, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 2, position: 'relative' }}>
                         {/* CA label on hover/selected */}
                         {isSelected && (selCA > 0 || selPlanned > 0) && (
-                          <div style={{ position: 'absolute', top: -18, left: '50%', transform: 'translateX(-50%)', fontSize: '0.714rem', fontWeight: 700, color: 'var(--primary-700)', whiteSpace: 'nowrap', zIndex: 5, background: 'white', padding: '1px 6px', borderRadius: 'var(--radius-sm)', boxShadow: '0 1px 4px rgba(0,0,0,0.1)' }}>
+                          <div style={{ position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)', fontSize: '0.714rem', fontWeight: 700, color: 'var(--primary-700)', whiteSpace: 'nowrap', zIndex: 5, background: 'white', padding: '1px 6px', borderRadius: 'var(--radius-sm)', boxShadow: '0 1px 4px rgba(0,0,0,0.1)' }}>
                             {selCA}{selPlanned > 0 ? `+${selPlanned}` : ''}€
                             {prevCA > 0 && <span style={{ fontSize: '0.571rem', fontWeight: 500, color: '#999', marginLeft: 4 }}>({prevCA}€)</span>}
                           </div>
                         )}
-                        {/* Previous year bar */}
-                        <div style={{
-                          width: '35%', height: `${Math.max(prevH, 0.5)}%`, minHeight: 1, borderRadius: '3px 3px 0 0',
-                          background: '#CBD5E0', opacity: 0.5, transition: 'height 0.3s'
-                        }} title={`${selectedYear - 1}: ${prevCA}€`} />
                         {/* Current year bar — stacked: completed + planned */}
-                        <div style={{ width: '35%', display: 'flex', flexDirection: 'column', alignItems: 'stretch', outline: isSelected ? '2px solid var(--primary-700)' : 'none', outlineOffset: 1, borderRadius: '3px 3px 0 0', height: Math.max((totalSelH / 100) * 120, 1) }}>
+                        <div style={{ width: '55%', display: 'flex', flexDirection: 'column', alignItems: 'stretch', outline: isSelected ? '2px solid var(--primary-700)' : 'none', outlineOffset: 1, borderRadius: '3px 3px 0 0', height: Math.max((totalSelH / 100) * 120, 1) }}>
                           {/* Planned CA (top, light blue) */}
                           {selPlanned > 0 && (
                             <div style={{
@@ -366,6 +358,15 @@ export default function FinancesPage() {
                             transition: 'height 0.3s'
                           }} title={`${selectedYear}: ${selCA}€`} />
                         </div>
+                        {/* Previous year bar */}
+                        <div style={{
+                          width: '35%',
+                          height: Math.max((prevH / 100) * 120, prevCA > 0 ? 2 : 0),
+                          background: '#CBD5E0',
+                          opacity: 0.5,
+                          borderRadius: '3px 3px 0 0',
+                          transition: 'height 0.3s'
+                        }} title={`${selectedYear - 1}: ${prevCA}€`} />
                       </div>
                       <span style={{ fontSize: '0.5rem', fontWeight: isSelected ? 700 : 500, color: isSelected ? 'var(--primary-700)' : 'var(--text-tertiary)' }}>{label}</span>
                     </div>
@@ -375,7 +376,7 @@ export default function FinancesPage() {
             </div>
 
             {/* Liens Top Clients & Parrainages */}
-            <div style={{ display: 'flex', gap: 16, justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', gap: 16, justifyContent: 'flex-end', marginTop: 'var(--space-md)' }}>
               <span
                 onClick={() => setTopModal('ca')}
                 style={{ fontSize: '0.643rem', fontWeight: 600, color: 'var(--primary-500)', cursor: 'pointer', borderBottom: '1px dashed var(--primary-300)' }}
@@ -388,6 +389,17 @@ export default function FinancesPage() {
               >
                 🤝 Top Parrains {selectedYear}
               </span>
+              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.643rem', color: 'var(--text-tertiary)' }}>
+                <span style={{ fontWeight: 600 }}>Objectif/mois :</span>
+                <input
+                  type="number" min="0" step="100"
+                  value={objectifCAByYear[selectedYear] || 2000}
+                  onChange={e => setObjectifCAByYear(prev => ({ ...prev, [selectedYear]: Number(e.target.value) }))}
+                  className="input"
+                  style={{ fontSize: '0.714rem', fontWeight: 700, textAlign: 'center', width: 70, padding: '2px 4px' }}
+                />
+                <span style={{ fontWeight: 600 }}>€</span>
+              </div>
             </div>
           </div>
         )
@@ -400,13 +412,13 @@ export default function FinancesPage() {
             Vue détaillée du mois
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <button onClick={goToPrevMonth} style={{ background: 'white', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)', padding: '4px', cursor: 'pointer', display: 'flex' }}>
+            <button onClick={goToPrevMonth} disabled={selectedYear <= MIN_YEAR && selectedMonth === 0} style={{ background: 'white', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)', padding: '4px', cursor: selectedYear <= MIN_YEAR && selectedMonth === 0 ? 'not-allowed' : 'pointer', display: 'flex', opacity: selectedYear <= MIN_YEAR && selectedMonth === 0 ? 0.3 : 1 }}>
               <ChevronLeft size={14} />
             </button>
             <span style={{ fontSize: '0.786rem', fontWeight: 600, color: 'var(--text-primary)', minWidth: 100, textAlign: 'center' }}>
               {MONTHS_FR[selectedMonth]} {selectedYear}
             </span>
-            <button onClick={goToNextMonth} style={{ background: 'white', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)', padding: '4px', cursor: 'pointer', display: 'flex' }}>
+            <button onClick={goToNextMonth} disabled={selectedYear >= MAX_YEAR && selectedMonth === 11} style={{ background: 'white', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)', padding: '4px', cursor: selectedYear >= MAX_YEAR && selectedMonth === 11 ? 'not-allowed' : 'pointer', display: 'flex', opacity: selectedYear >= MAX_YEAR && selectedMonth === 11 ? 0.3 : 1 }}>
               <ChevronRight size={14} />
             </button>
           </div>
@@ -451,95 +463,107 @@ export default function FinancesPage() {
           <table className="table-standard">
             <thead>
               <tr>
-                {['Date', 'Client', 'Source', 'Type', 'Statut', 'Montant', 'Paiement', 'Encaissé', 'Facture'].map(h => (
-                  <th key={h} style={{ textAlign: 'left' }}>
+                {['Date', 'Type', 'Client', 'Source', 'Statut', 'Montant', 'Paiement', 'Encaissé', 'Facture'].map(h => (
+                  <th key={h} style={{ textAlign: ['Date', 'Client'].includes(h) ? 'left' : 'center' }}>
                     {h}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {currentStats.allSessions.sort((a, b) => (b.date || '').localeCompare(a.date || '')).map(s => {
+              {currentStats.allSessions.map(s => {
                 const isCancelled = s.status === 'cancelled'
                 const isScheduled = s.status === 'scheduled'
+                const isToConfirm = s.isToConfirm
+                const isConfirmed = s.isConfirmed
                 const isPaid = s.paymentReceived
+
                 return (
                   <tr key={s.id} style={{
                     borderBottom: '1px solid var(--border-light)',
-                    opacity: isCancelled ? 0.5 : isScheduled ? 0.7 : 1,
+                    opacity: isCancelled ? 0.5 : isToConfirm ? 0.9 : 1,
                     background: isCancelled ? '#FFF5F5' : 'transparent',
                     transition: 'background 0.1s'
                   }}
                     onMouseEnter={e => { if (!isCancelled) e.currentTarget.style.background = 'var(--primary-50)' }}
                     onMouseLeave={e => { e.currentTarget.style.background = isCancelled ? '#FFF5F5' : 'transparent' }}
                   >
-                    <td style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>{formatDate(s.date)}</td>
+                    <td style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>{renderCell(formatDate(s.date))}</td>
+                    <td style={{ textAlign: 'center' }}>
+                      {(() => {
+                        const cType = getClientType(s.clientId)
+                        return <ClientTypeBadge type={cType} size={28} />
+                      })()}
+                    </td>
                     <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
                       <span
-                        onClick={() => setModalCoupleId(s.coupleId)}
-                        style={{ cursor: 'pointer', color: 'var(--primary-600)', textDecoration: 'none', borderBottom: '1px dashed var(--primary-300)' }}
+                        onClick={() => { setModalClientId(s.clientId); setModalSessionId(s.id) }}
+                        style={{
+                          cursor: 'pointer',
+                          color: 'var(--primary-600)',
+                          textDecoration: 'none',
+                          borderBottom: '1px dashed var(--primary-300)',
+                          maxWidth: '300px',
+                          display: 'inline-block',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          verticalAlign: 'bottom'
+                        }}
                         onMouseEnter={e => e.target.style.color = 'var(--primary-800)'}
                         onMouseLeave={e => e.target.style.color = 'var(--primary-600)'}
+                        title={getClientNameByContext(s.clientId)}
                       >
-                        {getClientName(s.coupleId)}
+                        {renderCell(getClientNameByContext(s.clientId))}
                       </span>
                       {(() => {
-                        const clientSessions = sessions.filter(cs => cs.coupleId === s.coupleId && cs.status !== 'cancelled').sort((a, b) => a.date.localeCompare(b.date))
+                        const clientSessions = sessions.filter(cs => cs.clientId === s.clientId && cs.status !== 'cancelled').sort((a, b) => (a.date || '').localeCompare(b.date || ''))
                         return clientSessions.length > 0 && clientSessions[0].id === s.id ? (
                           <span style={{ fontSize: '0.643rem', fontWeight: 600, padding: '2px 6px', borderRadius: 'var(--radius-sm)', background: '#FAF5FF', color: '#805AD5', marginLeft: 6 }}>1er RDV</span>
                         ) : null
                       })()}
                     </td>
-                    <td>
-                      <span style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)' }}>{getClientSource(s.coupleId)}</span>
+                    <td style={{ textAlign: 'center' }}>
+                      <span style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)' }}>{renderCell(getClientSource(s.clientId))}</span>
                     </td>
-                    <td>
+                    <td style={{ textAlign: 'center' }}>
                       <span style={{
                         fontSize: '0.643rem', fontWeight: 600, padding: '2px 6px', borderRadius: 'var(--radius-sm)',
-                        background: getClientType(s.coupleId) === 'individuel' ? '#FAF5FF' : '#EBF8FF',
-                        color: getClientType(s.coupleId) === 'individuel' ? '#805AD5' : '#2B6CB0'
+                        background: isCancelled ? '#FED7D7' : isToConfirm ? '#FFFBEB' : isScheduled ? '#F0F0F0' : 'transparent',
+                        color: isCancelled ? 'var(--error)' : isToConfirm ? '#D97706' : isScheduled ? 'var(--text-tertiary)' : 'var(--success)'
                       }}>
-                        {getClientType(s.coupleId) === 'individuel' ? 'Individuel' : 'Couple'}
+                        {isCancelled ? (s.paymentAmount > 0 ? 'Annulation facturée' : 'Annulée') : isToConfirm ? 'À confirmer' : isScheduled ? 'Planifiée' : 'Réalisée'}
                       </span>
                     </td>
-                    <td>
-                      <span style={{
-                        fontSize: '0.643rem', fontWeight: 600, padding: '2px 6px', borderRadius: 'var(--radius-sm)',
-                        background: isCancelled ? '#FED7D7' : isScheduled ? '#F0F0F0' : (!s.paymentMethod ? '#FEFCBF' : '#C6F6D5'),
-                        color: isCancelled ? 'var(--error)' : isScheduled ? 'var(--text-tertiary)' : (!s.paymentMethod ? '#B7791F' : '#276749')
-                      }}>
-                        {isCancelled ? 'Annulée' : isScheduled ? 'Planifiée' : 'Réalisée'}
-                      </span>
+                    <td style={{ textAlign: 'center', fontWeight: 700, color: isPaid ? 'var(--text-primary)' : (isScheduled && !isToConfirm ? 'var(--text-tertiary)' : 'var(--error)') }}>
+                      {s.paymentAmount === 0 ? <AbsenceDash /> : `${s.paymentAmount ?? getDefaultRate(s.clientId, clients, sessionRates)}€`}
                     </td>
-                    <td style={{ fontWeight: 700, color: isPaid ? '#276749' : isCancelled ? 'var(--error)' : 'var(--text-primary)' }}>
-                      {s.paymentAmount || DEFAULT_RATE}€
-                    </td>
-                    <td>
+                    <td style={{ textAlign: 'center' }}>
                       {s.paymentMethod ? (
-                        <span style={{ fontSize: '0.643rem', fontWeight: isPaid ? 700 : 400, color: isPaid ? 'var(--success)' : 'var(--text-tertiary)' }}>
-                          {{ cheque: 'Chèque', virement: 'Virement', especes: 'Espèces' }[s.paymentMethod]}
-                        </span>
+                        <PaymentBadge method={s.paymentMethod} received={isPaid} size="sm" />
                       ) : (
-                        isScheduled ? <span style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)' }}>—</span> : (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: '0.571rem', fontWeight: 700, color: 'var(--error)', letterSpacing: '0.02em' }}>
-                            <AlertTriangle size={9} /> PAIEMENT
-                          </span>
-                        )
+                        <AbsenceDash />
                       )}
                     </td>
                     <td style={{ textAlign: 'center' }}>
-                      {isScheduled || isCancelled ? '—' : isPaid ? (
-                        <span style={{ fontSize: '0.643rem', fontWeight: 600, padding: '2px 8px', borderRadius: 'var(--radius-sm)', background: '#C6F6D5', color: '#276749' }}>€</span>
+                      {(isScheduled || isToConfirm || (isCancelled && !s.paymentAmount) || s.paymentAmount === 0) ? <AbsenceDash /> : isPaid ? (
+                        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: '50%', background: '#C6F6D5', color: '#276749', fontSize: '0.714rem', fontWeight: 700 }} title="Encaissé">€</div>
                       ) : (
-                        <span style={{ fontSize: '0.643rem', fontWeight: 600, padding: '2px 8px', borderRadius: 'var(--radius-sm)', background: '#FED7D7', color: '#C53030' }}>Non</span>
+                        <Hourglass size={14} style={{ color: 'var(--error)' }} title="En attente d'encaissement" />
                       )}
                     </td>
                     <td style={{ textAlign: 'center' }}>
                       {s.needsInvoice ? (
-                        <span style={{ fontSize: '0.571rem', fontWeight: 700, color: s.invoiceSent ? 'var(--success)' : 'var(--error)', letterSpacing: '0.02em' }}>
-                          FACTURE{s.invoiceSent ? ' ✓' : ''}
-                        </span>
-                      ) : '—'}
+                        s.invoiceSent ? (
+                          <span style={{ fontSize: '0.571rem', fontWeight: 700, color: 'var(--success)', letterSpacing: '0.02em' }}>
+                            Facturée
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '0.571rem', fontWeight: 700, color: 'var(--primary-500)', background: '#EBF8FF', padding: '2px 4px', borderRadius: 'var(--radius-sm)', border: '1px solid #BEE3F8' }}>
+                            À ÉMETTRE
+                          </span>
+                        )
+                      ) : <AbsenceDash />}
                     </td>
                   </tr>
                 )
@@ -555,7 +579,7 @@ export default function FinancesPage() {
                   {currentStats.caRealise}€
                 </td>
                 <td colSpan={2} style={{ fontSize: '0.714rem', color: 'var(--text-tertiary)' }}>
-                  {currentStats.paid.length}/{currentStats.completed.length} encaissé{currentStats.paid.length > 1 ? 's' : ''}
+                  {currentStats.paid.length}/{currentStats.billable.length} encaissé{currentStats.paid.length > 1 ? 's' : ''}
                 </td>
                 <td style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)' }}>
                   {currentStats.allSessions.filter(s => s.needsInvoice).length} facture{currentStats.allSessions.filter(s => s.needsInvoice).length > 1 ? 's' : ''}
@@ -566,183 +590,106 @@ export default function FinancesPage() {
         </div>
       </div>
 
-      {/* Meilleurs clients + À régulariser + Factures à émettre — 33/33/33 */}
-      {(() => {
-        const clientPayments = {}
-        sessions.filter(s => s.status === 'completed').forEach(s => {
-          if (!clientPayments[s.coupleId]) clientPayments[s.coupleId] = { name: getClientName(s.coupleId), totalDue: 0, totalPaid: 0 }
-          const amt = s.paymentAmount || DEFAULT_RATE
-          clientPayments[s.coupleId].totalDue += amt
-          if (s.paymentReceived) clientPayments[s.coupleId].totalPaid += amt
-        })
-        const outstanding = Object.entries(clientPayments).filter(([, c]) => c.totalPaid < c.totalDue).sort((a, b) => (b[1].totalDue - b[1].totalPaid) - (a[1].totalDue - a[1].totalPaid))
 
-        const invoiceClients = {}
-        sessions.filter(s => s.needsInvoice && !s.invoiceSent).forEach(s => {
-          if (!invoiceClients[s.coupleId]) invoiceClients[s.coupleId] = { name: getClientName(s.coupleId), sessions: 0, total: 0 }
-          invoiceClients[s.coupleId].sessions++
-          invoiceClients[s.coupleId].total += (s.paymentAmount || DEFAULT_RATE)
-        })
-        const pendingInvoices = Object.entries(invoiceClients).sort((a, b) => b[1].total - a[1].total)
 
-        const doubtfulByClient = {}
-        sessions.filter(s => s.status === 'completed' && !s.paymentMethod).forEach(s => {
-          if (!doubtfulByClient[s.coupleId]) doubtfulByClient[s.coupleId] = { name: getClientName(s.coupleId), sessions: [], total: 0 }
-          doubtfulByClient[s.coupleId].sessions.push(s)
-          doubtfulByClient[s.coupleId].total += (s.paymentAmount || DEFAULT_RATE)
-        })
-        const doubtfulClients = Object.entries(doubtfulByClient).sort((a, b) => b[1].sessions.length - a[1].sessions.length)
 
-        const clientMap = {}
-        currentStats.allSessions.filter(s => s.status !== 'cancelled').forEach(s => {
-          if (!clientMap[s.coupleId]) clientMap[s.coupleId] = { name: getClientName(s.coupleId), sessions: 0, ca: 0 }
-          clientMap[s.coupleId].sessions++
-          if (s.status === 'completed') clientMap[s.coupleId].ca += (s.paymentAmount || DEFAULT_RATE)
-        })
-        const topClients = Object.entries(clientMap).sort((a, b) => b[1].ca - a[1].ca)
-
-        return (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 'var(--space-sm)', marginTop: 'var(--space-sm)' }}>
-            <div className="card" style={{ padding: 'var(--space-md)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-sm)' }}>
-                <span style={{ fontSize: '0.786rem', fontWeight: 700, color: 'var(--text-primary)' }}>Meilleurs clients du mois</span>
-                <span style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)' }}>{MONTHS_FR[selectedMonth]} {selectedYear}</span>
-              </div>
-              <div style={{ maxHeight: 240, overflowY: 'auto' }}>
-                {topClients.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: 'var(--space-md)', fontSize: '0.786rem', color: 'var(--text-tertiary)' }}>Aucune séance ce mois</div>
-                ) : topClients.map(([cid, c], i) => (
-                  <div key={cid} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0' }}>
-                    <span style={{ fontSize: '0.714rem', fontWeight: 800, color: i < 3 ? '#D69E2E' : 'var(--text-tertiary)', minWidth: 20, textAlign: 'center' }}>
-                      {i < 3 ? ['🥇', '🥈', '🥉'][i] : `${i + 1}.`}
-                    </span>
-                    <span onClick={() => setModalCoupleId(cid)} style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--primary-600)', cursor: 'pointer', borderBottom: '1px dashed var(--primary-300)', flex: 1 }}>{c.name}</span>
-                    <span style={{ fontSize: '0.857rem', fontWeight: 800, color: '#276749' }}>{c.ca}€</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div id="zone-paiements" className="card" style={{ padding: 'var(--space-md)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 'var(--space-sm)' }}>
-                <Hourglass size={16} style={{ color: '#C53030' }} />
-                <span style={{ fontSize: '0.786rem', fontWeight: 700, color: '#C53030' }}>Paiements en attente</span>
-                <span style={{ fontSize: '0.571rem', fontWeight: 600, padding: '1px 6px', borderRadius: 'var(--radius-full)', background: '#FFF5F5', color: '#C53030' }}>{outstanding.length}</span>
-              </div>
-              <div style={{ maxHeight: 240, overflowY: 'auto' }}>
-                {outstanding.map(([cid, c]) => {
-                  const remaining = c.totalDue - c.totalPaid
-                  return (
-                    <div key={cid} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
-                      <span onClick={() => setModalCoupleId(cid)} style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--primary-600)', cursor: 'pointer', borderBottom: '1px dashed var(--primary-300)' }}>{c.name}</span>
-                      <span style={{ fontSize: '0.857rem', fontWeight: 800, color: '#C53030' }}>{remaining}€</span>
-                    </div>
-                  )
-                })}
-                {outstanding.length === 0 && <div style={{ textAlign: 'center', padding: 'var(--space-md)', fontSize: '0.786rem', color: 'var(--success)', fontWeight: 600 }}>✓ Tous à jour</div>}
-              </div>
-            </div>
-
-            <div id="zone-seances" className="card" style={{ padding: 'var(--space-md)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 'var(--space-sm)' }}>
-                <HelpCircle size={16} style={{ color: '#B7791F' }} />
-                <span style={{ fontSize: '0.786rem', fontWeight: 700, color: '#B7791F' }}>Séances à confirmer</span>
-                <span style={{ fontSize: '0.571rem', fontWeight: 600, padding: '1px 6px', borderRadius: 'var(--radius-full)', background: '#FEFCBF', color: '#B7791F' }}>{doubtfulClients.reduce((sum, [, c]) => sum + c.sessions.length, 0)}</span>
-              </div>
-              <div style={{ maxHeight: 240, overflowY: 'auto' }}>
-                {doubtfulClients.flatMap(([cid, c]) => c.sessions.map(s => (
-                  <div key={s.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
-                    <span onClick={() => setModalCoupleId(cid)} style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--primary-600)', cursor: 'pointer', borderBottom: '1px dashed var(--primary-300)' }}>{c.name}</span>
-                    <span style={{ fontSize: '0.643rem', fontWeight: 600, color: '#B7791F' }}>{formatDate(s.date)}</span>
-                  </div>
-                )))}
-                {doubtfulClients.length === 0 && <div style={{ textAlign: 'center', padding: 'var(--space-md)', fontSize: '0.786rem', color: 'var(--success)', fontWeight: 600 }}>✓ Toutes confirmées</div>}
-              </div>
-            </div>
-
-            <div id="zone-factures" className="card" style={{ padding: 'var(--space-md)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 'var(--space-sm)' }}>
-                <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, flexShrink: 0 }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2B6CB0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                    <text x="12" y="17" textAnchor="middle" fill="#2B6CB0" stroke="none" fontSize="10" fontWeight="800">€</text>
-                  </svg>
-                </span>
-                <span style={{ fontSize: '0.786rem', fontWeight: 700, color: '#1A365D' }}>Factures à émettre</span>
-                <span style={{ fontSize: '0.571rem', fontWeight: 600, padding: '1px 6px', borderRadius: 'var(--radius-full)', background: '#EBF8FF', color: '#1A365D' }}>{pendingInvoices.length}</span>
-              </div>
-              <div style={{ maxHeight: 240, overflowY: 'auto' }}>
-                {pendingInvoices.map(([cid, c]) => (
-                  <div key={cid} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
-                    <span onClick={() => setModalCoupleId(cid)} style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--primary-600)', cursor: 'pointer', borderBottom: '1px dashed var(--primary-300)' }}>{c.name}</span>
-                    <span style={{ fontSize: '0.643rem', fontWeight: 600, color: '#1A365D' }}>{c.sessions} séance{c.sessions > 1 ? 's' : ''}</span>
-                  </div>
-                ))}
-                {pendingInvoices.length === 0 && <div style={{ textAlign: 'center', padding: 'var(--space-md)', fontSize: '0.786rem', color: 'var(--success)', fontWeight: 600 }}>✓ Toutes émises</div>}
-              </div>
-            </div>
+      {/* Export section — two exports side by side */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-sm)', marginTop: 'var(--space-md)' }}>
+        {/* Export clients */}
+        <div className="card" style={{ padding: 'var(--space-md)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 'var(--space-sm)' }}>
+            <Download size={16} style={{ color: 'var(--primary-500)' }} />
+            <span style={{ fontSize: '0.786rem', fontWeight: 700, color: 'var(--text-primary)' }}>Export suivi financier</span>
           </div>
-        )
-      })()}
-
-      {/* Export section with period selector */}
-      <div className="card" style={{ padding: 'var(--space-md)', marginTop: 'var(--space-md)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: '0.786rem', fontWeight: 700, color: 'var(--text-primary)' }}>Export CSV</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <label style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Du</label>
-              <input
-                type="date"
-                className="input"
-                value={exportFrom}
-                onChange={e => setExportFrom(e.target.value)}
-                style={{ fontSize: '0.714rem', fontFamily: 'inherit' }}
-              />
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <label style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Au</label>
-              <input
-                type="date"
-                className="input"
-                value={exportTo}
-                onChange={e => setExportTo(e.target.value)}
-                style={{ fontSize: '0.714rem', fontFamily: 'inherit' }}
-              />
-            </div>
-            <button
-              onClick={() => {
-                const filtered = sessions.filter(s => {
-                  const d = s.date
-                  return d >= exportFrom && d <= exportTo
-                })
-                const rows = [
-                  ['Date', 'Client', 'Type', 'Statut', 'Montant', 'Paiement', 'Encaissé', 'Facture'],
-                  ...filtered.sort((a, b) => (b.date || '').localeCompare(a.date || '')).map(s => [
-                    formatDate(s.date),
-                    getClientName(s.coupleId),
-                    getClientType(s.coupleId),
-                    s.status === 'cancelled' ? 'Annulée' : s.status === 'scheduled' ? 'Planifiée' : 'Réalisée',
-                    s.paymentAmount || DEFAULT_RATE,
-                    s.paymentMethod ? { cheque: 'Chèque', virement: 'Virement', especes: 'Espèces' }[s.paymentMethod] || '' : '',
-                    s.paymentReceived ? 'Oui' : 'Non',
-                    s.needsInvoice ? (s.invoiceSent ? 'Émise' : 'À émettre') : ''
-                  ])
-                ]
-                const csv = rows.map(r => r.join(';')).join('\n')
-                const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' })
-                const url = URL.createObjectURL(blob)
-                const a = document.createElement('a')
-                a.href = url; a.download = `suivi_financier_${exportFrom}_${exportTo}.csv`
-                a.click(); URL.revokeObjectURL(url)
-              }}
-              className="btn btn-secondary"
-              style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.786rem', padding: '8px 16px' }}
-            >
-              <Download size={14} /> Exporter
-            </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 'var(--space-sm)', flexWrap: 'wrap' }}>
+            <label style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Du</label>
+            <input
+              type="date"
+              className="input"
+              value={exportFrom}
+              onChange={e => setExportFrom(e.target.value)}
+              style={{ fontSize: '0.714rem', fontFamily: 'inherit', padding: '4px 8px', width: 130 }}
+            />
+            <label style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Au</label>
+            <input
+              type="date"
+              className="input"
+              value={exportTo}
+              onChange={e => setExportTo(e.target.value)}
+              style={{ fontSize: '0.714rem', fontFamily: 'inherit', padding: '4px 8px', width: 130 }}
+            />
           </div>
+          <button
+            onClick={() => {
+              const filtered = sessions.filter(s => {
+                const d = s.date
+                return d >= exportFrom && d <= exportTo
+              })
+              const rows = [
+                ['Date', 'Client', 'Type', 'Statut', 'Montant', 'Paiement', 'Encaissé', 'Facture'],
+                ...[...filtered].sort((a, b) => (a.date || '').localeCompare(b.date || '')).map(s => [
+                  formatDate(s.date),
+                  getClientNameByContext(s.clientId),
+                  getClientType(s.clientId),
+                  s.status === 'cancelled' ? 'Annulée' : s.isToConfirm ? 'À confirmer' : s.status === 'scheduled' ? 'Planifiée' : 'Réalisée',
+                  s.paymentAmount || getDefaultRate(s.clientId, clients, sessionRates),
+                  s.paymentMethod ? { cheque: 'Chèque', virement: 'Virement', especes: 'Espèces' }[s.paymentMethod] || '' : '',
+                  s.paymentReceived ? 'Oui' : 'Non',
+                  s.needsInvoice ? (s.invoiceSent ? 'Émise' : 'À émettre') : ''
+                ])
+              ]
+              const csv = rows.map(r => r.join(';')).join('\n')
+              const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' })
+              const url = URL.createObjectURL(blob)
+              const a = document.createElement('a')
+              a.href = url; a.download = `suivi_financier_${exportFrom}_${exportTo}.csv`
+              a.click(); URL.revokeObjectURL(url)
+            }}
+            className="btn btn-secondary"
+            style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.786rem', padding: '8px 16px' }}
+          >
+            <Download size={14} /> Exporter
+          </button>
+        </div>
+
+        {/* Export CSV Parrainages */}
+        <div className="card" style={{ padding: 'var(--space-md)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 'var(--space-sm)' }}>
+            <Download size={16} style={{ color: 'var(--primary-500)' }} />
+            <span style={{ fontSize: '0.786rem', fontWeight: 700, color: 'var(--text-primary)' }}>Export Parrainages</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 'var(--space-sm)', flexWrap: 'wrap' }}>
+            <label style={{ fontSize: '0.714rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Du</label>
+            <input
+              type="date"
+              value={exportFrom}
+              onChange={e => setExportFrom(e.target.value)}
+              className="input"
+              style={{ fontSize: '0.714rem', padding: '4px 8px', width: 130 }}
+            />
+            <label style={{ fontSize: '0.714rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Au</label>
+            <input
+              type="date"
+              value={exportTo}
+              onChange={e => setExportTo(e.target.value)}
+              className="input"
+              style={{ fontSize: '0.714rem', padding: '4px 8px', width: 130 }}
+            />
+          </div>
+          <button
+            onClick={() => {
+              const csv = exportSponsorshipCSV(clients, getClientName, { startDate: exportFrom, endDate: exportTo })
+              const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+              const url = URL.createObjectURL(blob)
+              const a = document.createElement('a')
+              a.href = url; a.download = `parrainages_${exportFrom}_${exportTo}.csv`
+              a.click(); URL.revokeObjectURL(url)
+            }}
+            className="btn btn-secondary"
+            style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.786rem', padding: '8px 16px' }}
+          >
+            <Download size={14} /> Exporter
+          </button>
         </div>
       </div>
 
@@ -750,13 +697,10 @@ export default function FinancesPage() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-sm)', marginTop: 'var(--space-sm)' }}>
         {/* Source Performance */}
         {(() => {
-          const sourceCounts = countClientsBySource(clients, selectedYear)
-          const sourceColors = {
-            website: '#2B6CB0', phone: '#E67E22', referral: '#8B5CF6',
-            email: '#38A169', social: '#D53F8C', parrainage: '#8B5CF6', unknown: '#A0AEC0'
-          }
+          const sourceCounts = countClientsBySource(clients, selectedYear, recruitmentSources)
           const sourceLabels = {}
           recruitmentSources.forEach(s => { sourceLabels[s.key] = s.label })
+          sourceLabels['unknown'] = 'Non renseigné'
           const entries = Object.entries(sourceCounts).sort((a, b) => b[1] - a[1])
           const maxCount = entries.length > 0 ? entries[0][1] : 1
           const totalClients = entries.reduce((sum, [, count]) => sum + count, 0)
@@ -764,7 +708,7 @@ export default function FinancesPage() {
             <div className="card" style={{ padding: 'var(--space-md)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 'var(--space-md)' }}>
                 <PieChart size={16} style={{ color: 'var(--primary-500)' }} />
-                <span style={{ fontSize: '0.786rem', fontWeight: 700, color: 'var(--text-primary)' }}>Performance par canal</span>
+                <span style={{ fontSize: '0.786rem', fontWeight: 700, color: 'var(--text-primary)' }}>Canaux d'acquisition</span>
                 <span style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)', marginLeft: 'auto' }}>{selectedYear} · {totalClients} client{totalClients > 1 ? 's' : ''}</span>
               </div>
               {entries.length === 0 ? (
@@ -779,12 +723,12 @@ export default function FinancesPage() {
                     <div style={{ flex: 1, height: 14, background: '#F0F0F0', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
                       <div style={{
                         height: '100%', borderRadius: 'var(--radius-sm)',
-                        background: sourceColors[key] || '#A0AEC0',
+                        background: '#A0AEC0',
                         width: `${(count / maxCount) * 100}%`,
                         transition: 'width 0.4s ease'
                       }} />
                     </div>
-                    <span style={{ fontSize: '0.786rem', fontWeight: 700, color: sourceColors[key] || '#A0AEC0', minWidth: 24, textAlign: 'right' }}>{count}</span>
+                    <span style={{ fontSize: '0.786rem', fontWeight: 700, color: '#A0AEC0', minWidth: 24, textAlign: 'right' }}>{count}</span>
                     <span style={{ fontSize: '0.571rem', fontWeight: 600, color: 'var(--text-tertiary)', minWidth: 28 }}>{pct}%</span>
                   </div>
                 )
@@ -793,30 +737,58 @@ export default function FinancesPage() {
           )
         })()}
 
-        {/* Parrainage Export */}
-        <div className="card" style={{ padding: 'var(--space-md)', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 'var(--space-md)' }}>
-            <Download size={16} style={{ color: '#8B5CF6' }} />
-            <span style={{ fontSize: '0.786rem', fontWeight: 700, color: 'var(--text-primary)' }}>Export Parrainages</span>
-          </div>
-          <p style={{ fontSize: '0.714rem', color: 'var(--text-tertiary)', marginBottom: 'var(--space-md)', flex: 1 }}>
-            Exporter la liste de tous les clients acquis par parrainage ou recommandation : parrain, type de référencement, date.
-          </p>
-          <button
-            onClick={() => {
-              const csv = exportSponsorshipCSV(clients, getCoupleName)
-              const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
-              const url = URL.createObjectURL(blob)
-              const a = document.createElement('a')
-              a.href = url; a.download = `parrainages_${selectedYear}.csv`
-              a.click(); URL.revokeObjectURL(url)
-            }}
-            className="btn btn-secondary"
-            style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.786rem', padding: '8px 16px', alignSelf: 'flex-start' }}
-          >
-            <Download size={14} /> Exporter CSV Parrainages
-          </button>
-        </div>
+        {/* Répartition par type de client */}
+        {(() => {
+          const activeClients = clients.filter(c => {
+            const clientSessions = sessions.filter(s => s.clientId === c.id && s.status !== 'cancelled' && new Date(s.date).getFullYear() === selectedYear)
+            return clientSessions.length > 0
+          })
+          const typeCounts = { couple: 0, individuel: 0, famille: 0 }
+          activeClients.forEach(c => {
+            const t = getClientType(c.id)
+            if (typeCounts[t] !== undefined) typeCounts[t]++
+            else typeCounts.couple++
+          })
+          const typeConfig = [
+            { key: 'couple', label: 'Couple', color: '#2B6CB0', icon: Users },
+            { key: 'individuel', label: 'Individuel', color: '#38A169', icon: User },
+            { key: 'famille', label: 'Famille', color: '#805AD5', icon: Users },
+          ]
+          const totalTypes = Object.values(typeCounts).reduce((s, v) => s + v, 0)
+          const maxTypeCount = Math.max(...Object.values(typeCounts), 1)
+          return (
+            <div className="card" style={{ padding: 'var(--space-md)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 'var(--space-md)' }}>
+                <Users size={16} style={{ color: 'var(--primary-500)' }} />
+                <span style={{ fontSize: '0.786rem', fontWeight: 700, color: 'var(--text-primary)' }}>Types de clients</span>
+                <span style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)', marginLeft: 'auto' }}>{selectedYear} · {totalTypes} client{totalTypes > 1 ? 's' : ''}</span>
+              </div>
+              {totalTypes === 0 ? (
+                <div style={{ textAlign: 'center', padding: 'var(--space-md)', color: 'var(--text-tertiary)', fontSize: '0.786rem' }}>Aucune donnée</div>
+              ) : typeConfig.map(({ key, label, color }) => {
+                const count = typeCounts[key]
+                const pct = totalTypes > 0 ? Math.round((count / totalTypes) * 100) : 0
+                return (
+                  <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <span style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-secondary)', minWidth: 90, textAlign: 'right' }}>
+                      {label}
+                    </span>
+                    <div style={{ flex: 1, height: 14, background: '#F0F0F0', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%', borderRadius: 'var(--radius-sm)',
+                        background: '#A0AEC0',
+                        width: `${(count / maxTypeCount) * 100}%`,
+                        transition: 'width 0.4s ease'
+                      }} />
+                    </div>
+                    <span style={{ fontSize: '0.786rem', fontWeight: 700, color: '#A0AEC0', minWidth: 24, textAlign: 'right' }}>{count}</span>
+                    <span style={{ fontSize: '0.571rem', fontWeight: 600, color: 'var(--text-tertiary)', minWidth: 28 }}>{pct}%</span>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })()}
       </div>
 
 
@@ -842,9 +814,9 @@ export default function FinancesPage() {
               {topModal === 'ca' ? (() => {
                 const clientCA = {}
                 sessions.filter(s => s.status === 'completed' && new Date(s.date).getFullYear() === selectedYear).forEach(s => {
-                  if (!clientCA[s.coupleId]) clientCA[s.coupleId] = { name: getClientName(s.coupleId), ca: 0, sessions: 0 }
-                  clientCA[s.coupleId].ca += (s.paymentAmount || DEFAULT_RATE)
-                  clientCA[s.coupleId].sessions++
+                  if (!clientCA[s.clientId]) clientCA[s.clientId] = { name: getClientNameByContext(s.clientId), ca: 0, sessions: 0 }
+                  clientCA[s.clientId].ca += (s.paymentAmount || getDefaultRate(s.clientId, clients, sessionRates))
+                  clientCA[s.clientId].sessions++
                 })
                 const ranked = Object.entries(clientCA).sort((a, b) => b[1].ca - a[1].ca)
                 if (ranked.length === 0) return <div style={{ textAlign: 'center', padding: 'var(--space-md)', color: 'var(--text-tertiary)' }}>Aucune donnée</div>
@@ -855,10 +827,10 @@ export default function FinancesPage() {
                       {i < 3 ? ['🥇', '🥈', '🥉'][i] : `${i + 1}.`}
                     </span>
                     <span
-                      onClick={() => { setTopModal(null); setModalCoupleId(cid) }}
+                      onClick={() => { setTopModal(null); setModalClientId(cid) }}
                       style={{ fontSize: '0.786rem', fontWeight: 600, color: 'var(--primary-600)', cursor: 'pointer', borderBottom: '1px dashed var(--primary-300)', flex: 1 }}
                     >
-                      {c.name}
+                      {renderCell(c.name)}
                     </span>
                     <span style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)' }}>{c.sessions} séances</span>
                     <div style={{ width: 80, height: 5, background: '#E2E8F0', borderRadius: 3 }}>
@@ -888,10 +860,10 @@ export default function FinancesPage() {
                         {i < 3 ? ['🥇', '🥈', '🥉'][i] : `${i + 1}.`}
                       </span>
                       <span
-                        onClick={() => { setTopModal(null); setModalCoupleId(cid) }}
+                        onClick={() => { setTopModal(null); setModalClientId(cid) }}
                         style={{ fontSize: '0.786rem', fontWeight: 600, color: 'var(--primary-600)', cursor: 'pointer', borderBottom: '1px dashed var(--primary-300)', flex: 1 }}
                       >
-                        {c.name}
+                        {renderCell(c.name)}
                       </span>
                       <div style={{ width: 80, height: 5, background: '#E2E8F0', borderRadius: 3 }}>
                         <div style={{ height: '100%', borderRadius: 3, background: '#805AD5', width: `${(c.count / maxCount) * 100}%` }} />
@@ -903,7 +875,7 @@ export default function FinancesPage() {
                       <div style={{ marginLeft: 34, marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                         {c.referredNames.map((name, idx) => (
                           <span key={idx} style={{ fontSize: '0.643rem', fontWeight: 600, color: '#6B46C1', background: '#FAF5FF', padding: '1px 8px', borderRadius: 'var(--radius-full)', border: '1px solid #E8D8FE' }}>
-                            {name}
+                            {renderCell(name)}
                           </span>
                         ))}
                       </div>
@@ -916,10 +888,10 @@ export default function FinancesPage() {
         </div>
       )}
 
-      {modalCoupleId && (
-        <div
-          onClick={(e) => { if (e.target === e.currentTarget) setModalCoupleId(null) }}
-          onKeyDown={(e) => { if (e.key === 'Escape') setModalCoupleId(null) }}
+      {modalClientId && (
+        <div className="modal-overlay"
+          onClick={(e) => { if (e.target === e.currentTarget) setModalClientId(null) }}
+          onKeyDown={(e) => { if (e.key === 'Escape') setModalClientId(null) }}
           style={{
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
             background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
@@ -936,7 +908,7 @@ export default function FinancesPage() {
             animation: 'slideUp 0.25s ease'
           }}>
             <button
-              onClick={() => setModalCoupleId(null)}
+              onClick={() => setModalClientId(null)}
               style={{
                 position: 'sticky', top: 0, float: 'right',
                 background: 'white', border: '1px solid var(--border-light)',
@@ -948,7 +920,11 @@ export default function FinancesPage() {
             >
               <X size={16} />
             </button>
-            <CoupleDetailPage coupleIdProp={modalCoupleId} onClose={() => { setModalCoupleId(null); setRefreshKey(k => k + 1) }} />
+            <ClientDetailPage
+              clientIdProp={modalClientId}
+              sessionIdProp={modalSessionId}
+              onClose={() => { setModalClientId(null); setModalSessionId(null); }}
+            />
           </div>
         </div>
       )}

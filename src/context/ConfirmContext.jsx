@@ -10,9 +10,9 @@ export function useConfirm() {
 export function ConfirmProvider({ children }) {
   const [state, setState] = useState(null)
 
-  const confirm = useCallback((message, { title, variant = 'confirm' } = {}) => {
+  const confirm = useCallback((message, { title, variant = 'confirm', options = null } = {}) => {
     return new Promise((resolve) => {
-      setState({ message, title, variant, resolve })
+      setState({ message, title, variant, options, resolve })
     })
   }, [])
 
@@ -51,22 +51,43 @@ export function ConfirmProvider({ children }) {
               {state.title && <h3 className="confirm-dialog-title">{state.title}</h3>}
 
               {/* Message */}
-              <p className="confirm-dialog-message">{state.message}</p>
+              <p className="confirm-dialog-message" style={{ whiteSpace: 'pre-line' }}>{state.message}</p>
             </div>
 
             {/* Buttons */}
             <div className="confirm-dialog-footer">
-              {state.variant !== 'alert' && (
-                <button className="btn btn-secondary" onClick={() => handleClose(false)}>
-                  Annuler
-                </button>
+              {state.options ? (
+                /* Custom options mode */
+                <div style={{ display: 'flex', gap: 12, width: '100%', justifyContent: 'flex-end' }}>
+                  <button className="btn btn-secondary" onClick={() => handleClose(null)}>
+                    Annuler
+                  </button>
+                  {state.options.map((opt, i) => (
+                    <button
+                      key={i}
+                      className={opt.className || 'btn btn-primary'}
+                      onClick={() => handleClose(opt.value)}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                /* Standard mode */
+                <>
+                  {state.variant !== 'alert' && (
+                    <button className="btn btn-secondary" onClick={() => handleClose(false)}>
+                      Annuler
+                    </button>
+                  )}
+                  <button
+                    className={`btn ${state.variant === 'danger' ? 'btn-danger' : 'btn-primary'}`}
+                    onClick={() => handleClose(true)}
+                  >
+                    {state.variant === 'alert' ? 'Compris' : 'Confirmer'}
+                  </button>
+                </>
               )}
-              <button
-                className={`btn ${state.variant === 'danger' ? 'btn-danger' : 'btn-primary'}`}
-                onClick={() => handleClose(true)}
-              >
-                {state.variant === 'alert' ? 'Compris' : 'Confirmer'}
-              </button>
             </div>
           </div>
         </div>

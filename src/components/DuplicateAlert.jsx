@@ -166,7 +166,7 @@ export default function DuplicateAlert({ matches, onView, onLink, onDismiss, typ
                     </span>
                     {item.type && (
                       <span style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)' }}>
-                        {item.type === 'couple' ? 'Couple' : item.type === 'individual' ? 'Individuel' : 'Famille'}
+                        {item.type === 'client' ? 'Client' : item.type === 'individual' ? 'Individuel' : 'Famille'}
                       </span>
                     )}
                     {item.sessionsCount > 0 && (
@@ -220,7 +220,7 @@ export default function DuplicateAlert({ matches, onView, onLink, onDismiss, typ
                       </span>
                     ) : <span />}
                     <a
-                      href={`/couples/${item.id}`}
+                      href={`/clients/${item.id}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       style={{

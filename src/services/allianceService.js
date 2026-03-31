@@ -10,11 +10,17 @@ import * as ds from './dataService'
  * Vérifie si une session valide l'alliance thérapeutique.
  * Alliance = séance completed + (mode de paiement choisi OU montant = 0)
  */
-function isAllianceValidated(session, sessionRates, client) {
-  if (session.status !== 'completed') return false
-  // Use session amount, then client rate, then global rate
-  const effectiveAmount = session.payment_amount ?? client.session_rate ?? sessionRates[client.type] ?? null
-  return !!session.payment_method || effectiveAmount === 0
+export function isAllianceValidated(session, sessionRates, client) {
+  const endTime = new Date(new Date(session.date).getTime() + (session.duration || 60) * 60000)
+  const isCompleted = new Date() >= endTime
+  if (!isCompleted) return false
+
+  // Use session amount, then client rate, then global rate (client or individual)
+  const typeKey = client.type === 'individual' ? 'individual' : 'client'
+  const effectiveAmount = session.payment_amount ?? client.session_rate ?? sessionRates[typeKey] ?? null
+  // Alliance = séance completed ET (payée OU offerte)
+  const isConfirmed = session.status === 'completed' && (!!session.payment_method || effectiveAmount === 0)
+  return isConfirmed
 }
 
 /**
@@ -41,7 +47,7 @@ function countValidatedSessions(rawSessions, clientId, excludeSessionId, session
  * @param {Object} updates - Updates demandés (format camelCase)
  * @param {Array} rawClients - Clients bruts (snake_case)
  * @param {Array} rawSessions - Sessions brutes (snake_case)
- * @param {Object} sessionRates - Tarifs par type { couple: 75, individual: 60 }
+ * @param {Object} sessionRates - Tarifs par type { client: 75, individual: 60 }
  * @param {string} defaultPhaseKey - Phase par défaut pour les nouveaux clients
  */
 export async function checkAllianceTransition(result, updates, rawClients, rawSessions, sessionRates, defaultPhaseKey) {
@@ -56,7 +62,8 @@ export async function checkAllianceTransition(result, updates, rawClients, rawSe
   if (client.phase === 'prospect') {
     const effectiveStatus = result.status || updates.status
     const effectivePM = result.payment_method || updates.paymentMethod || updates.payment_method
-    const effectiveAmount = result.payment_amount ?? sessionRates[client.type] ?? null
+    const typeKey = client.type === 'individual' ? 'individual' : 'client'
+    const effectiveAmount = result.payment_amount ?? sessionRates[typeKey] ?? null
     const isFreeOrPaid = effectivePM || effectiveAmount === 0
 
     if (effectiveStatus === 'completed' && isFreeOrPaid) {

@@ -1,11 +1,11 @@
 import { useState, useCallback } from 'react'
 
 const sampleTranscriptions = [
-  "Le couple a abordé les difficultés de communication récurrentes. Travail sur l'écoute active et la reformulation. Progrès notables dans l'expression des émotions.",
-  "Séance centrée sur la gestion des conflits. Exercices pratiques de médiation. Le couple montre une meilleure capacité à désamorcer les tensions.",
+  "Le client a abordé les difficultés de communication récurrentes. Travail sur l'écoute active et la reformulation. Progrès notables dans l'expression des émotions.",
+  "Séance centrée sur la gestion des conflits. Exercices pratiques de médiation. Le client montre une meilleure capacité à désamorcer les tensions.",
   "Discussion approfondie sur les attentes mutuelles. Identification des besoins non exprimés. Mise en place d'un rituel de communication hebdomadaire.",
   "Bilan de mi-parcours positif. Les exercices à domicile sont réalisés régulièrement. La dynamique relationnelle s'améliore sensiblement.",
-  "Travail sur la confiance et l'attachement. Exploration des schémas relationnels hérités. Le couple prend conscience des patterns répétitifs."
+  "Travail sur la confiance et l'attachement. Exploration des schémas relationnels hérités. Le client prend conscience des patterns répétitifs."
 ]
 
 /**

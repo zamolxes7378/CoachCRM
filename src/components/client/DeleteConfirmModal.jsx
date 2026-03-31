@@ -1,7 +1,7 @@
 import React from 'react'
 import { Trash2 } from 'lucide-react'
 
-export default function DeleteConfirmModal({ couple, coupleName, onConfirm, onCancel }) {
+export default function DeleteConfirmModal({ client, clientName, onConfirm, onCancel }) {
   return (
     <div className="modal-overlay" style={{ zIndex: 10001 }} onClick={onCancel}>
       <div onClick={e => e.stopPropagation()} style={{
@@ -25,7 +25,7 @@ export default function DeleteConfirmModal({ couple, coupleName, onConfirm, onCa
           Supprimer ce client ?
         </h3>
         <p style={{ fontSize: '0.857rem', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 'var(--space-lg)' }}>
-          La fiche de <strong>{coupleName}</strong> sera déplacée dans les clients archivés. Vous pourrez la restaurer depuis la section Administration.
+          La fiche de <strong>{clientName}</strong> sera déplacée dans les clients archivés. Vous pourrez la restaurer depuis la section Administration.
         </p>
         <div style={{ display: 'flex', gap: 'var(--space-sm)', justifyContent: 'center' }}>
           <button className="btn btn-ghost" onClick={onCancel}

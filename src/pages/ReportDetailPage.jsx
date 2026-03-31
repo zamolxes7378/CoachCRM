@@ -22,7 +22,7 @@ export default function ReportDetailPage() {
       <div className="card" style={{ marginBottom: 'var(--space-lg)', borderLeft: '4px solid var(--accent-main)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
           <div>
-            <h1 style={{ marginBottom: 4 }}>{report.coupleName} · Séance #{report.sessionNumber}</h1>
+            <h1 style={{ marginBottom: 4 }}>{report.clientName} · Séance #{report.sessionNumber}</h1>
             <div style={{ display: 'flex', gap: 'var(--space-sm)', alignItems: 'center', flexWrap: 'wrap' }}>
               <span className="caption" style={{ color: 'var(--text-secondary)' }}>{formatDate(report.date)}</span>
               <span className="caption" style={{ color: 'var(--text-secondary)' }}>· {report.duration}</span>

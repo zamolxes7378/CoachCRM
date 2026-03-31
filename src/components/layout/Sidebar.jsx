@@ -6,8 +6,8 @@ export default function Sidebar({ user, onLogout, isOpen, onToggle }) {
 
   const mainNav = [
     { to: '/', icon: Home, label: 'Accueil' },
-    { to: '/couples', icon: Users, label: 'Mes Clients' },
-    { to: '/finances', icon: Euro, label: 'Suivi financier' },
+    { to: '/clients', icon: Users, label: 'Mes Clients' },
+    { to: '/finances', icon: Euro, label: 'Pilotage financier' },
 
   ]
 

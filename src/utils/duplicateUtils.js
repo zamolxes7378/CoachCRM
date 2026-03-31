@@ -41,12 +41,12 @@ export function levenshtein(a, b) {
 /**
  * Find duplicate clients matching the query
  * @param {{ firstName?: string, lastName?: string, email?: string, phone?: string }} query
- * @param {Array} clients - mockCouples array
- * @param {Function} getCoupleName - name helper
+ * @param {Array} clients - clients array
+ * @param {Function} getClientName - name helper
  * @param {string} [excludeId] - ID to exclude (e.g. current client)
  * @returns {Array<{ client: object, score: number, reason: string }>}
  */
-export function findDuplicateClients(query, clients, getCoupleName, excludeId) {
+export function findDuplicateClients(query, clients, getClientName, excludeId) {
   if (!query.lastName || normalize(query.lastName).length < 2) return []
 
   const results = []
@@ -100,7 +100,7 @@ export function findDuplicateClients(query, clients, getCoupleName, excludeId) {
     }
 
     if (bestScore >= 50) {
-      results.push({ client, score: bestScore, reason, name: getCoupleName(client) })
+      results.push({ client, score: bestScore, reason, name: getClientName(client) })
     }
   }
 
@@ -110,7 +110,7 @@ export function findDuplicateClients(query, clients, getCoupleName, excludeId) {
 /**
  * Find duplicate professionals matching the query
  * @param {{ firstName?: string, lastName?: string, email?: string, phone?: string }} query
- * @param {Array} professionals - mockProfessionals array
+ * @param {Array} professionals - professionals array
  * @param {string} [excludeId] - ID to exclude
  * @returns {Array<{ pro: object, score: number, reason: string }>}
  */

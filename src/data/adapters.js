@@ -3,14 +3,35 @@
 // ═══════════════════════════════════════════════════════
 // Maps between Supabase (snake_case) and React app (camelCase)
 
+// ── Helpers ──
+
+const capitalizeWords = (str) => {
+  if (typeof str !== 'string' || !str) return str
+  return str.split(/(\s+|-)/).map(word => {
+    if (word.length === 0) return word
+    if (/^\s+$/.test(word) || word === '-') return word
+    return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+  }).join('')
+}
+
+const normalizePartner = (p) => {
+  if (!p) return p
+  return { ...p, firstName: capitalizeWords(p.firstName) }
+}
+
+const normalizePartnerDB = (p) => {
+  if (!p) return p
+  return { ...p, firstName: capitalizeWords(p.firstName || p.first_name) }
+}
+
 // ── Supabase → App (reads) ──
 
 export function adaptClient(c) {
   if (!c) return c
   return {
     ...c,
-    partnerA: c.partner_a,
-    partnerB: c.partner_b,
+    partnerA: normalizePartnerDB(c.partner_a),
+    partnerB: normalizePartnerDB(c.partner_b),
     startDate: c.start_date,
     sessionsCount: c.sessions_count,
     totalSessions: c.total_sessions,
@@ -25,6 +46,25 @@ export function adaptClient(c) {
     deletedAt: c.deleted_at,
     deleted: !!c.deleted_at,
     sessionRate: c.session_rate,
+    sessionFrequency: c.session_frequency,
+    aiSynthesis: (typeof c.ai_synthesis === 'string' && (c.ai_synthesis.startsWith('{') || c.ai_synthesis.startsWith('['))) 
+      ? JSON.parse(c.ai_synthesis) 
+      : { text: c.ai_synthesis || '' },
+    noteDynamique: c.note_dynamique,
+    noteAxes: c.note_axes,
+    noteVigilance: c.note_vigilance,
+    noteObjectifs: c.note_objectifs,
+  }
+}
+
+export function adaptTherapyCycle(tc) {
+  if (!tc) return tc
+  return {
+    ...tc,
+    clientId: tc.client_id,
+    userId: tc.user_id,
+    startDate: tc.start_date,
+    totalSessions: tc.total_sessions,
   }
 }
 
@@ -35,7 +75,7 @@ export function adaptSession(s) {
   return {
     ...s,
     date: stripTz(s.date),
-    coupleId: s.client_id,
+    clientId: s.client_id,
     hasReport: s.has_report,
     paymentMethod: s.payment_method,
     paymentReceived: s.payment_received,
@@ -57,12 +97,17 @@ export function adaptReport(r) {
   return {
     ...r,
     sessionId: r.session_id,
-    coupleId: r.client_id,
-    coupleName: r.client_name,
+    clientId: r.client_id,
+    clientName: r.client_name,
     sessionNumber: r.session_number,
     pedagogicalContent: r.pedagogical_content || [],
     emotionsA: r.emotions_a || [],
     emotionsB: r.emotions_b || [],
+    themes: r.themes || [],
+    patterns: r.patterns || [],
+    progress: r.progress || [],
+    vigilance: r.vigilance || [],
+    exercises: r.exercises || [],
   }
 }
 
@@ -76,12 +121,23 @@ export function adaptProfessional(p) {
   }
 }
 
+export function adaptContact(c) {
+  if (!c) return c
+  const date = stripTz(c.date)
+  return {
+    ...c,
+    clientId: c.client_id,
+    userId: c.user_id,
+    date: date ? date.slice(0, 16) : date
+  }
+}
+
 // ── App → Supabase (writes) ──
 
 export function unadaptClient(c) {
   const out = { ...c }
-  if ('partnerA' in c) { out.partner_a = c.partnerA; delete out.partnerA }
-  if ('partnerB' in c) { out.partner_b = c.partnerB; delete out.partnerB }
+  if ('partnerA' in c) { out.partner_a = normalizePartner(c.partnerA); delete out.partnerA }
+  if ('partnerB' in c) { out.partner_b = normalizePartner(c.partnerB); delete out.partnerB }
   if ('startDate' in c) { out.start_date = c.startDate; delete out.startDate }
   if ('sessionsCount' in c) { out.sessions_count = c.sessionsCount; delete out.sessionsCount }
   if ('totalSessions' in c) { out.total_sessions = c.totalSessions; delete out.totalSessions }
@@ -95,14 +151,32 @@ export function unadaptClient(c) {
   if ('externalReferrer' in c) { out.external_referrer = c.externalReferrer; delete out.externalReferrer }
   if ('deletedAt' in c) { out.deleted_at = c.deletedAt; delete out.deletedAt }
   if ('sessionRate' in c) { out.session_rate = c.sessionRate; delete out.sessionRate }
+  if ('sessionFrequency' in c) { out.session_frequency = c.sessionFrequency; delete out.sessionFrequency }
+  if ('aiSynthesis' in c) { 
+    out.ai_synthesis = typeof c.aiSynthesis === 'object' ? JSON.stringify(c.aiSynthesis) : c.aiSynthesis; 
+    delete out.aiSynthesis 
+  }
+  if ('noteDynamique' in c) { out.note_dynamique = c.noteDynamique; delete out.noteDynamique }
+  if ('noteAxes' in c) { out.note_axes = c.noteAxes; delete out.noteAxes }
+  if ('noteVigilance' in c) { out.note_vigilance = c.noteVigilance; delete out.noteVigilance }
+  if ('noteObjectifs' in c) { out.note_objectifs = c.noteObjectifs; delete out.noteObjectifs }
   delete out.deleted
   delete out.children
   return out
 }
 
+export function unadaptTherapyCycle(tc) {
+  const out = { ...tc }
+  if ('clientId' in tc) { out.client_id = tc.clientId; delete out.clientId }
+  if ('userId' in tc) { out.user_id = tc.userId; delete out.userId }
+  if ('startDate' in tc) { out.start_date = tc.startDate; delete out.startDate }
+  if ('totalSessions' in tc) { out.total_sessions = tc.totalSessions; delete out.totalSessions }
+  return out
+}
+
 export function unadaptSession(s) {
   const out = { ...s }
-  if ('coupleId' in s) { out.client_id = s.coupleId; delete out.coupleId }
+  if ('clientId' in s) { out.client_id = s.clientId; delete out.clientId }
   if ('hasReport' in s) { out.has_report = s.hasReport; delete out.hasReport }
   if ('paymentMethod' in s) { out.payment_method = s.paymentMethod; delete out.paymentMethod }
   if ('paymentReceived' in s) { out.payment_received = s.paymentReceived; delete out.paymentReceived }
@@ -124,5 +198,13 @@ export function unadaptProfessional(p) {
   if ('firstName' in p) { out.first_name = p.firstName; delete out.firstName }
   if ('lastName' in p) { out.last_name = p.lastName; delete out.lastName }
   if ('createdAt' in p) { out.created_at = p.createdAt; delete out.createdAt }
+  return out
+}
+
+export function unadaptContact(c) {
+  const out = { ...c }
+  if ('clientId' in c) { out.client_id = c.clientId; delete out.clientId }
+  if ('userId' in c) { out.user_id = c.userId; delete out.userId }
+  // Note: date remains as-is (Supabase accepts ISO or YYYY-MM-DDTHH:mm)
   return out
 }

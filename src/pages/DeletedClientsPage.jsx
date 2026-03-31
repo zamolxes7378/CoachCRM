@@ -6,7 +6,7 @@ import { useConfirm } from '../context/ConfirmContext'
 
 export default function DeletedClientsPage() {
   const navigate = useNavigate()
-  const { clients, getCoupleName, formatDate, updateClient, deleteClient } = useData()
+  const { clients, getClientName, formatDate, updateClient, deleteClient } = useData()
   const confirm = useConfirm()
   const [selected, setSelected] = useState(new Set())
   const [deleting, setDeleting] = useState(false)
@@ -60,7 +60,7 @@ export default function DeletedClientsPage() {
 
   const typeConfig = {
     individual: { icon: User, label: 'Individuel' },
-    couple: { icon: Users, label: 'Couple' },
+    client: { icon: Users, label: 'Client' },
     family: { icon: null, label: 'Famille' }
   }
 
@@ -104,7 +104,7 @@ export default function DeletedClientsPage() {
                 <tr>
                   <th style={{ width: 44 }}>
                     <button
-                      onClick={toggleSelectAll}
+                      onClick={toggleAll}
                       style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center', color: allSelected ? 'var(--error)' : 'var(--text-tertiary)' }}
                     >
                       {allSelected ? <CheckSquare size={18} /> : <Square size={18} />}
@@ -150,7 +150,7 @@ export default function DeletedClientsPage() {
                             ) : <Users size={16} />}
                           </div>
                           <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.929rem' }}>
-                            {getCoupleName(client)}
+                            {getClientName(client)}
                           </span>
                         </div>
                       </td>
@@ -171,7 +171,7 @@ export default function DeletedClientsPage() {
                             const TC = client.type === 'individual' ? User : Users
                             return <TC size={16} />
                           })()}
-                          {(typeConfig[client.type] || typeConfig.couple).label}
+                          {(typeConfig[client.type] || typeConfig.client).label}
                         </span>
                       </td>
                       <td style={{ padding: '10px 14px', fontSize: '0.857rem', color: 'var(--text-secondary)' }}>

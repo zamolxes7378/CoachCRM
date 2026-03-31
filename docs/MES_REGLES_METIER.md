@@ -1,5 +1,9 @@
 # Règles Métier — CoachCRM
 
+> [!IMPORTANT]
+> **Règle d'Or Technique** : Toute modification de code impliquant une logique de calcul ou de transformation doit respecter les principes d'intégrité définis dans [MES_REGLES_TECHNIQUES.md](./MES_REGLES_TECHNIQUES.md).
+
+
 ## Cycle de vie du client
 
 ```mermaid
@@ -14,7 +18,8 @@ stateDiagram-v2
 ```
 
 ### Création
-- Tout nouveau client est créé en tant que **prospect** (`phase: 'prospect'`)
+- Tout nouveau client est créé en tant que **prospect** (`phase: 'prospect'`).
+- **Persistance à la création** : Le formulaire de création **doIT** capturer et persister immédiatement les **Notes** du client ainsi que son **Adresse de facturation**. L'absence de ces champs à la création est considérée comme un bug de complétude.
 
 ### Transition Prospect → Client
 - **Déclencheur** : une séance est complétée (`completed`) ET (un moyen de paiement est renseigné OU le montant est à zéro)
@@ -35,28 +40,65 @@ stateDiagram-v2
 - **Déclencheur** : chargement de l'application (`loadData`).
 - **Logique** : l'application vérifie systématiquement la cohérence Phase/Séances. Tout client non-prospect n'ayant aucune séance validée est réinitialisé en `prospect`.
 
-> **Alliance thérapeutique** = au moins 1 séance `completed` + (`paymentMethod` renseigné OU `paymentAmount = 0`)
+> **Alliance thérapeutique** = au moins 1 séance `completed` + (`paymentMethod` renseigné OU montant de la séance = **0€**).
+> *Note : Le montant d'une séance est déterminé par `payment_amount` (si saisi), sinon par le `session_rate` spécifique du client, sinon par le tarif par défaut du système.*
+
+### Statuts des séances (Suivi Financier)
+Le statut affiché est une synthèse dynamique de l'état en base et de la réalité comptable :
+
+- **Planifiée** (Gris) : Séance dont l'heure de fin est dans le futur.
+- **À confirmer** (Ambre) : Séance dont l'heure de fin est passée MAIS dont le **moyen de paiement est manquant** (et montant effectif ≠ 0€, incluant `null` si aucun tarif n'est configuré).
+- **Réalisée** (Vert) : Séance passée avec **paiement renseigné** (ou montant = 0€) OU séance explicitement marquée `completed` en base.
+- **Annulée** (Rouge) : Séance dont le statut est `cancelled`.
+
+**Règle de sobriété visuelle** : 
+- Il n'existe plus de statut "Réalisée (Jaune)". Toute séance passée sans paiement est marquée "À confirmer". Dans le détail par séance du suivi financier, le badge affiché est **« CONFIRMER »** précédé de l'icône `HelpCircle` (14px), couleur `#D97706`. Ce badge n'apparaît **pas** pour les séances planifiées (futures).
+- Les colonnes **Paiement**, **Encaissé** et **Facture** n'affichent plus d'alerte rouge ou de statut "Non" tant que la séance est en attente de confirmation. À la place, un simple tiret (`AbsenceDash`) est affiché.
+- Une fois la séance confirmée (« Réalisée »), la colonne **Encaissé** reprend ses indicateurs habituels (« € » Vert ou « Non » Rouge) pour signaler les impayés.
+- **Colonne Montant** : Pour faciliter le suivi des dettes, le montant s'affiche en **rouge** (`var(--error)`) pour toute séance qui n'est pas encore payée. Une fois la séance **encaissée**, le montant s'affiche en **noir** (`var(--text-primary)`). Les séances futures (« Planifiée ») s'affichent en **gris clair** (`var(--text-tertiary)`) pour marquer leur caractère prévisionnel.
+- **Séances offertes (0€)** : Les colonnes **Montant**, **Paiement** et **Encaissé** affichent toutes un tiret d'absence (`AbsenceDash`). Aucun encaissement n'est attendu pour une séance offerte — le sablier d'attente ne doit jamais s'afficher.
+- **Colonne Facture (Alertes)** : 
+    - **"FACTURE ✓"** (Vert) : Si une facture est demandée et déjà envoyée.
+    - **"À ÉMETTRE"** (Bleu `var(--primary-500)`) : Si une facture est demandée mais pas encore envoyée. C'est l'alerte visuelle pour le travail administratif restant.
+    - **Tiret d'absence** (`AbsenceDash`) : Si aucune facture n'est demandée.
+- **Colonne Date** : L'affichage est simplifié au format jour/mois (`25 sept.`). L'année est masquée car elle est déjà indiquée dans le titre de la vue.
+- **Colonne Client** : Pour maintenir la compacité du tableau, le nom du client est **tronqué** avec des points de suspension s'il dépasse une certaine largeur (ex: `maxWidth: 300px`). Le nom complet doit rester accessible via une info-bulle (attribut `title`) au survol.
+- **Colonne Source** : Confirme le canal d'acquisition du client. Si inconnu, affiche un tiret d'absence (`AbsenceDash`) pour maintenir la propreté du tableau.
+
+### 5. Gestion des Annulations
+- **Indemnités d'annulation** : Si une séance est annulée avec maintien du tarif (choix utilisateur), elle est étiquetée **"Annulation facturée"** dans le dashboard financier.
+- **Calcul du CA** : Le chiffre d'affaires global et mensuel inclut les séances `completed` ET les séances `cancelled` ayant un montant supérieur à zéro.
+- **Alertes Impayés** : Les séances annulées facturées non encaissées déclenchent les mêmes alertes visuelles (montant rouge) et notifications que les séances réalisées.
+- **Alliance Thérapeutique** : Une annulation, même payée, **ne valide jamais** l'alliance thérapeutique. Le prospect ne devient Client qu'après une séance `completed` et payée/offerte.
+- **Progression** : Une séance annulée ne consomme pas de numéro de séance (ex: si la S4 est annulée, la séance suivante reste la S4).
+- **Libellé Facture** : Toute annulation facturée porte la mention **"Annulation facturée"** (automatiquement renseignée dans le champ raison d'annulation).
 
 ## Création de séance (modale Accueil)
+- **Normalisation des Prénoms** : Chaque prénom (dans `partner_a` et `partner_b`) doit impérativement commencer par une majuscule pour chaque mot (ex: `Jean-Christophe`, `Anne-Marie`). Cette règle est appliquée automatiquement à la création et à la modification.
 
 ### Champs obligatoires
-- **Client** : sélection obligatoire parmi les clients actifs (prospects exclus)
+- **Client** : sélection obligatoire parmi les clients actifs (prospects inclus)
 
 ### Valeurs par défaut
+- **Type d'accompagnement** : L'utilisateur doit choisir entre **Individuel**, **Couple** (remplace "Client" pour plus de clarté) ou **Famille**.
 - **Date** : par défaut = date du jour
 - **Heure** : par défaut = heure entière (XX:00) qui précède l'instant actuel
 - **Note de préparation** : optionnel
 - **Durée** : par défaut 60 minutes (modifiable dans le détail de la séance)
 
-### Comportement UI
+### Comportement UI (Création)
+- Le titre de la modale s'adapte au type choisi : « Nouveau client », « Nouveau Couple » ou « Nouvelle Famille ».
+- L'étape Identité affiche également un titre contextuel (ex: « Le Couple »).
 - Pas de ligne horizontale entre les sections de la modale
 - Si aucun client ne correspond à la recherche : afficher « Aucun client trouvé »
 - Si une séance existe déjà pour le même client + même jour : alerte doublon
 - Si d'autres séances existent le même jour (autre client) : alerte informative
 
-### Limite de planification
-- **Maximum 6 mois dans le futur** : l'input date est limité via `max`, le bouton de création est désactivé, et un message d'erreur s'affiche si la date dépasse la limite
-- Pas de restriction sur les dates passées (confirmation demandée)
+### Limites de date
+- **Date minimale** : 1er janvier 2000 — le système empêche la création ou la modification d'une séance antérieure à cette date.
+- **Date maximale** : moment présent + 3 ans — le système empêche la création ou la modification d'une séance au-delà de cette limite.
+- Ces contraintes s'appliquent via les attributs `min`/`max` sur les inputs de date (création dans `DashboardPage` et édition dans `SessionDetailModal`), et le bouton de création est désactivé si la date est hors bornes.
+- **Navigation financière** : Les mêmes bornes (2000 – maintenant + 3 ans) s'appliquent à la navigation temporelle du module Finances (vue consolidée annuelle et vue détaillée mensuelle). Les boutons de navigation sont désactivés visuellement aux limites.
 
 ### Barre d'action flottante (pour sélection multiple)
 - **Contextes** : Utilisé pour les suppressions groupées (Archivage, Suppression Réseau Pro).
@@ -65,48 +107,124 @@ stateDiagram-v2
 ## Composants Dashboard (Pilotage)
 
 ### Section "Action requise" (Dashboard)
-- **Position** : Haut de la colonne de droite (34%).
+- **Position** : Sous le bloc de statistiques globales, dans la colonne de droite (34%).
 - **Contenu** : Fusion des urgences techniques (CR, Paiements, Factures) et des relances clients.
 - **Visuel** : Cartes verticales compactes avec icônes de couleur, transition au survol pour inciter à l'action.
+- **Carte d'identité client** : Chaque item du panneau latéral (`ActionDetailPanel`) affiche une pastille ronde d'équipe d'identité via `ClientTypeBadge` (type + initiales + bordure colorée). Les prospects sont affichés en violet override.
+
+#### Icônes des cartes urgentes (référence charte)
+
+| Action | Icône | Couleur | Fond | Source |
+|--------|-------|---------|------|--------|
+| **CR à rédiger** | `ReportIcon` (composant) | `#2B6CB0` | transparent | Charte — Compte-rendu |
+| **Séances à confirmer** | `HelpCircle` (Lucide) | `#D97706` | transparent | Charte — sémantique « à confirmer » |
+| **Factures à émettre** | SVG custom document+€ | `var(--primary-500)` | transparent | Charte — signalétique facture |
+| **Prospects à relancer** | `Sprout` (Lucide) | `#7C3AED` | transparent | Charte — Phase début / prospect |
+
+> [!NOTE]
+> **Fond des cartes urgentes** : toutes les cartes « Actions requises » ont un fond **transparent** avec uniquement une bordure subtile `${color}30`.
+
+> [!NOTE]
+> **Badge « Rédiger CR »** (SessionCard) : affiche uniquement le texte, **sans icône**. Style : fond `#FFF3E0`, couleur `#E67E22`, bordure `#E67E2240`.
+
+> [!IMPORTANT]
+> **Icône facture** : Il est **interdit** d'utiliser une icône Lucide standard (`FileText`, `Receipt`) pour la signalétique de facturation. Seule l'icône SVG custom (document + symbole €) documentée dans `MA_CHARTE_GRAPHIQUE.md` est autorisée.
+
+### Recherche Rapide (Dashboard)
+
+#### Comportement cross-tabs
+- Dès qu'un filtre est actif (nom, date, facture, paiement), la recherche porte sur **toutes les séances** (en cours + historique).
+- Les onglets « En cours / Historique récent » sont masqués et remplacés par le label `🔍 RECHERCHE — N séance(s)` + bouton [Effacer].
+- Le bouton × sur l'input date permet d'effacer uniquement la date.
+
+#### Filtre par date — règles d'affichage
+
+| Cas | Affichage |
+|-----|-----------|
+| **Séances trouvées le jour choisi** | Afficher les séances du jour + les séances des jours suivants, **10 maximum** |
+| **Aucune séance le jour choisi** | Message « Pas de séances le [date formatée] » + les **5 prochaines séances** après cette date |
+
+Dans les deux cas :
+- Tri **chronologique** (date croissante)
+- Bouton **« Charger plus de RDV »** visible si d'autres séances existent au-delà du lot affiché
+- Combinable avec le filtre par nom (AND logique)
+
+#### Feedback visuel des champs de recherche
+- Quand un champ est rempli (nom ou date) : **bordure ambre** `1.5px solid #D97706` + **bouton ×** pour effacer
+- L'icône loupe du champ nom passe aussi en ambre `#D97706` quand du texte est saisi
+- Le bandeau de résultats (en haut) affiche le compteur + bouton **[✕ Effacer]**
+
+### Bloc Statistiques Globales (Dashboard)
+- **Position** : En haut de la colonne de droite, au-dessus des actions requises.
+- **Structure** : Grille compacte 3×2 de 6 KPIs.
+- **Ordre (gauche→droite, haut→bas)** : Clients actifs, Prospects, **Parrains**, CA du mois, Conversion, **Séances ce mois**.
+- **Chaque KPI** : Icône thématique + valeur numérique dans une cellule compacte.
+
+### Affichage « Aujourd'hui » dans l'agenda
+- Le header de date affiche **« Aujourd'hui – [date complète] »** (ex: « Aujourd'hui – 31 mars 2026 »).
+- Style distinctif : couleur **`var(--accent-main)`** (doré), **point coloré** (6px) devant le mot, **bordure 2px** au lieu de 1px.
+- Les autres dates restent en `var(--primary-400)` avec bordure standard.
+- **Affichage de l'année** : Si une séance est éloignée de **plus de 6 mois** du moment présent (passée ou future), l'année est affichée dans le header de date (ex : `Jeudi 28 septembre 2025`). En dessous de 6 mois, l'année est masquée.
 
 ### Grid de Pilotage
 - **Structure** : Layout flexible `65fr 35fr` (Desktop).
 - **Gauche (65%)** : Focus sur l'immédiat (Agenda, Préparation de séance).
+    - **Règle de largeur** : L'agenda occupe une largeur fixe de **65%** de l'espace principal.
 - **Droite (35%)** : Focus sur la gestion proactive (Urgences, Relances, Stats).
+
+### Affichage de l'Agenda (Timeline)
+- **Troncature des noms** : Si le nom et le prénom du client sont trop longs pour tenir sur une ligne, ils sont coupés avec des points de suspension (**"..."**).
+- **Séparateur** : Aucune ligne de séparation horizontale n'est présente sous le titre de l'agenda pour épurer le design.
+- **Tri des séances** :
+    - **Onglet « En cours »** : Tri chronologique **ascendant** (séances les plus proches d'abord).
+    - **Onglet « Historique récent »** : Tri chronologique **descendant** (séances les plus récentes d'abord, les plus proches d'aujourd'hui en haut).
 
 ### Navigation "Retour" intelligente
 - **Règle** : Le bouton de retour sur une fiche client doit préserver le flux de travail de l'utilisateur.
 - **Comportement** :
     - Si l'utilisateur accède à la fiche via le **tableau de bord** (clic sur un agenda ou une relance) : le bouton "Retour" renvoie à l'accueil (`/`).
-    - Si l'utilisateur y accède via la **liste des clients** : le bouton "Retour" renvoie à `/couples` (avec maintien de l'onglet actif Prospect/Client).
+    - Si l'utilisateur y accède via la **liste des clients** : le bouton "Retour" renvoie à `/clients` (avec maintien de l'onglet actif Prospect/Client).
+    - **Navigation Contextuelle Finances → Client** : En cliquant sur un client depuis le module `Finances`, le système doit ouvrir la fiche client ET scroller/étendre automatiquement la séance concernée par la ligne de tableau cliquée. Un délai de **300ms** est appliqué à l'ouverture de la séance pour laisser le temps à l'animation de la fiche client de se terminer proprement.
     - Si l'accès est direct (URL) : fallback sur la liste des clients.
 
-### Création de séance depuis la fiche client
-- Le bouton « + Séance » crée la séance avec les valeurs par défaut (date = aujourd'hui, heure = heure courante, phase héritée) et **ouvre immédiatement le panneau SessionDetailModal** (le grand panneau avec phase, date, note, dictée, données comptables, facturation)
-- L'utilisateur peut ensuite modifier la date, l'heure, la note de préparation et les données comptables
-- La limite de 6 mois s'applique sur le champ date du SessionDetailModal
+### Montant par défaut
+- Le montant d'une nouvelle séance est déterminé par la hiérarchie suivante (priorité décroissante) :
+    1. **Tarif du cycle actif** (`therapy_cycles.rate`)
+    2. **Tarif spécifique du client** (`client.session_rate`)
+    3. **Tarif global du cabinet** (`sessionRates.individual` ou `sessionRates.client` selon le type de client)
+- Ce montant est automatiquement pré-rempli dans le panneau `SessionDetailModal` lors de la création.
 
 ### Phase héritée
 - La nouvelle séance hérite de la **phase de la dernière séance** du client (si elle existe)
 - Sinon, hérite de la **phase du client** (sauf si prospect)
 - **Première séance d'un prospect** → phase = première phase thérapeutique configurée (par défaut : `début`)
 
-## Complétion automatique de séance
+## Complétion et Confirmation de séance
 
-### Conditions (les 2 sont obligatoires)
-1. **Date + durée ≤ maintenant** : la séance est dans le passé
-2. **Condition de paiement** : un moyen de paiement est renseigné (`paymentMethod` ≠ null) **OU** le montant est à 0 (séance offerte)
+### 1. Séance "Terminée" (Completed)
+- **Définition** : Une séance est considérée comme terminée uniquement lorsque son heure de fin est atteinte.
+- **Calcul** : `Moment de fin = Date de début + Durée (en minutes)`.
+- **Règle** : `maintenant >= moment de fin`.
 
-### Déclenchement
-- Au **chargement de l'application** (pour toutes les séances `scheduled` remplissant les 2 conditions)
-- Lors d'une **mise à jour de séance** (ex: choix du moyen de paiement → complétion automatique)
+### 2. Séance "Confirmée" (Confirmed)
+- **Condition de confirmation** : Une séance est confirmée si et seulement si :
+    1. Elle est **Terminée** (au sens défini ci-dessus).
+    2. **ET** l'utilisateur a renseigné un **mode de paiement** (`paymentMethod` ≠ null) **OU** a déclaré un **honoraire à 0€** (séance offerte).
 
-### Ce qui ne déclenche PAS la complétion
-- La rédaction d'un compte-rendu (CR)
-- La modification de notes
-- Tout update qui ne concerne pas le paiement
+### 3. Signalétique "À Confirmer"
+- **Cible** : Séances terminées mais non confirmées.
+- **Éléments visuels** : Badge « CONFIRMER », message d'alerte orange, et bouton « Rédiger CR » (comme défini dans la Section 12).
 
-> ⚠️ **Règle absolue** : une séance passée **reste** en statut `scheduled` tant que la condition de paiement n'est pas remplie. Elle apparaît alors avec le badge « CONFIRMER » et le bouton « Rédiger CR ».
+### 4. Déclenchement de la transition
+- **Automatique** : Au chargement de l'application ou lors d'un rafraîchissement des données (audit de cohérence).
+- **Manuel** : Dès que l'utilisateur renseigne le paiement sur une séance dont le moment de fin est passé.
+
+### 5. Préfixe de durée (Séances planifiées)
+- **Règle** : Toutes les séances programmées (`scheduled`) affichent leur durée avant la note de préparation.
+- **Format** : `[DURÉE] MIN : [Texte de la note]`.
+- **Typographie** : Affichage discret mais lisible pour distinguer la durée du corps de la note.
+
+> ⚠️ **Règle absolue** : Une séance future (dont le moment de fin n'est pas encore atteint) ne peut être ni "Terminée" ni "Confirmée", même si le paiement est anticipé. Elle reste en attente de réalisation.
 
 
 ## Cycle de vie d'une Séance
@@ -123,13 +241,12 @@ stateDiagram-v2
 ## Signalétique des séances passées non confirmées
 
 ### Définition
-Une séance est considérée « passée » dès que `date de la séance ≤ maintenant`, indépendamment de son `status` technique (`scheduled` ou `completed`).
+Une séance est considérée « passée » dès que `maintenant >= moment de fin` (Heure de début + Durée).
 
 ### Conditions d'activation
-- La séance est passée
-- Le mode de paiement n'est **pas** renseigné (`paymentMethod` = null)
-- Le montant effectif est **> 0** (exclut les séances offertes)
-- Le statut n'est **pas** `cancelled`
+- La séance est passée.
+- Le mode de paiement n'est **pas** renseigné (`paymentMethod` = null) **ET** le montant effectif est **≠ 0** (inclut `null` = tarif non configuré).
+- Le statut n'est **pas** `cancelled`.
 
 ### Éléments visuels obligatoires (les 3 ensemble)
 1. **Badge « CONFIRMER »** — affiché dans la ligne d'info, couleur ambre `#D97706`
@@ -137,19 +254,32 @@ Une séance est considérée « passée » dès que `date de la séance ≤ main
 3. **Bouton « Rédiger CR »** — affiché à droite de la carte, fond `#FFF3E0`, couleur `#E67E22`
 4. **Icône ⚠️** — triangle d'avertissement en coin droit (pour les séances `scheduled` passées sans CR)
 
-> ⚠️ **Règle absolue** : ces 3 éléments doivent **toujours** apparaître ensemble pour toute séance passée non confirmée. Il ne doit jamais y avoir de séance passée avec l'icône ⚠️ seule sans le badge et le message.
+### Troncature des aperçus (CR et Notes)
+- **Agenda Dashboard** : Limite brute à **50 caractères**.
+- **Timeline Thérapie (Fiche Client)** : Limite plus restrictive à **35 caractères** pour préserver la lisibilité de la timeline.
+
+> ⚠️ **Règle absolue** : ces éléments doivent **toujours** apparaître ensemble pour toute séance passée non confirmée. Il ne doit jamais y avoir de séance passée avec l'icône ⚠️ seule sans le badge et le message.
 
 ### Synchronisation inter-pages
 Cette signalétique est **identique** sur toutes les vues grâce au composant partagé `src/components/session/SessionCard.jsx` :
 - **Page d'accueil** (calendrier des séances) — `showClientName={true}`
 - **Page client** (timeline thérapie) — `showClientName={false}, showExpandedStyle={true}`
 - **Modale détail séance**
-- **Suivi financier** (détail par séance)
+- **Modale détail séance**
+
+> [!IMPORTANT]
+> **Règle de synchronisation du `ConfirmBadge`** :
+> Le badge "CONFIRMER" doit s'afficher pour toute séance passée sans `paymentMethod`, **y compris** les séances dont le statut en base est `completed` (auto-confirmées lors d'un chargement précédent). La condition dans `SessionCard.jsx` est :
+> `needsConfirm = isPast && !isCancelled && !isOffered && (!isConfirmed || !session.paymentMethod)`
+> Cela garantit la cohérence entre le timeline, le dashboard et le suivi financier.
+
+- **Suivi financier** (détail par séance) : Le `ConfirmBadge` seul gère le statut visuel — aucun texte "À confirmer" supplémentaire ne doit être affiché (anti-redondance).
+
+> ⚠️ **Règle de persistance** : Le passage automatique du statut `scheduled` → `completed` en base de données ne se fait **que** si un mode de paiement est renseigné (ou si le montant est de 0€). Sans paiement, la séance reste "planifiée" techniquement mais affichée comme "à confirmer" pour inciter à l'action. **Cette règle ne s'applique jamais aux séances de statut `cancelled`.**
 
 > ⚠️ **Règle métier — Notes et Comptes rendus** :
-> - Le champ `summary` (Résumé) est utilisé de manière polyvalente : **Note de préparation** pour les séances futures (`scheduled` et date > maintenant), **Compte rendu** pour les séances passées.
-> - L'icône de document (`FileText`) ne s'affiche **que** pour les séances passées ayant un contenu. Elle est masquée pour les séances futures pour éviter toute confusion avec une note de préparation.
-> - La note de préparation s'affiche toujours en texte à côté du badge de phase pour les séances planifiées. Le texte est **limité à 30 caractères** (via `slice(0, 30) + '…'`) pour garantir la lisibilité.
+> - Le champ `summary` (Résumé) est utilisé de manière polyvalente : **Note de préparation** pour les séances futures, **Compte rendu** pour les séances passées.
+> - L'icône de document (`FileText`) ne s'affiche **que** pour les séances passées ayant un contenu. Elle est masquée pour les séances futures.
 
 > ⚠️ **Règle absolue** : toute modification visuelle de carte de séance doit se faire exclusivement dans `SessionCard.jsx`. Il est strictement interdit de dupliquer le JSX de rendu dans les pages.
 
@@ -180,9 +310,13 @@ Toute modification de la signalétique doit être répercutée sur **toutes** ce
 
 ## Relance prospects (Dashboard)
 - **Cible** : Uniquement les dossiers en phase `prospect`.
-- **Règle** : Un prospect est marqué « À relancer » s'il est actif, n'a aucune séance future prévue, et que sa dernière séance remonte à plus de 14 jours.
-- **Nouveau prospect** : Un prospect créé sans aucune séance est également marqué à relancer après 14 jours d'inactivité.
-- **Navigation** : Le bouton « Voir tous les prospects » du Dashboard redirige spécifiquement vers `/couples?tab=prospects&view=list` pour permettre un traitement de masse efficace.
+- **Règle d'affichage** : Un prospect est affiché dans le bloc « Relance prospects » si :
+    1. Il n'a **aucune séance future** planifiée.
+    2. Il n'a **aucune séance passée non confirmée** (les séances passées doivent être traitées/confirmées avant que la relance ne soit pertinente).
+    3. Il n'a jamais eu de séance (Nouveau prospect).
+- **Délai de relance** : 14 jours d'inactivité après la dernière séance ou la création du dossier.
+- **Affichage du contact** : En dessous du nom, affiche le dernier contact effectué (icône Appel/SMS/Email) suivi de la date relative.
+- **Navigation** : Le bouton « Voir tous les prospects » redirige vers `/clients?tab=prospects&view=list`.
 
 ## Flux de Paiement & Facturation
 
@@ -201,8 +335,8 @@ flowchart LR
 ### Règle du Badge « FACTURE »
 - **Condition** : Le badge s'affiche sur la carte séance si `needsInvoice` est à vrai (SessionCard).
 - **États visuels** :
-    - **À ENVOYER** : Couleur bleu foncé `#1A365D`, fond transparent.
-    - **ENVOYÉE** : Couleur vert `var(--success)`, accompagné d'une coche `CheckCircle`.
+    - **À émettre** : Libellé « FACTURE », couleur bleu `var(--primary-500)`, tooltip « Facture à envoyer ».
+    - **Facturée** : Libellé « Facturée », couleur vert `var(--success)`, tooltip « Facture envoyée ».
 - **Calcul** : Basé sur le champ `invoice_sent` de la séance.
 
 ## Bouton « Paiement en attente »
@@ -226,13 +360,19 @@ flowchart LR
 
 ### Suivi financier
 - « Séance offerte » remplace le mode de paiement
+- **Section pilotage supprimée** : Les 3 cartes « Paiements en attente », « Séances à confirmer » et « Factures à émettre » ont été retirées de la page Finances. Ces indicateurs restent visibles uniquement via le Dashboard (Actions requises).
+- **Export** : Le bouton d'export s'intitule **« Export suivi financier »** (anciennement « Export CSV »).
+- **Graphiques** :
+  - **Canaux d'acquisition** (anciennement « Performance par canal ») — barres grises uniformes `#A0AEC0`, icône grise.
+  - **Types de clients** (anciennement « Répartition par type ») — barres grises uniformes `#A0AEC0`, icône grise.
+- **Normalisation des sources** : `countClientsBySource` normalise les clés de source en construisant un pont ancien-clé→nouveau-clé via les labels des constantes par défaut. Une source `'website'` (ancienne clé) et `'Site web'` (label français) sont fusionnées sous la même entrée. Les sources sans correspondance sont affichées telles quelles ; `unknown` → « Non renseigné ».
 
 ### Alliance thérapeutique (Statut Prospect ↔ Client)
 
 L'alliance thérapeutique est validée par la présence d'au moins une séance « payée » ou « offerte ».
 
-- **Condition de validation** : Une séance est considérée comme validant l'alliance si elle est au statut `completed` (terminée) **ET** qu'un mode de paiement est renseigné (ou si le montant = 0€).
-- **Transition Prospect → Client** : Automatique dès que la **première séance** validant l'alliance est créée ou confirmée. Le client passe de la phase `prospect` à la première phase thérapeutique (ex: `début`).
+- **Condition de validation** : Une séance est considérée comme validant l'alliance si elle est au statut `completed` (terminée) **OU** si elle est dans le passé (`date ≤ maintenant`) avec un moyen de paiement renseigné (ou si le montant = 0€).
+- **Transition Prospect → Client** : Automatique dès que la **première séance** validant l'alliance est créée ou confirmée (le paiement valant engagement). Le client passe de la phase `prospect` à la première phase thérapeutique (ex: `début`).
 - **Transition Client → Prospect** : Automatique si **toutes les séances** validant l'alliance sont supprimées ou annulées. Le client redevient un prospect.
 - **Événements déclencheurs** : 
   - Création d'une séance passée avec paiement.
@@ -246,11 +386,25 @@ L'alliance thérapeutique est validée par la présence d'au moins une séance �
 > 2. `session.paymentAmount` — montant persisté en DB (même si = 0 pour séance offerte)
 > 3. `originalRate` / `sessionRate` — tarif par défaut du client (fallback)
 >
-> **Règle absolue** : ne jamais utiliser `session.paymentAmount ?? rate` directement. Toujours passer par `getRate()` pour garantir la cohérence entre le montant affiché et les badges (« Séance offerte », « CONFIRMER »).
+> **Règle absolue** : ne jamais utiliser `session.paymentAmount ?? rate` directement. Toujours passer par `getRate()` (modale) ou `getDefaultRate()` (finances) pour garantir la cohérence entre le montant affiché et les tarifs réels (client ou système).
 
 > ⚠️ **Comportement confirmé** :
 > - Le compteur « Séances à confirmer » dans le suivi financier **inclut** les séances offertes
-> - Le `paymentReceived` se propage aux séances couvertes via `coveredSessionIds` quand le paiement est confirmé
+## Indicateur de Transformation (Finances)
+
+### 1. Définition de la Transformation
+- Un dossier est considéré comme « transformé » (converti) le mois de sa **première séance validée** (completed + payée ou à 0€).
+- Cette règle s'applique indépendamment de la date de création du dossier.
+
+### 2. Tri Chronologique (Règle d'Or)
+- **Ascendant obligatoire** : Toutes les listes financières (tableaux détaillés, liste des transformations) doivent être triées par ordre chronologique **croissant** (du 1er au 31 du mois).
+- Le premier jour du mois doit apparaître en haut de la liste.
+
+### 3. Visualisation "Transformation Prospects"
+- **Style épuré** : Affichage d'une liste simple des clients transformés dans le mois sélectionné.
+- **Interdiction** : Ne pas afficher d'indice de conversion (%), de ligne de séparation, de sous-titre "dernière transformation" ou d'icônes de progression.
+- **Icône de section** : Utilisation exclusive de l'icône `Zap` (`#D69E2E`) pour marquer l'énergie de la transformation.
+- **Format** : `1. Nom du Client (Date)`.
 
 ## Dédoublonnage
 - Alerte si même client + même jour (bloquante avec confirmation)
@@ -262,6 +416,12 @@ L'alliance thérapeutique est validée par la présence d'au moins une séance �
   *« Cette date impacte l'historique et les cycles de thérapie »*
 - **Confirmation obligatoire** : ConfirmDialog variant `danger` avant persistance
 - **Persistance** : `updateClient(id, { startDate })` → colonne `start_date` en DB
+
+## Cycles de thérapie
+- Un dossier client peut comporter plusieurs **cycles de thérapie** (ex: reprise après une longue pause).
+- **Structure** : Chaque cycle possède une date de début, un tarif spécifique (à la création), un objectif de nombre de séances et une phase initiale.
+- **Nouvelle thérapie** : Le bouton « Nouvelle thérapie » archive le cycle actuel et en crée un nouveau. Les séances passées restent liées à leur cycle d'origine via la date de début.
+- **Persistance** : Table `therapy_cycles`.
 
 ## Comptes rendus (CR en attente)
 - L'indicateur « CR en attente » sur la fiche client compte les **séances complétées sans compte rendu** dans le cycle actif
@@ -316,10 +476,17 @@ flowchart TD
 - Changement de source (≠ parrainage) → supprime tous les liens de parrainage + `externalReferrer`
 - Suppression d'un lien filleul → suppression du lien inverse chez le parrain
 
-### Persistance
+### 3. Persistance complète des données dossier
+Les éléments suivants sont systématiquement persistés en base de données (Supabase) pour garantir l'absence de perte de données :
+- **Notes structurées** : Dynamique relationnelle, Axes de travail, Points de vigilance, Objectifs (colonnes dédiées).
+- **Notes libres** : Champ `notes` du client.
+- **Fréquence des séances** : Colonne `session_frequency`.
+- **Synthèse IA** : Colonne `ai_synthesis` (JSONB).
+- **Objectif de séances** : Colonne `total_sessions` (pour le cycle actif ou le client).
+- **Tarif client** : Colonne `session_rate`.
+- **Adresse de facturation** : Colonne racine `billing_address` (type `text`).
 - `clientLinks` persisté en DB via colonne `client_links` (JSONB)
 - `externalReferrer` persisté en DB via colonne `external_referrer` (JSONB)
-- **Adresse de facturation** : doit être persistée dans la colonne racine `billing_address` (type `text`) et **NON** à l'intérieur du JSONB `partner_a`.
 
 ## Sécurisation et Persistance des Données
 
@@ -336,15 +503,16 @@ flowchart TD
 - **Client inactif** : initiales en **blanc** sur fond `primary-200`
 - **Prospect** : initiales en `#6B46C1` sur fond `#E8D8FE`
 - **Client actif** : initiales en blanc sur fond `accent-main`
-- **Initiales** : calculées via `getCoupleInitials` avec fallback sur `?`
+- **Initiales** : calculées via `getClientInitials` avec fallback sur `?`
 
 ## Sécurisation et Stabilité
 
-### 1. Robustesse des données (Anti-Crash)
-- **Règle d'or** : Tout composant ou helper manipulant des données provenant de Supabase **DOIT** utiliser des gardes (`optional chaining ?.`) et des fallbacks.
-- **Dates** : Interdiction d'appeler `.split('T')` ou `.startsWith()` sur un champ date sans vérifier sa présence : `session.date?.split('T')[0] || ''`.
-- **Tri** : Les tris via `localeCompare` doivent toujours avoir des fallbacks de chaîne vide pour éviter les crashs sur des valeurs `null`.
+- **Normalisation des Données (Prénoms)** : Il est **obligatoire** de normaliser les prénoms (FirstNames) via la fonction `capitalizeWords` dans les adaptateurs. Chaque mot (séparé par un espace ou un tiret) doit commencer par une majuscule. Cela garantit une UI propre et professionnelle quelles que soient les saisies utilisateur.
+    - *Exemple* : `"jean-baptiste"` → `"Jean-Baptiste"`.
+- **Robustesse des Données JSON (Adaptateurs)** : Tout composant manipulant des données provenant de Supabase **DOIT** utiliser des gardes (`optional chaining ?.`) et des fallbacks. (Exemple : `couple?.aiSynthesis`, `couple?.globalNote`, `couple?.notes`, `couple?.phase`).
+- **Helpers de sécurité** : Utilisation de helpers comme `safeGetRate(id)` pour centraliser l'accès aux données financières sensibles et éviter les `ReferenceError` sur des variables de scope.
 - **Validation post-sauvegarde** : Après chaque succès (toast vert), le système doit garantir que l'objet en mémoire est identique à celui en base via un re-fetch ou un update d'état immuable.
+- **Clean Architecture (No Mocks)** : Toute donnée métier ou constante doit provenir des fichiers `src/data/constants.js` ou `src/data/helpers.js`. Le fichier `mockData.js` est proscrit en production pour éviter toute confusion avec des données de test.
 
 ### 2. Authentification
 - **Timeout de sécurité** : Un délai de **10 secondes** est configuré dans `App.jsx` pour permettre la synchronisation complète des données utilisateur (Goole Auth → Table `users`) avant de basculer sur l'interface principale.
@@ -405,9 +573,9 @@ flowchart LR
 | Page | Route | Description |
 |------|-------|-------------|
 | Dashboard | `/` | Pilotage intelligent, agenda, urgences |
-| Mes Clients | `/couples` | Annuaire des dossiers (actifs/prospects) |
-| Fiche Client | `/couples/:id` | Timeline thérapeutique et identité |
-| Finances | `/finances` | Suivi CA, encaissements et factures |
+| Mes Clients | `/clients` | Annuaire des dossiers (actifs/prospects) |
+| Fiche Client | `/clients/:id` | Timeline thérapeutique et identité |
+| Finances | `/finances` | Suivi CA, encaissements (Tri Chronologique Croissant) |
 | Réseau Pro | `/admin/reseau-pro` | Partenaires et orientations (Admin) |
 | Clients archivés | `/admin/deleted-clients` | Corbeille et restauration (Admin) |
 | Administration | `/admin` | Vue d'ensemble des inscrits (Admin) |

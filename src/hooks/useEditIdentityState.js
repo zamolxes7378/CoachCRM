@@ -4,15 +4,15 @@ import { useState, useCallback } from 'react'
  * Custom hook that encapsulates all state related to the Edit Identity Modal.
  * Returns { state, actions } for clean prop passing to EditIdentityModal.
  */
-export default function useEditIdentityState({ couple, getClientType }) {
+export default function useEditIdentityState({ client, getClientType }) {
   // Edit fields
-  const [editPartnerA, setEditPartnerA] = useState({ ...(couple?.partnerA || {}) })
-  const [editPartnerB, setEditPartnerB] = useState({ ...(couple?.partnerB || {}) })
-  const [editChildren, setEditChildren] = useState(couple?.children || [])
-  const [editType, setEditType] = useState(couple ? getClientType(couple) : 'individual')
+  const [editPartnerA, setEditPartnerA] = useState({ ...(client?.partnerA || {}) })
+  const [editPartnerB, setEditPartnerB] = useState({ ...(client?.partnerB || {}) })
+  const [editChildren, setEditChildren] = useState(client?.children || [])
+  const [editType, setEditType] = useState(client ? getClientType(client) : 'individual')
   const [editReferents, setEditReferents] = useState(['A'])
-  const [editSource, setEditSource] = useState(couple?.source || '')
-  const [editBillingAddress, setEditBillingAddress] = useState(couple?.billingAddress || '')
+  const [editSource, setEditSource] = useState(client?.source || '')
+  const [editBillingAddress, setEditBillingAddress] = useState(client?.billingAddress || '')
 
   // Modal UI state
   const [showEditModal, setShowEditModal] = useState(false)
@@ -24,35 +24,35 @@ export default function useEditIdentityState({ couple, getClientType }) {
   const [modalReferrerSearch, setModalReferrerSearch] = useState('')
   const [modalSelectedReferrer, setModalSelectedReferrer] = useState(null)
   const [modalShowReferrerDropdown, setModalShowReferrerDropdown] = useState(false)
-  const [modalExternalReferrer, setModalExternalReferrer] = useState(couple?.externalReferrer || null)
+  const [modalExternalReferrer, setModalExternalReferrer] = useState(client?.externalReferrer || null)
   const [isSaving, setIsSaving] = useState(false)
 
   // Reset all edit fields to original values
   const resetToOriginal = useCallback(() => {
-    if (!couple) return
-    setEditPartnerA({ ...couple.partnerA })
-    setEditPartnerB(couple.partnerB ? { ...couple.partnerB } : {})
-    setEditChildren(couple.children || [])
-    setEditType(getClientType(couple))
-    setEditSource(couple?.source || '')
-    setEditBillingAddress(couple?.billingAddress || '')
+    if (!client) return
+    setEditPartnerA({ ...client.partnerA })
+    setEditPartnerB(client.partnerB ? { ...client.partnerB } : {})
+    setEditChildren(client.children || [])
+    setEditType(getClientType(client))
+    setEditSource(client?.source || '')
+    setEditBillingAddress(client?.billingAddress || '')
     setModalSelectedReferrer(null)
     setModalReferrerSearch('')
-    setModalExternalReferrer(couple?.externalReferrer || null)
+    setModalExternalReferrer(client?.externalReferrer || null)
     setModalShowAddLink(false)
     setModalAddLinkSearch('')
-  }, [couple, getClientType])
+  }, [client, getClientType])
 
   // Open the modal with current values
   const openEditModal = useCallback(() => {
-    if (!couple) return
-    setEditPartnerA({ ...couple.partnerA })
-    setEditPartnerB(couple.partnerB ? { ...couple.partnerB } : {})
-    setEditChildren(couple.children || [])
-    setEditType(getClientType(couple))
-    setEditBillingAddress(couple?.billingAddress || '')
+    if (!client) return
+    setEditPartnerA({ ...client.partnerA })
+    setEditPartnerB(client.partnerB ? { ...client.partnerB } : {})
+    setEditChildren(client.children || [])
+    setEditType(getClientType(client))
+    setEditBillingAddress(client?.billingAddress || '')
     setShowEditModal(true)
-  }, [couple, getClientType])
+  }, [client, getClientType])
 
   return {
     state: {

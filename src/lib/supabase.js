@@ -9,9 +9,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     detectSessionInUrl: true,
     flowType: 'implicit',
-    // Use a unique storage key to avoid lock contention across tabs
     storageKey: 'coachcrm-auth-token',
-    // Disable lock to prevent "Lock stolen" errors with multiple tabs
-    lock: undefined,
   },
 })

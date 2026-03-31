@@ -17,12 +17,12 @@ import DuplicateAlert from '../DuplicateAlert'
  *  - referrerSearch / setReferrerSearch — search input state
  *  - clients — all clients for search + dedup
  *  - professionals — all pros for dedup when type=professionnel
- *  - getCoupleName — helper to display client name
+ *  - getClientName — helper to display client name
  *  - formatDate / getPhaseLabel / getPhaseColor — for DuplicateAlert preview
  *  - onNavigate — callback(id) to navigate to a client page
  *  - onLink — callback(item) when linking to a duplicate (client or pro)
  *  - onClear — callback() when clearing the external referrer (for cleanup logic)
- *  - coupleId — current client id (to exclude from dedup), null at creation
+ *  - clientId — current client id (to exclude from dedup), null at creation
  */
 export default function ReferrerSection({
   externalReferrer,
@@ -33,14 +33,14 @@ export default function ReferrerSection({
   setReferrerSearch,
   clients,
   professionals,
-  getCoupleName,
+  getClientName,
   formatDate,
   getPhaseLabel,
   getPhaseColor,
   onNavigate,
   onLink,
   onClear,
-  coupleId
+  clientId
 }) {
   const [showDropdown, setShowDropdown] = useState(false)
   const [duplicateDismissed, setDuplicateDismissed] = useState(false)
@@ -57,9 +57,9 @@ export default function ReferrerSection({
     }
     return findDuplicateClients(
       { firstName, lastName, email: externalReferrer.email || '', phone: externalReferrer.phone || '' },
-      clients, getCoupleName, coupleId
+      clients, getClientName, clientId
     )
-  }, [externalReferrer, clients, professionals, duplicateDismissed, coupleId, getCoupleName])
+  }, [externalReferrer, clients, professionals, duplicateDismissed, clientId, getClientName])
 
   // --- State 3: External referrer form ---
   if (externalReferrer) {
@@ -169,7 +169,7 @@ export default function ReferrerSection({
       }}>
         <span style={{ fontWeight: 500, color: '#8B5CF6' }}>
           <Award size={13} style={{ verticalAlign: -2, marginRight: 4 }} />
-          {getCoupleName(selectedReferrer)} <span style={{ fontSize: '0.643rem', fontWeight: 400, opacity: 0.7 }}>· Parrain</span>
+          {getClientName(selectedReferrer)} <span style={{ fontSize: '0.643rem', fontWeight: 400, opacity: 0.7 }}>· Parrain</span>
         </span>
         <button onClick={() => { setSelectedReferrer(null); setReferrerSearch('') }}
           style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 2 }}>
@@ -185,10 +185,10 @@ export default function ReferrerSection({
     .filter(c => {
       if (!referrerSearch.trim()) return true
       const q = referrerSearch.toLowerCase()
-      const name = getCoupleName(c).toLowerCase()
+      const name = getClientName(c).toLowerCase()
       return name.includes(q)
     })
-    .filter(c => c.id !== coupleId)
+    .filter(c => c.id !== clientId)
     .slice(0, 8)
 
   return (
@@ -236,7 +236,7 @@ export default function ReferrerSection({
               onMouseEnter={e => e.currentTarget.style.background = 'var(--primary-50)'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
-              {getCoupleName(c)}
+              {getClientName(c)}
             </div>
           ))}
           {filteredClients.length === 0 && (

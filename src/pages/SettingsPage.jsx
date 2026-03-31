@@ -172,7 +172,7 @@ export default function SettingsPage() {
               onClick={() => setNotifications(prev => ({ ...prev, [item.key]: !prev[item.key] }))}
               style={{
                 width: 38, height: 20, borderRadius: 10,
-                background: notifications[item.key] ? '#68D391' : 'var(--primary-200)',
+                background: notifications[item.key] ? 'var(--primary-800)' : 'var(--primary-200)',
                 position: 'relative', transition: 'background 0.25s ease',
                 cursor: 'pointer', flexShrink: 0
               }}
@@ -181,8 +181,7 @@ export default function SettingsPage() {
                 width: 16, height: 16, borderRadius: '50%',
                 background: 'white', position: 'absolute', top: 2,
                 left: notifications[item.key] ? 20 : 2,
-                transition: 'left 0.25s ease',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.12)'
+                transition: 'left 0.25s ease'
               }} />
             </div>
           </div>
@@ -200,7 +199,7 @@ export default function SettingsPage() {
         </p>
         <div style={{ display: 'flex', gap: 'var(--space-lg)' }}>
           {[
-            { key: 'couple', label: 'Séance couple', icon: '👫' },
+            { key: 'client', label: 'Séance client', icon: '👫' },
             { key: 'individual', label: 'Séance individuelle', icon: '👤' }
           ].map(item => (
             <div key={item.key} style={{

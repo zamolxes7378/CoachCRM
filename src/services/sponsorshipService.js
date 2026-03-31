@@ -11,27 +11,31 @@
  * 3. Professionnel externe → Client (type: 'parrainage-pro')
  */
 
+import { recruitmentSources as defaultSources } from '../data/constants'
+
+
+
 /**
  * Validate a sponsorship link before creation
- * @param {Object} couple - The client being sponsored (filleul)
+ * @param {Object} client - The client being sponsored (filleul)
  * @param {Object} referrer - The sponsoring client (parrain)
  * @returns {{ valid: boolean, error?: string }}
  */
-export function validateSponsorship(couple, referrer) {
+export function validateSponsorship(client, referrer) {
   // Anti auto-parrainage
-  if (couple.id === referrer.id) {
+  if (client.id === referrer.id) {
     return { valid: false, error: 'Un client ne peut pas se parrainer lui-même.' }
   }
 
   // Détection de boucle : le filleul ne peut pas déjà être parrain du parrain
-  if (couple.clientLinks && couple.clientLinks.some(
+  if (client.clientLinks && client.clientLinks.some(
     l => l.type === 'parrainage' && l.role === 'parrain' && l.clientId === referrer.id
   )) {
     return { valid: false, error: 'Ce client est déjà parrain du parrain sélectionné (boucle détectée).' }
   }
 
   // Vérifier que le lien n'existe pas déjà
-  if (couple.clientLinks && couple.clientLinks.some(
+  if (client.clientLinks && client.clientLinks.some(
     l => l.type === 'parrainage' && l.role === 'filleul' && l.clientId === referrer.id
   )) {
     return { valid: false, error: 'Ce lien de parrainage existe déjà.' }
@@ -42,26 +46,26 @@ export function validateSponsorship(couple, referrer) {
 
 /**
  * Create a bidirectional sponsorship link between two clients
- * @param {Object} couple - The client being sponsored (filleul)
+ * @param {Object} client - The client being sponsored (filleul)
  * @param {Object} referrer - The sponsoring client (parrain)
  * @returns {{ success: boolean, error?: string }}
  */
-export function createSponsorshipLink(couple, referrer) {
-  const validation = validateSponsorship(couple, referrer)
+export function createSponsorshipLink(client, referrer) {
+  const validation = validateSponsorship(client, referrer)
   if (!validation.valid) return { success: false, error: validation.error }
 
   // Initialize clientLinks arrays if needed
-  if (!couple.clientLinks) couple.clientLinks = []
+  if (!client.clientLinks) client.clientLinks = []
   if (!referrer.clientLinks) referrer.clientLinks = []
 
   // Add link on filleul side
-  if (!couple.clientLinks.some(l => l.type === 'parrainage' && l.clientId === referrer.id)) {
-    couple.clientLinks.push({ clientId: referrer.id, type: 'parrainage', role: 'filleul' })
+  if (!client.clientLinks.some(l => l.type === 'parrainage' && l.clientId === referrer.id)) {
+    client.clientLinks.push({ clientId: referrer.id, type: 'parrainage', role: 'filleul' })
   }
 
   // Add link on parrain side
-  if (!referrer.clientLinks.some(l => l.type === 'parrainage' && l.clientId === couple.id)) {
-    referrer.clientLinks.push({ clientId: couple.id, type: 'parrainage', role: 'parrain' })
+  if (!referrer.clientLinks.some(l => l.type === 'parrainage' && l.clientId === client.id)) {
+    referrer.clientLinks.push({ clientId: client.id, type: 'parrainage', role: 'parrain' })
   }
 
   return { success: true }
@@ -69,15 +73,15 @@ export function createSponsorshipLink(couple, referrer) {
 
 /**
  * Remove a sponsorship link and clean up the reverse link
- * @param {Object} couple - The client from which to remove the link
+ * @param {Object} client - The client from which to remove the link
  * @param {Object} link - The link object to remove
  * @param {Array} allClients - All clients array for reverse link cleanup
  */
-export function removeSponsorshipLink(couple, link, allClients) {
-  if (!couple.clientLinks) return
+export function removeSponsorshipLink(client, link, allClients) {
+  if (!client.clientLinks) return
 
-  // Remove the link from this couple
-  couple.clientLinks = couple.clientLinks.filter(
+  // Remove the link from this client
+  client.clientLinks = client.clientLinks.filter(
     l => !(l.type === link.type && l.clientId === link.clientId)
   )
 
@@ -86,7 +90,7 @@ export function removeSponsorshipLink(couple, link, allClients) {
     const other = allClients.find(c => c.id === link.clientId)
     if (other && other.clientLinks) {
       other.clientLinks = other.clientLinks.filter(
-        l => !(l.type === 'parrainage' && l.clientId === couple.id)
+        l => !(l.type === 'parrainage' && l.clientId === client.id)
       )
     }
   }
@@ -94,42 +98,42 @@ export function removeSponsorshipLink(couple, link, allClients) {
   // If removing a parrain link (filleul side), also clear source/externalReferrer
   if ((link.type === 'parrainage' && link.role === 'filleul') || link.type === 'parrainage-pro') {
     // Check if any other parrainage links remain
-    const hasOtherParrainage = couple.clientLinks.some(
+    const hasOtherParrainage = client.clientLinks.some(
       l => l.type === 'parrainage' || l.type === 'parrainage-pro'
     )
     if (!hasOtherParrainage) {
-      couple.externalReferrer = null
+      client.externalReferrer = null
     }
   }
 }
 
 /**
  * Clean up all sponsorship links when source changes away from parrainage
- * @param {Object} couple - The client whose source changed
+ * @param {Object} client - The client whose source changed
  * @param {string} newSource - The new source value
  * @param {Array} allClients - All clients for reverse link cleanup
  */
-export function clearSponsorshipOnSourceChange(couple, newSource, allClients) {
+export function clearSponsorshipOnSourceChange(client, newSource, allClients) {
   if (newSource === 'parrainage' || newSource === 'referral') return
 
   // Clear external referrer
-  couple.externalReferrer = null
+  client.externalReferrer = null
 
-  if (!couple.clientLinks) return
+  if (!client.clientLinks) return
 
   // Remove all parrainage links
-  const parrainageLinks = couple.clientLinks.filter(l => l.type === 'parrainage')
+  const parrainageLinks = client.clientLinks.filter(l => l.type === 'parrainage')
   parrainageLinks.forEach(link => {
     const other = allClients.find(c => c.id === link.clientId)
     if (other && other.clientLinks) {
       other.clientLinks = other.clientLinks.filter(
-        l => !(l.type === 'parrainage' && l.clientId === couple.id)
+        l => !(l.type === 'parrainage' && l.clientId === client.id)
       )
     }
   })
 
   // Remove all parrainage-pro links
-  couple.clientLinks = couple.clientLinks.filter(
+  client.clientLinks = client.clientLinks.filter(
     l => l.type !== 'parrainage' && l.type !== 'parrainage-pro'
   )
 }
@@ -151,25 +155,25 @@ export function createSponsorshipTimelineEvent(referrerName) {
 
 /**
  * Check if a client has an active sponsorship
- * @param {Object} couple - The client to check
+ * @param {Object} client - The client to check
  * @returns {boolean}
  */
-export function hasActiveSponsorship(couple) {
-  if (!couple.clientLinks) return false
-  return couple.clientLinks.some(
+export function hasActiveSponsorship(client) {
+  if (!client.clientLinks) return false
+  return client.clientLinks.some(
     l => l.type === 'parrainage' || l.type === 'parrainage-pro'
   )
 }
 
 /**
  * Get the parrain (sponsor) of a client
- * @param {Object} couple - The filleul
+ * @param {Object} client - The filleul
  * @param {Array} allClients - All clients
  * @returns {Object|null} The parrain client or null
  */
-export function getParrain(couple, allClients) {
-  if (!couple.clientLinks) return null
-  const link = couple.clientLinks.find(l => l.type === 'parrainage' && l.role === 'filleul')
+export function getParrain(client, allClients) {
+  if (!client.clientLinks) return null
+  const link = client.clientLinks.find(l => l.type === 'parrainage' && l.role === 'filleul')
   if (!link) return null
   return allClients.find(c => c.id === link.clientId) || null
 }
@@ -194,11 +198,28 @@ export function getFilleuls(parrain, allClients) {
  * @param {number} year - The year to filter
  * @returns {Object} Counts by source key
  */
-export function countClientsBySource(clients, year) {
+export function countClientsBySource(clients, year, sources = []) {
+  // Build reverse map: label → key (e.g. 'Site web' → 'site_web')
+  const labelToKey = {}
+  sources.forEach(s => { labelToKey[s.label.toLowerCase()] = s.key })
+
+  // Build old-key → new-key map using default constants as bridge
+  // e.g. old key 'website' has label 'Site web' in defaults → new key 'site_web' in context
+  const oldKeyToNew = {}
+  defaultSources.forEach(def => {
+    const newKey = labelToKey[def.label.toLowerCase()]
+    if (newKey && newKey !== def.key) oldKeyToNew[def.key] = newKey
+  })
+
   const counts = {}
   clients.forEach(c => {
     if (year && c.startDate && new Date(c.startDate).getFullYear() !== year) return
-    const src = c.source || 'unknown'
+    let src = c.source || 'unknown'
+    // Normalize: label → key
+    const fromLabel = labelToKey[src.toLowerCase()]
+    if (fromLabel) src = fromLabel
+    // Normalize: old default key → new context key
+    if (oldKeyToNew[src]) src = oldKeyToNew[src]
     counts[src] = (counts[src] || 0) + 1
   })
   return counts
@@ -207,17 +228,23 @@ export function countClientsBySource(clients, year) {
 /**
  * Export sponsorship data as CSV rows
  * @param {Array} clients - All clients
- * @param {Function} getCoupleName - Function to get client display name
+ * @param {Function} getClientName - Function to get client display name
+ * @param {{ startDate?: string, endDate?: string }} options - Optional period filter
  * @returns {string} CSV string
  */
-export function exportSponsorshipCSV(clients, getCoupleName) {
+export function exportSponsorshipCSV(clients, getClientName, { startDate, endDate } = {}) {
   const rows = [
     ['Client', 'Source', 'Parrain/Recommandeur', 'Type', 'Date début'].join(';')
   ]
 
   clients.forEach(c => {
     if (!c.source || (c.source !== 'referral' && c.source !== 'parrainage')) return
-    const name = getCoupleName(c)
+
+    // Period filter
+    if (startDate && c.startDate && c.startDate < startDate) return
+    if (endDate && c.startDate && c.startDate > endDate) return
+
+    const name = getClientName(c)
     const source = c.source
 
     // Find parrain
@@ -227,7 +254,7 @@ export function exportSponsorshipCSV(clients, getCoupleName) {
       const parrainLink = c.clientLinks.find(l => l.type === 'parrainage' && l.role === 'filleul')
       if (parrainLink) {
         const parrain = clients.find(p => p.id === parrainLink.clientId)
-        parrainName = parrain ? getCoupleName(parrain) : '—'
+        parrainName = parrain ? getClientName(parrain) : '—'
         type = 'Parrainage client'
       }
       const proLink = c.clientLinks.find(l => l.type === 'parrainage-pro')

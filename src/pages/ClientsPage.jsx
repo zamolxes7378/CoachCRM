@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Plus, Search, Users, User, TrendingUp, X, ArrowDownUp, ArrowUpAZ, Calendar, Globe, Phone, UserCheck, CheckCircle, XCircle, HelpCircle, Link2, Award, LayoutGrid, List, Star, Baby, Trash2, Briefcase, Sprout, UserPlus, CheckSquare, Square, Archive } from 'lucide-react'
+import { Plus, Search, Users, User, TrendingUp, X, ArrowDownUp, ArrowUpAZ, Calendar, Globe, Phone, UserCheck, CheckCircle, XCircle, HelpCircle, Link2, Award, LayoutGrid, LayoutList, Star, Baby, Trash2, Briefcase, Sprout, UserPlus, CheckSquare, Square, Archive } from 'lucide-react'
 // professionals removed — now from DataContext
 import { useData } from '../context/DataContext'
 import { useConfirm } from '../context/ConfirmContext'
@@ -8,15 +8,16 @@ import { findDuplicateClients } from '../utils/duplicateUtils'
 import DuplicateAlert from '../components/DuplicateAlert'
 import ReferrerSection from '../components/client/ReferrerSection'
 import NewClientButton from '../components/NewClientButton'
+import ViewSwitcher from '../components/layout/ViewSwitcher'
 
 
 
 const sourceIcons = { website: Globe, phone: Phone, referral: UserCheck }
 
-export default function CouplesPage() {
+export default function ClientsPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { clients, sessions, professionals, recruitmentSources, therapyPhases: therapyPhasesData, phaseIcons, phaseColors: centralPhaseColors, defaultPhaseKey, getPhaseColor, getPhaseIcon, isProspect, getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel, getComputedStatus, getProspectStageInfo, formatDate, getClientType, createClient, updateClient, createProfessional: createPro } = useData()
+  const { clients, sessions, professionals, recruitmentSources, therapyPhases: therapyPhasesData, phaseIcons, phaseColors: centralPhaseColors, defaultPhaseKey, getPhaseColor, getPhaseIcon, isProspect, getClientName, getClientInitials, getPhaseLabel, getStatusLabel, getComputedStatus, getProspectStageInfo, formatDate, getClientType, createClient, updateClient, createProfessional: createPro } = useData()
   const confirm = useConfirm()
   const [search, setSearch] = useState('')
   const [sortMode, setSortMode] = useState('none')
@@ -44,11 +45,12 @@ export default function CouplesPage() {
   const [duplicateDismissed, setDuplicateDismissed] = useState(false)
   const [billingAddress, setBillingAddress] = useState('')
   const [billingAddressB, setBillingAddressB] = useState('')
+  const [newNotes, setNewNotes] = useState('')
   const [createError, setCreateError] = useState(null)
 
   const duplicateMatches = useMemo(() => {
     if (duplicateDismissed || !newLastName.trim()) return []
-    return findDuplicateClients({ firstName: newFirstName, lastName: newLastName }, clients, getCoupleName)
+    return findDuplicateClients({ firstName: newFirstName, lastName: newLastName }, clients, getClientName)
   }, [newFirstName, newLastName, clients, duplicateDismissed])
   // Auto-open new client modal from URL param
   useEffect(() => {
@@ -83,33 +85,33 @@ export default function CouplesPage() {
 
   // Compute next/last session from real session data
   const now = new Date()
-  const sessionsByCouple = {}
+  const sessionsByClient = {}
   sessions.forEach(s => {
     if (s.status === 'cancelled') return
-    if (!sessionsByCouple[s.coupleId]) sessionsByCouple[s.coupleId] = { past: [], future: [] }
+    if (!sessionsByClient[s.clientId]) sessionsByClient[s.clientId] = { past: [], future: [] }
     const d = new Date(s.date)
-    if (d <= now) sessionsByCouple[s.coupleId].past.push(s)
-    else sessionsByCouple[s.coupleId].future.push(s)
+    if (d <= now) sessionsByClient[s.clientId].past.push(s)
+    else sessionsByClient[s.clientId].future.push(s)
   })
-  const getNextSession = (coupleId) => {
-    const s = sessionsByCouple[coupleId]
+  const getNextSession = (clientId) => {
+    const s = sessionsByClient[clientId]
     if (!s || s.future.length === 0) return null
     return s.future.sort((a, b) => a.date.localeCompare(b.date))[0].date
   }
-  const getLastSession = (coupleId) => {
-    const s = sessionsByCouple[coupleId]
+  const getLastSession = (clientId) => {
+    const s = sessionsByClient[clientId]
     if (!s || s.past.length === 0) return null
     return s.past.sort((a, b) => b.date.localeCompare(a.date))[0].date
   }
 
   let filtered = activeClients
     .filter(c => activeTab === 'prospects' ? isProspect(c) : !isProspect(c))
-    .filter(c => getCoupleName(c).toLowerCase().includes(search.toLowerCase()))
+    .filter(c => getClientName(c).toLowerCase().includes(search.toLowerCase()))
 
   if (statusFilter === 'individual') {
     filtered = filtered.filter(c => getClientType(c) === 'individual')
-  } else if (statusFilter === 'couple') {
-    filtered = filtered.filter(c => getClientType(c) === 'couple')
+  } else if (statusFilter === 'client') {
+    filtered = filtered.filter(c => getClientType(c) === 'client')
   } else if (statusFilter === 'family') {
     filtered = filtered.filter(c => getClientType(c) === 'family')
   } else if (statusFilter === 'parrains') {
@@ -160,7 +162,7 @@ export default function CouplesPage() {
           </button>
         ))}
         <span style={{ width: 1, height: 24, background: 'var(--primary-300)', margin: '0 4px' }} />
-        {[['individual', 'Individuel'], ['couple', 'Couple'], ['family', 'Famille']].map(([val, label]) => (
+        {[['individual', 'Individuel'], ['client', 'Couple'], ['family', 'Famille']].map(([val, label]) => (
           <button
             key={val}
             className={`btn ${statusFilter === val ? 'btn-primary' : 'btn-ghost'}`}
@@ -212,32 +214,25 @@ export default function CouplesPage() {
           <ArrowDownUp size={18} /> Plus récent
         </button>
         <span style={{ width: 1, height: 28, background: 'var(--border-light)', margin: '0 2px' }} />
-        <button
-          className={`btn ${viewMode === 'cards' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setViewMode('cards')}
-          title="Vue cartes"
-          style={{ padding: '6px 8px' }}
-        >
-          <LayoutGrid size={18} />
-        </button>
-        <button
-          className={`btn ${viewMode === 'list' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setViewMode('list')}
-          title="Vue liste"
-          style={{ padding: '6px 8px' }}
-        >
-          <List size={18} />
-        </button>
+        
+        <ViewSwitcher 
+          currentView={viewMode} 
+          onViewChange={setViewMode} 
+          options={[
+            { id: 'cards', icon: LayoutGrid, title: 'Vue cartes' },
+            { id: 'list', icon: LayoutList, title: 'Vue liste' }
+          ]} 
+        />
       </div>
 
       {viewMode === 'cards' ? (
         <div className="grid-3">
-          {filtered.map(couple => {
-            const PhaseIcon = getPhaseIcon(couple.phase)
+          {filtered.map(client => {
+            const PhaseIcon = getPhaseIcon(client.phase)
             return (
-              <div className={`card card-clickable ${getComputedStatus(couple) === 'inactive' || getComputedStatus(couple) === 'completed' ? 'card-inactive' : ''}`} key={couple.id} onClick={() => navigate(`/couples/${couple.id}`)} style={{ position: 'relative' }}>
+              <div className={`card card-clickable ${getComputedStatus(client) === 'inactive' || getComputedStatus(client) === 'completed' ? 'card-inactive' : ''}`} key={client.id} onClick={() => navigate(`/clients/${client.id}`)} style={{ position: 'relative' }}>
                 {(() => {
-                  const cType = getClientType(couple)
+                  const cType = getClientType(client)
                   if (cType === 'individual') return <User size={20} style={{ position: 'absolute', top: 12, right: 12, color: 'var(--text-tertiary)', opacity: 0.5 }} title="Individuel" />
                   if (cType === 'family') return (
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'absolute', top: 12, right: 12, opacity: 0.5 }} title="Famille">
@@ -249,22 +244,22 @@ export default function CouplesPage() {
                   return <Users size={20} style={{ position: 'absolute', top: 12, right: 12, color: 'var(--text-tertiary)', opacity: 0.5 }} title="Couple" />
                 })()}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
-                  <div className="couple-avatar" style={{ width: 48, height: 48, fontSize: '1rem', ...(getComputedStatus(couple) === 'inactive' || couple.phase === 'completed' ? { background: 'var(--primary-200)', color: 'var(--text-inverse)' } : couple.phase === 'prospect' ? { background: '#E8D8FE', color: '#6B46C1' } : {}) }}>
-                    {getCoupleInitials(couple)}
+                  <div className="client-avatar" style={{ width: 48, height: 48, fontSize: '1rem', ...(getComputedStatus(client) === 'inactive' || client.phase === 'completed' ? { background: 'var(--primary-200)', color: 'var(--text-inverse)' } : client.phase === 'prospect' ? { background: '#E8D8FE', color: '#6B46C1' } : {}) }}>
+                    {getClientInitials(client)}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <h3 style={{ fontSize: '1rem', marginBottom: 2 }}>{getCoupleName(couple)}</h3>
+                    <h3 style={{ fontSize: '1rem', marginBottom: 2 }}>{getClientName(client)}</h3>
                     <p style={{ fontSize: '0.786rem', color: 'var(--text-secondary)' }}>
-                      {`Premier contact : ${formatDate(couple.startDate)}`}
+                      {`Premier contact : ${formatDate(client.startDate)}`}
                     </p>
                   </div>
                 </div>
 
-                {couple.phase !== 'prospect' && couple.phase !== 'completed' && (
+                {client.phase !== 'prospect' && client.phase !== 'completed' && (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-sm)' }}>
                     <div style={{ display: 'flex', gap: 'var(--space-xs)', alignItems: 'center' }}>
                       {(() => {
-                        const pc = getPhaseColor(couple.phase)
+                        const pc = getPhaseColor(client.phase)
                         return (<>
                           <div style={{
                             width: 32, height: 32, borderRadius: 'var(--radius-full)',
@@ -273,10 +268,10 @@ export default function CouplesPage() {
                           }}>
                             <PhaseIcon size={16} />
                           </div>
-                          <span style={{ fontSize: '0.786rem', fontWeight: 600, color: pc.color }}>{getPhaseLabel(couple.phase)}</span>
+                          <span style={{ fontSize: '0.786rem', fontWeight: 600, color: pc.color }}>{getPhaseLabel(client.phase)}</span>
                         </>)
                       })()}
-                      {(getComputedStatus(couple) === 'completed' || couple.status === 'completed') && (
+                      {(getComputedStatus(client) === 'completed' || client.status === 'completed') && (
                         <span className="badge badge-status-completed">
                           <CheckCircle size={12} />
                           {getStatusLabel('completed')}
@@ -284,25 +279,23 @@ export default function CouplesPage() {
                       )}
                     </div>
                     <span className="caption" style={{ color: 'var(--text-secondary)' }}>
-                      {`${couple.sessionsCount}/${couple.totalSessions} séances`}
+                      {`${client.sessionsCount}/${client.totalSessions} séances`}
                     </span>
                   </div>
                 )}
 
-
-
-                {couple.phase !== 'prospect' && (() => {
+                {client.phase !== 'prospect' && (() => {
                   const therapyPhases = therapyPhasesData.map(tp => tp.key)
                   const nowStr = new Date().toISOString()
-                  const coupleSessions = sessions.filter(s => s.coupleId === couple.id && s.status !== 'cancelled')
+                  const clientSessions = sessions.filter(s => s.clientId === client.id && s.status !== 'cancelled')
                   const doneByPhase = {}
                   const schedByPhase = {}
                   therapyPhases.forEach(p => {
-                    doneByPhase[p] = coupleSessions.filter(s => s.phase === p && s.status !== 'scheduled' && s.date <= nowStr).length
-                    schedByPhase[p] = coupleSessions.filter(s => s.phase === p && s.status === 'scheduled').length
+                    doneByPhase[p] = clientSessions.filter(s => s.phase === p && s.status !== 'scheduled' && s.date <= nowStr).length
+                    schedByPhase[p] = clientSessions.filter(s => s.phase === p && s.status === 'scheduled').length
                   })
                   const totalAssigned = therapyPhases.reduce((sum, p) => sum + (doneByPhase[p] || 0) + (schedByPhase[p] || 0), 0)
-                  const barBase = Math.max(couple.totalSessions || 1, totalAssigned)
+                  const barBase = Math.max(client.totalSessions || 1, totalAssigned)
                   return (
                     <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', background: '#E2E8F0' }}>
                       {therapyPhases.map(p => {
@@ -331,34 +324,34 @@ export default function CouplesPage() {
                 })()}
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)', marginTop: 'var(--space-sm)' }}>
-                  {couple.phase === 'prospect' && couple.source ? (() => {
-                    const SourceIcon = sourceIcons[couple.source] || Globe
+                  {client.phase === 'prospect' && client.source ? (() => {
+                    const SourceIcon = sourceIcons[client.source] || Globe
                     return (<>
                       <SourceIcon size={14} style={{ color: '#6B46C1' }} />
                       <span className="caption" style={{ color: 'var(--text-secondary)' }}>
-                        Source : {(() => { if (couple.referrerType === 'particulier') return 'Parrain externe'; const hasExternalParrain = (couple.clientLinks || []).some(l => l.type === 'parrainage' && l.role === 'filleul' && (() => { const ref = clients.find(c => c.id === l.clientId); return ref?.referrerType === 'particulier' })()); return hasExternalParrain ? 'Parrain externe' : (recruitmentSources.find(s => s.key === couple.source) || {}).label || couple.source })()}
+                        Source : {(() => { if (client.referrerType === 'particulier') return 'Parrain externe'; const hasExternalParrain = (client.clientLinks || []).some(l => l.type === 'parrainage' && l.role === 'filleul' && (() => { const ref = clients.find(c => c.id === l.clientId); return ref?.referrerType === 'particulier' })()); return hasExternalParrain ? 'Parrain externe' : (recruitmentSources.find(s => s.key === client.source) || {}).label || client.source })()}
                       </span>
                     </>)
-                  })() : couple.phase === 'prospect' && !couple.source ? (<>
+                  })() : client.phase === 'prospect' && !client.source ? (<>
                     <HelpCircle size={14} style={{ color: 'var(--text-tertiary)' }} />
                     <span className="caption" style={{ color: 'var(--text-tertiary)' }}>
                       Source non renseignée
                     </span>
                   </>) : (<>
-                    <Calendar size={14} style={{ color: getComputedStatus(couple) === 'inactive' || couple.phase === 'completed' ? 'var(--text-tertiary)' : 'var(--primary-500)' }} />
-                    <span className="caption" style={{ color: getComputedStatus(couple) === 'inactive' || couple.phase === 'completed' ? 'var(--text-tertiary)' : 'var(--text-secondary)' }}>
-                      {getComputedStatus(couple) === 'inactive' || couple.phase === 'completed'
-                        ? (getLastSession(couple.id) ? `Dernier RDV : ${formatDate(getLastSession(couple.id))}` : 'Aucun RDV')
-                        : (getNextSession(couple.id) ? `Prochain RDV : ${formatDate(getNextSession(couple.id))}` : getLastSession(couple.id) ? `Dernier RDV : ${formatDate(getLastSession(couple.id))}` : 'Aucun RDV')
+                    <Calendar size={14} style={{ color: getComputedStatus(client) === 'inactive' || client.phase === 'completed' ? 'var(--text-tertiary)' : 'var(--primary-500)' }} />
+                    <span className="caption" style={{ color: getComputedStatus(client) === 'inactive' || client.phase === 'completed' ? 'var(--text-tertiary)' : 'var(--text-secondary)' }}>
+                      {getComputedStatus(client) === 'inactive' || client.phase === 'completed'
+                        ? (getLastSession(client.id) ? `Dernier RDV : ${formatDate(getLastSession(client.id))}` : 'Aucun RDV')
+                        : (getNextSession(client.id) ? `Prochain RDV : ${formatDate(getNextSession(client.id))}` : getLastSession(client.id) ? `Dernier RDV : ${formatDate(getLastSession(client.id))}` : 'Aucun RDV')
                       }
                     </span>
                   </>)}
                 </div>
 
                 {/* Client links (parrainage + dossier) */}
-                {(couple.clientLinks || []).length > 0 && (
+                {(client.clientLinks || []).length > 0 && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
-                    {(couple.clientLinks || []).map((link, idx) => {
+                    {(client.clientLinks || []).map((link, idx) => {
                       const linked = clients.find(c => c.id === link.clientId)
                       if (!linked) return null
                       const isDossier = link.type === 'dossier'
@@ -368,7 +361,7 @@ export default function CouplesPage() {
                       const Icon = isDossier ? Link2 : Award
                       return (
                         <div key={idx}
-                          onClick={e => { e.stopPropagation(); navigate(`/couples/${linked.id}`) }}
+                          onClick={e => { e.stopPropagation(); navigate(`/clients/${linked.id}`) }}
                           style={{
                             display: 'inline-flex', alignItems: 'center', gap: 3,
                             padding: '2px 6px', borderRadius: 'var(--radius-sm)',
@@ -377,10 +370,10 @@ export default function CouplesPage() {
                           }}
                           onMouseEnter={e => e.currentTarget.style.background = color + '25'}
                           onMouseLeave={e => e.currentTarget.style.background = bg}
-                          title={`${roleLabel} ${getCoupleName(linked)} — cliquer pour ouvrir`}
+                          title={`${roleLabel} ${getClientName(linked)} — cliquer pour ouvrir`}
                         >
                           <Icon size={10} />
-                          {roleLabel} {getCoupleName(linked)}
+                          {roleLabel} {getClientName(linked)}
                         </div>
                       )
                     })}
@@ -423,14 +416,14 @@ export default function CouplesPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(couple => {
-                const PhaseIcon = getPhaseIcon(couple.phase)
-                const pc = getPhaseColor(couple.phase)?.color || 'var(--primary-600)'
-                const referrals = clients.filter(c => c.referredBy === couple.id)
-                const referrer = couple.referredBy ? clients.find(c => c.id === couple.referredBy) : null
-                const isChecked = selected.has(couple.id)
+              {filtered.map(client => {
+                const PhaseIcon = getPhaseIcon(client.phase)
+                const pc = getPhaseColor(client.phase)?.color || 'var(--primary-600)'
+                const referrals = clients.filter(c => c.referredBy === client.id)
+                const referrer = client.referredBy ? clients.find(c => c.id === client.referredBy) : null
+                const isChecked = selected.has(client.id)
                 return (
-                  <tr key={couple.id} style={{
+                  <tr key={client.id} style={{
                     cursor: 'pointer',
                     background: isChecked ? 'var(--primary-50)' : 'transparent',
                     transition: 'background 0.1s'
@@ -440,47 +433,47 @@ export default function CouplesPage() {
                   >
                     <td style={{ width: 36 }}>
                       <button
-                        onClick={e => { e.stopPropagation(); setSelected(prev => { const s = new Set(prev); s.has(couple.id) ? s.delete(couple.id) : s.add(couple.id); return s }) }}
+                        onClick={e => { e.stopPropagation(); setSelected(prev => { const s = new Set(prev); s.has(client.id) ? s.delete(client.id) : s.add(client.id); return s }) }}
                         style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center', color: isChecked ? 'var(--error)' : 'var(--text-tertiary)' }}
                       >
                         {isChecked ? <CheckSquare size={16} /> : <Square size={16} />}
                       </button>
                     </td>
-                    <td style={{ fontWeight: 600 }} onClick={() => navigate(`/couples/${couple.id}`)}>
+                    <td style={{ fontWeight: 600 }} onClick={() => navigate(`/clients/${client.id}`)}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div className="couple-avatar" style={{ width: 32, height: 32, fontSize: '0.714rem', ...(getComputedStatus(couple) === 'inactive' || couple.phase === 'completed' ? { background: 'var(--primary-200)', color: 'white' } : couple.phase === 'prospect' ? { background: '#E8D8FE', color: '#6B46C1' } : {}) }}>
-                          {getCoupleInitials(couple)}
+                        <div className="client-avatar" style={{ width: 32, height: 32, fontSize: '0.714rem', ...(getComputedStatus(client) === 'inactive' || client.phase === 'completed' ? { background: 'var(--primary-200)', color: 'white' } : client.phase === 'prospect' ? { background: '#E8D8FE', color: '#6B46C1' } : {}) }}>
+                          {getClientInitials(client)}
                         </div>
-                        {getCoupleName(couple)}
-                        {!couple.partnerB && <User size={14} style={{ color: 'var(--text-tertiary)' }} />}
+                        {getClientName(client)}
+                        {!client.partnerB && <User size={14} style={{ color: 'var(--text-tertiary)' }} />}
                       </div>
                     </td>
                     {activeTab === 'clients' ? (<>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <PhaseIcon size={14} style={{ color: pc }} />
-                          <span style={{ color: pc, fontWeight: 500, fontSize: '0.786rem' }}>{couple.phase === 'completed' ? 'Terminé' : getPhaseLabel(couple.phase)}</span>
+                          <span style={{ color: pc, fontWeight: 500, fontSize: '0.786rem' }}>{client.phase === 'completed' ? 'Terminé' : getPhaseLabel(client.phase)}</span>
                         </div>
                       </td>
-                      <td style={{ color: 'var(--text-secondary)' }}>{couple.sessionsCount}/{couple.totalSessions}</td>
-                      <td style={{ color: 'var(--text-secondary)' }}>{getLastSession(couple.id) ? formatDate(getLastSession(couple.id)) : '—'}</td>
-                      <td style={{ color: 'var(--text-secondary)' }}>{getNextSession(couple.id) ? formatDate(getNextSession(couple.id)) : '—'}</td>
+                      <td style={{ color: 'var(--text-secondary)' }}>{client.sessionsCount}/{client.totalSessions}</td>
+                      <td style={{ color: 'var(--text-secondary)' }}>{getLastSession(client.id) ? formatDate(getLastSession(client.id)) : '—'}</td>
+                      <td style={{ color: 'var(--text-secondary)' }}>{getNextSession(client.id) ? formatDate(getNextSession(client.id)) : '—'}</td>
                       <td>
                         {referrals.length > 0 ? (
                           <span style={{ color: '#6B46C1', fontWeight: 500, fontSize: '0.786rem' }}>
                             <Award size={12} style={{ verticalAlign: -2, marginRight: 3 }} />
-                            {referrals.map(r => getCoupleName(r)).join(', ')}
+                            {referrals.map(r => getClientName(r)).join(', ')}
                           </span>
                         ) : '—'}
                       </td>
                     </>) : (<>
-                      <td style={{ color: 'var(--text-secondary)' }}>{formatDate(couple.startDate)}</td>
-                      <td style={{ color: 'var(--text-secondary)' }}>{(() => { if (couple.referrerType === 'particulier') return 'Parrain externe'; const hasExternalParrain = (couple.clientLinks || []).some(l => l.type === 'parrainage' && l.role === 'filleul' && (() => { const ref = clients.find(c => c.id === l.clientId); return ref?.referrerType === 'particulier' })()); return hasExternalParrain ? 'Parrain externe' : (recruitmentSources.find(s => s.key === couple.source) || {}).label || couple.source || '—' })()}</td>
+                      <td style={{ color: 'var(--text-secondary)' }}>{formatDate(client.startDate)}</td>
+                      <td style={{ color: 'var(--text-secondary)' }}>{(() => { if (client.referrerType === 'particulier') return 'Parrain externe'; const hasExternalParrain = (client.clientLinks || []).some(l => l.type === 'parrainage' && l.role === 'filleul' && (() => { const ref = clients.find(c => c.id === l.clientId); return ref?.referrerType === 'particulier' })()); return hasExternalParrain ? 'Parrain externe' : (recruitmentSources.find(s => s.key === client.source) || {}).label || client.source || '—' })()}</td>
                       <td>
                         {referrer ? (
                           <span style={{ color: '#6B46C1', fontWeight: 500, fontSize: '0.786rem' }}>
                             <Link2 size={12} style={{ verticalAlign: -2, marginRight: 3 }} />
-                            {getCoupleName(referrer)}
+                            {getClientName(referrer)}
                           </span>
                         ) : '—'}
                       </td>
@@ -611,7 +604,7 @@ export default function CouplesPage() {
             {idx === 0 && duplicateMatches.length > 0 && (
               <DuplicateAlert
                 matches={duplicateMatches}
-                onView={(id) => { setShowModal(false); navigate(`/couples/${id}`) }}
+                onView={(id) => { setShowModal(false); navigate(`/clients/${id}`) }}
                 onDismiss={() => setDuplicateDismissed(true)}
                 formatDate={formatDate}
                 getPhaseLabel={getPhaseLabel}
@@ -671,7 +664,9 @@ export default function CouplesPage() {
                 padding: '16px 32px 0',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between'
               }}>
-                <h2 style={{ fontSize: '1.143rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Nouveau client</h2>
+                <h2 style={{ fontSize: '1.143rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                  {newClientType === 'client' ? 'Nouveau Couple' : newClientType === 'family' ? 'Nouvelle Famille' : 'Nouveau client'}
+                </h2>
                 <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 4 }}>
                   <X size={20} />
                 </button>
@@ -735,7 +730,7 @@ export default function CouplesPage() {
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-md)' }}>
                         {[
                           { key: 'individual', icon: 'user', label: 'Individuel', desc: '1 personne', color: '#6366F1', bg: '#EEF2FF' },
-                          { key: 'couple', icon: 'users', label: 'Couple', desc: '2 partenaires', color: '#EC4899', bg: '#FDF2F8' },
+                          { key: 'client', icon: 'users', label: 'Couple', desc: '2 partenaires', color: '#EC4899', bg: '#FDF2F8' },
                           { key: 'family', icon: 'family', label: 'Famille', desc: 'Adultes + enfants', color: '#F59E0B', bg: '#FFFBEB' }
                         ].map(t => (
                           <div
@@ -786,7 +781,7 @@ export default function CouplesPage() {
                   {wizardStep === 1 && (
                     <div>
                       <h3 style={{ fontSize: '1.143rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>
-                        {newClientType === 'individual' ? 'Informations du client' : newClientType === 'couple' ? 'Les partenaires' : 'La famille'}
+                        {newClientType === 'individual' ? 'Informations du client' : newClientType === 'client' ? 'Le Couple' : 'La famille'}
                       </h3>
                       {newClientType !== 'individual' && (
                         <p style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)', marginBottom: 'var(--space-md)', display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -797,8 +792,8 @@ export default function CouplesPage() {
                       {/* Adults — Individual */}
                       {newClientType === 'individual' && renderAdultBlock('Client', 0)}
 
-                      {/* Adults — Couple (fixed 2) */}
-                      {newClientType === 'couple' && (
+                      {/* Adults — Client (fixed 2) */}
+                      {newClientType === 'client' && (
                         <>
                           {renderAdultBlock('Partenaire A', 0)}
                           {renderAdultBlock('Partenaire B', 1)}
@@ -959,11 +954,11 @@ export default function CouplesPage() {
                             setReferrerSearch={setReferrerSearch}
                             clients={clients}
                             professionals={professionals}
-                            getCoupleName={getCoupleName}
+                            getClientName={getClientName}
                             formatDate={formatDate}
                             getPhaseLabel={getPhaseLabel}
                             getPhaseColor={getPhaseColor}
-                            onNavigate={(id) => { setShowModal(false); navigate(`/couples/${id}`) }}
+                            onNavigate={(id) => { setShowModal(false); navigate(`/clients/${id}`) }}
                             onLink={(item, refType) => {
                               if (refType === 'professionnel') {
                                 // Pro linked — will be handled at save time
@@ -972,7 +967,7 @@ export default function CouplesPage() {
                                 setSelectedReferrer(item)
                               }
                             }}
-                            coupleId={null}
+                            clientId={null}
                           />
                         </div>
                       )}
@@ -981,7 +976,7 @@ export default function CouplesPage() {
 
                       <div className="input-group" style={{ marginTop: 'var(--space-md)' }}>
                         <label>Notes (optionnel)</label>
-                        <textarea className="input" rows={3} placeholder="Contexte initial, motif de consultation..." style={{ resize: 'vertical' }} />
+                        <textarea className="input" rows={3} placeholder="Contexte initial, motif de consultation..." value={newNotes} onChange={e => setNewNotes(e.target.value)} style={{ resize: 'vertical' }} />
                       </div>
                     </div>
                   )}
@@ -1046,7 +1041,7 @@ export default function CouplesPage() {
                         const today = new Date().toISOString().split('T')[0]
                         // Build new client object
                         const newClient = {
-                          type: newClientType || 'couple',
+                          type: newClientType || 'client',
                           partnerA: {
                             firstName: newFirstName || '',
                             lastName: newLastName.trim().toUpperCase(),
@@ -1063,6 +1058,8 @@ export default function CouplesPage() {
                           source: newSource || null,
                           status: 'active',
                           startDate: today,
+                          billingAddress: billingAddress.trim() || null,
+                          notes: newNotes.trim() || null,
                         }
                         // Save to Supabase
                         const created = await createClient(newClient)
@@ -1138,7 +1135,7 @@ export default function CouplesPage() {
                         }
 
                         setShowModal(false); setWizardStep(0); setNewClientType(''); setNewChildren([]); setNewFamilyAdults([{}]); setNewLastName(''); setNewFirstName(''); setNewReferents([0]); setSelectedReferrer(null); setReferrerSearch(''); setExternalReferrer(null); setCreateError(null); setNewPhase(therapyPhasesData[0]?.key || 'debut')
-                        navigate(`/couples/${created.id}`)
+                        navigate(`/clients/${created.id}`)
                       } catch (err) {
                         console.error('Client creation error:', err)
                         setCreateError('Erreur inattendue : ' + (err.message || 'veuillez réessayer.'))

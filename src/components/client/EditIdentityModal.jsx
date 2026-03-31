@@ -12,12 +12,12 @@ import ReferrerSection from './ReferrerSection'
  * Receives grouped state from useEditIdentityState hook.
  */
 export default function EditIdentityModal({
-  couple,
+  client,
   editState,       // all edit fields from useEditIdentityState
   editActions,     // all setters from useEditIdentityState
   therapy,         // { phasesData, phaseIcons, phaseColors, phase, setPhase, status }
   data,            // { clients, professionals, recruitmentSources }
-  utils,           // { updateClient, updatePro, createPro, navigate, getCoupleName, getClientType, getCoupleInitials, findDuplicateClients, findDuplicatePros, DuplicateAlert }
+  utils,           // { updateClient, updatePro, createPro, navigate, getClientName, getClientType, getClientInitials, findDuplicateClients, findDuplicatePros, DuplicateAlert }
 }) {
   // Destructure for convenience
   const {
@@ -34,18 +34,18 @@ export default function EditIdentityModal({
   } = editActions
   const { phasesData: therapyPhasesData, phaseIcons, phaseColors, getPhaseColor, getPhaseIcon, phase, setPhase, status } = therapy
   const { clients, professionals, recruitmentSources } = data
-  const { updateClient, createClient, updatePro, createPro, navigate, getCoupleName, getClientType, getCoupleInitials, findDuplicateClients, findDuplicatePros, DuplicateAlert, formatDate, getPhaseLabel } = utils
+  const { updateClient, createClient, updatePro, createPro, navigate, getClientName, getClientType, getClientInitials, findDuplicateClients, findDuplicatePros, DuplicateAlert, formatDate, getPhaseLabel } = utils
 
 
   const hasChanges = () => {
-    const a = couple.partnerA, ea = editPartnerA
+    const a = client.partnerA, ea = editPartnerA
     if ((ea.firstName || '') !== (a.firstName || '') || (ea.lastName || '') !== (a.lastName || '') || (ea.email || '') !== (a.email || '') || (ea.phone || '') !== (a.phone || '')) return true
-    if (couple.partnerB) {
-      const b = couple.partnerB, eb = editPartnerB
+    if (client.partnerB) {
+      const b = client.partnerB, eb = editPartnerB
       if ((eb.firstName || '') !== (b.firstName || '') || (eb.lastName || '') !== (b.lastName || '') || (eb.email || '') !== (b.email || '') || (eb.phone || '') !== (b.phone || '')) return true
     }
-    if ((editSource || '') !== (couple.source || '')) return true
-    if ((editBillingAddress || '') !== (couple.billingAddress || '')) return true
+    if ((editSource || '') !== (client.source || '')) return true
+    if ((editBillingAddress || '') !== (client.billingAddress || '')) return true
     return false
   }
   const confirm = useConfirm()
@@ -54,12 +54,12 @@ export default function EditIdentityModal({
       if (!await confirm('Des modifications non enregistrées seront perdues. Voulez-vous vraiment quitter ?')) return
     }
     // Reset all edit fields to original values
-    setEditPartnerA({ ...couple.partnerA })
-    setEditPartnerB(couple.partnerB ? { ...couple.partnerB } : {})
-    setEditChildren(couple.children || [])
-    setEditType(couple ? getClientType(couple) : 'individual')
-    setEditSource(couple?.source || '')
-    setEditBillingAddress(couple?.billingAddress || '')
+    setEditPartnerA({ ...client.partnerA })
+    setEditPartnerB(client.partnerB ? { ...client.partnerB } : {})
+    setEditChildren(client.children || [])
+    setEditType(client ? getClientType(client) : 'individual')
+    setEditSource(client?.source || '')
+    setEditBillingAddress(client?.billingAddress || '')
     setShowEditModal(false); setShowDeleteConfirm(false)
   }
   return (
@@ -75,13 +75,13 @@ export default function EditIdentityModal({
           }}>
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', padding: '20px 28px', borderBottom: '1px solid var(--border-light)', flexShrink: 0 }}>
-              <div className="couple-avatar" style={{ width: 40, height: 40, fontSize: '0.857rem', background: status === 'inactive' ? 'var(--primary-200)' : couple.phase === 'prospect' ? '#E8D8FE' : 'var(--accent-main)', color: status === 'inactive' ? 'white' : couple.phase === 'prospect' ? '#6B46C1' : 'white', flexShrink: 0 }}>{getCoupleInitials(couple)}</div>
+              <div className="client-avatar" style={{ width: 40, height: 40, fontSize: '0.857rem', background: status === 'inactive' ? 'var(--primary-200)' : client.phase === 'prospect' ? '#E8D8FE' : 'var(--accent-main)', color: status === 'inactive' ? 'white' : client.phase === 'prospect' ? '#6B46C1' : 'white', flexShrink: 0 }}>{getClientInitials(client)}</div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>{getCoupleName(couple)}</div>
+                <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>{getClientName(client)}</div>
                 <div style={{ fontSize: '0.786rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 5, fontWeight: 500 }}>
-                  {getClientType(couple) === 'individual' && <><User size={14} /> Individuel</>}
-                  {getClientType(couple) === 'couple' && <><Users size={14} /> Couple</>}
-                  {getClientType(couple) === 'family' && (
+                  {getClientType(client) === 'individual' && <><User size={14} /> Individuel</>}
+                  {getClientType(client) === 'client' && <><Users size={14} /> Client</>}
+                  {getClientType(client) === 'family' && (
                     <>
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                         <circle cx="7" cy="6" r="2.5"/><circle cx="17" cy="6" r="2.5"/><circle cx="12" cy="9" r="2"/>
@@ -115,7 +115,7 @@ export default function EditIdentityModal({
                         return (
                           <div key={tp.key} style={{ display: 'flex', alignItems: 'center' }}>
                             <div
-                              onClick={() => { setPhase(tp.key); couple.phase = tp.key; updateClient(couple.id, { phase: tp.key }) }}
+                            onClick={() => { setPhase(tp.key) }}
                               style={{
                                 display: 'flex', alignItems: 'center', gap: 4,
                                 padding: '4px 8px',
@@ -169,7 +169,7 @@ export default function EditIdentityModal({
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-sm)' }}>
                   <h4 style={{ fontSize: '0.786rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <User size={14} /> {editType === 'individual' ? 'Client' : editType === 'couple' ? 'Partenaire A' : 'Parent 1'}
+                    <User size={14} /> {editType === 'individual' ? 'Client' : editType === 'client' ? 'Partenaire A' : 'Parent 1'}
                   </h4>
                   {editType !== 'individual' && (() => {
                     const isRef = editReferents.includes('A')
@@ -242,15 +242,15 @@ export default function EditIdentityModal({
                 </div>
               </div>
 
-              {/* Partner B (couple & family) */}
-              {(editType === 'couple' || editType === 'family') && (
+              {/* Partner B (client & family) */}
+              {(editType === 'client' || editType === 'family') && (
                 <div style={{
                   padding: 'var(--space-md)', borderRadius: 'var(--radius-md)',
                   background: 'var(--primary-50)', marginBottom: 'var(--space-md)', border: '1px solid var(--border-light)'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-sm)' }}>
                   <h4 style={{ fontSize: '0.786rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <User size={14} /> {editType === 'couple' ? 'Partenaire B' : 'Parent 2'}
+                    <User size={14} /> {editType === 'client' ? 'Partenaire B' : 'Parent 2'}
                   </h4>
                   {(() => {
                     const isRef = editReferents.includes('B')
@@ -372,7 +372,7 @@ export default function EditIdentityModal({
               {/* Source */}
               <div style={{ marginBottom: 'var(--space-md)' }}>
                 <div style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-sm)' }}>Source du prospect</div>
-                {couple.referrerType === 'particulier' ? (
+                {client.referrerType === 'particulier' ? (
                   <div style={{
                     display: 'flex', alignItems: 'center', gap: 6,
                     padding: '8px 12px', borderRadius: 'var(--radius-md)',
@@ -400,41 +400,41 @@ export default function EditIdentityModal({
                     <ReferrerSection
                       externalReferrer={modalExternalReferrer}
                       setExternalReferrer={setModalExternalReferrer}
-                      selectedReferrer={modalSelectedReferrer || (() => { const link = (couple.clientLinks || []).find(l => l.type === 'parrainage' && l.role === 'filleul'); return link ? clients.find(c => c.id === link.clientId) : null })()}
+                      selectedReferrer={modalSelectedReferrer || (() => { const link = (client.clientLinks || []).find(l => l.type === 'parrainage' && l.role === 'filleul'); return link ? clients.find(c => c.id === link.clientId) : null })()}
                       setSelectedReferrer={(val) => {
                         setModalSelectedReferrer(val)
                         if (!val) {
                           setModalReferrerSearch('')
                           setModalExternalReferrer(null)
                           // Clear parrainage links
-                          if (couple.clientLinks) {
-                            const parrainageLinks = couple.clientLinks.filter(l => l.type === 'parrainage' && l.role === 'filleul')
+                          if (client.clientLinks) {
+                            const parrainageLinks = client.clientLinks.filter(l => l.type === 'parrainage' && l.role === 'filleul')
                             parrainageLinks.forEach(link => {
                               const other = clients.find(c => c.id === link.clientId)
                               if (other?.clientLinks) {
-                                other.clientLinks = other.clientLinks.filter(l => !(l.type === 'parrainage' && l.clientId === couple.id))
+                                other.clientLinks = other.clientLinks.filter(l => !(l.type === 'parrainage' && l.clientId === client.id))
                               }
                             })
-                            couple.clientLinks = couple.clientLinks.filter(l => !(l.type === 'parrainage' && l.role === 'filleul'))
+                            client.clientLinks = client.clientLinks.filter(l => !(l.type === 'parrainage' && l.role === 'filleul'))
                           }
-                          couple.externalReferrer = null
+                          client.externalReferrer = null
                         }
                       }}
                       referrerSearch={modalReferrerSearch}
                       setReferrerSearch={setModalReferrerSearch}
                       clients={clients}
                       professionals={professionals}
-                      getCoupleName={getCoupleName}
+                      getClientName={getClientName}
                       formatDate={formatDate}
                       getPhaseLabel={getPhaseLabel}
                       getPhaseColor={utils.getPhaseColor}
-                      onNavigate={(id) => navigate(`/couples/${id}`)}
+                      onNavigate={(id) => navigate(`/clients/${id}`)}
                       onLink={(item, refType) => {
                         if (refType === 'professionnel') {
                           // Link to existing pro
-                          if (!couple.clientLinks) couple.clientLinks = []
-                          if (!couple.clientLinks.some(l => l.type === 'parrainage-pro' && l.proId === item.id)) {
-                            couple.clientLinks.push({ type: 'parrainage-pro', proId: item.id, proName: `${item.firstName || ''} ${item.lastName || ''}`.trim(), role: 'filleul' })
+                          if (!client.clientLinks) client.clientLinks = []
+                          if (!client.clientLinks.some(l => l.type === 'parrainage-pro' && l.proId === item.id)) {
+                            client.clientLinks.push({ type: 'parrainage-pro', proId: item.id, proName: `${item.firstName || ''} ${item.lastName || ''}`.trim(), role: 'filleul' })
                           }
                         } else {
                           // Link to existing client as parrain
@@ -442,12 +442,12 @@ export default function EditIdentityModal({
                         }
                       }}
                       onClear={() => {
-                        couple.externalReferrer = null
-                        if (couple.clientLinks) {
-                          couple.clientLinks = couple.clientLinks.filter(l => l.type !== 'parrainage-pro')
+                        client.externalReferrer = null
+                        if (client.clientLinks) {
+                          client.clientLinks = client.clientLinks.filter(l => l.type !== 'parrainage-pro')
                         }
                       }}
-                      coupleId={couple.id}
+                      clientId={client.id}
                     />
                   </div>
                 )}
@@ -462,7 +462,7 @@ export default function EditIdentityModal({
                   <Link2 size={14} /> Lier un dossier
                 </h4>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
-                  {(couple.clientLinks || []).map((link, idx) => {
+                  {(client.clientLinks || []).map((link, idx) => {
                     const isPro = link.type === 'parrainage-pro'
                     const linked = isPro ? null : clients.find(c => c.id === link.clientId)
                     if (!isPro && !linked) return null
@@ -470,10 +470,10 @@ export default function EditIdentityModal({
                     const color = isPro ? '#7C3AED' : isDossier ? '#6366F1' : '#8B5CF6'
                     const bg = isDossier ? '#EEF2FF' : '#F5F0FF'
                     const LinkIcon = isPro ? Briefcase : isDossier ? Link2 : Award
-                    const displayName = isPro ? link.proName : getCoupleName(linked)
+                    const displayName = isPro ? link.proName : getClientName(linked)
                     const roleLabel = link.type === 'parrainage' && link.role
                       ? (link.role === 'filleul' ? '· Parrain' : '· Filleul')
-                      : isPro ? '· Parrain Pro' : `· ${getClientType(linked) === 'individual' ? 'Individuel' : getClientType(linked) === 'couple' ? 'Couple' : 'Famille'}`
+                      : isPro ? '· Parrain Pro' : `· ${getClientType(linked) === 'individual' ? 'Individuel' : getClientType(linked) === 'client' ? 'Client' : 'Famille'}`
                     return (
                       <div key={idx} style={{
                         display: 'inline-flex', alignItems: 'center', gap: 4,
@@ -487,7 +487,7 @@ export default function EditIdentityModal({
                             if (!await confirm('Des modifications non enregistrées seront perdues. Voulez-vous vraiment quitter ?')) return
                           }
                           setShowEditModal(false)
-                          isPro ? navigate('/admin/reseau-pro') : navigate(`/couples/${linked.id}`)
+                          isPro ? navigate('/admin/reseau-pro') : navigate(`/clients/${linked.id}`)
                         }}
                         title={`${isPro ? 'Parrain Pro' : isDossier ? 'Dossier lié' : 'Parrainage'} — cliquer pour ouvrir`}
                       >
@@ -499,12 +499,12 @@ export default function EditIdentityModal({
                         <button onClick={e => {
                           e.stopPropagation()
                           e.preventDefault()
-                          couple.clientLinks = couple.clientLinks.filter((_, i) => i !== idx)
-                          if (linked && linked.clientLinks) linked.clientLinks = linked.clientLinks.filter(l => l.clientId !== couple.id)
+                          client.clientLinks = client.clientLinks.filter((_, i) => i !== idx)
+                          if (linked && linked.clientLinks) linked.clientLinks = linked.clientLinks.filter(l => l.clientId !== client.id)
                           // If deleting a parrain link, also clear external referrer
                           if ((link.type === 'parrainage' && link.role === 'filleul') || link.type === 'parrainage-pro') {
                             setModalExternalReferrer(null)
-                            couple.externalReferrer = null
+                            client.externalReferrer = null
                           }
                           setModalShowAddLink(prev => !prev)
                           setTimeout(() => setModalShowAddLink(false), 0)
@@ -549,16 +549,16 @@ export default function EditIdentityModal({
                         />
                         <div style={{ maxHeight: 120, overflowY: 'auto' }}>
                           {clients
-                            .filter(c => c.id !== couple.id && !c.deleted)
-                            .filter(c => !(couple.clientLinks || []).some(l => l.clientId === c.id))
-                            .filter(c => !modalAddLinkSearch || getCoupleName(c).toLowerCase().includes(modalAddLinkSearch.toLowerCase()))
+                            .filter(c => c.id !== client.id && !c.deleted)
+                            .filter(c => !(client.clientLinks || []).some(l => l.clientId === c.id))
+                            .filter(c => !modalAddLinkSearch || getClientName(c).toLowerCase().includes(modalAddLinkSearch.toLowerCase()))
                             .slice(0, 6)
                             .map(c => (
                               <div key={c.id} onClick={() => {
-                                if (!couple.clientLinks) couple.clientLinks = []
-                                couple.clientLinks.push({ clientId: c.id, type: 'dossier' })
+                                if (!client.clientLinks) client.clientLinks = []
+                                client.clientLinks.push({ clientId: c.id, type: 'dossier' })
                                 if (!c.clientLinks) c.clientLinks = []
-                                c.clientLinks.push({ clientId: couple.id, type: 'dossier' })
+                                c.clientLinks.push({ clientId: client.id, type: 'dossier' })
                                 setModalShowAddLink(false); setModalAddLinkSearch('')
                               }} style={{
                                 display: 'flex', alignItems: 'center', gap: 6,
@@ -568,9 +568,9 @@ export default function EditIdentityModal({
                                 onMouseEnter={e => e.currentTarget.style.background = 'var(--primary-50)'}
                                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                               >
-                                <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{getCoupleName(c)}</span>
+                                <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{getClientName(c)}</span>
                                 <span style={{ fontSize: '0.571rem', color: 'var(--text-tertiary)', marginLeft: 'auto' }}>
-                                  {getClientType(c) === 'individual' ? 'Individuel' : getClientType(c) === 'couple' ? 'Couple' : 'Famille'}
+                                  {getClientType(c) === 'individual' ? 'Individuel' : getClientType(c) === 'client' ? 'Client' : 'Famille'}
                                 </span>
                               </div>
                             ))
@@ -596,27 +596,27 @@ export default function EditIdentityModal({
               <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
                 <button className="btn btn-ghost" onClick={() => {
                   // Reset all edit fields to original values
-                  setEditPartnerA({ ...couple.partnerA })
-                  setEditPartnerB(couple.partnerB ? { ...couple.partnerB } : {})
-                  setEditChildren(couple.children || [])
-                  setEditType(couple ? getClientType(couple) : 'individual')
-                  setEditSource(couple?.source || '')
-                  setEditBillingAddress(couple?.billingAddress || '')
+                  setEditPartnerA({ ...client.partnerA })
+                  setEditPartnerB(client.partnerB ? { ...client.partnerB } : {})
+                  setEditChildren(client.children || [])
+                  setEditType(client ? getClientType(client) : 'individual')
+                  setEditSource(client?.source || '')
+                  setEditBillingAddress(client?.billingAddress || '')
                   setShowEditModal(false)
                   setShowDeleteConfirm(false)
                 }}
                   style={{ fontSize: '0.857rem' }}
                 >Annuler</button>
                 <button className="btn btn-accent" style={{ fontSize: '0.857rem', padding: '8px 20px',
-                    opacity: (isSaving || !(editPartnerA.lastName || '').trim() || ((editType === 'couple' || editType === 'family') && !(editPartnerB.lastName || '').trim()) || ((editSource === 'referral' || editSource === 'parrainage') && modalExternalReferrer && !(modalExternalReferrer.lastName || '').trim())) ? 0.4 : 1
+                    opacity: (isSaving || !(editPartnerA.lastName || '').trim() || ((editType === 'client' || editType === 'family') && !(editPartnerB.lastName || '').trim()) || ((editSource === 'referral' || editSource === 'parrainage') && modalExternalReferrer && !(modalExternalReferrer.lastName || '').trim())) ? 0.4 : 1
                   }}
-                  disabled={isSaving || !(editPartnerA.lastName || '').trim() || ((editType === 'couple' || editType === 'family') && !(editPartnerB.lastName || '').trim()) || ((editSource === 'referral' || editSource === 'parrainage') && modalExternalReferrer && !(modalExternalReferrer.lastName || '').trim())}
+                  disabled={isSaving || !(editPartnerA.lastName || '').trim() || ((editType === 'client' || editType === 'family') && !(editPartnerB.lastName || '').trim()) || ((editSource === 'referral' || editSource === 'parrainage') && modalExternalReferrer && !(modalExternalReferrer.lastName || '').trim())}
                   onClick={async () => {
                     try {
                       setIsSaving(true)
-                      // Build updated values without mutating couple directly
+                      // Build updated values without mutating client directly
                       const updatedPartnerA = { ...editPartnerA, lastName: (editPartnerA.lastName || '').toUpperCase() }
-                      const updatedPartnerB = (editType === 'couple' || editType === 'family') ? { ...editPartnerB, lastName: (editPartnerB.lastName || '').toUpperCase() } : couple.partnerB
+                      const updatedPartnerB = (editType === 'client' || editType === 'family') ? { ...editPartnerB, lastName: (editPartnerB.lastName || '').toUpperCase() } : client.partnerB
                       
                       const updates = {
                         partnerA: updatedPartnerA,
@@ -624,12 +624,12 @@ export default function EditIdentityModal({
                         type: editType,
                         source: editSource || null,
                         billingAddress: editBillingAddress,
-                        clientLinks: couple.clientLinks ? [...couple.clientLinks] : [],
+                        clientLinks: client.clientLinks ? [...client.clientLinks] : [],
                         externalReferrer: modalExternalReferrer || null
                       }
                       
-                      // Local update for UI consistency (mock/legacy support)
-                      couple.children = editType === 'family' ? [...editChildren] : null
+                      // Local update for UI consistency
+                      client.children = editType === 'family' ? [...editChildren] : null
 
                       // Auto-force source to 'parrainage' if a referrer is configured
                       if (modalSelectedReferrer || (modalExternalReferrer && modalExternalReferrer.lastName?.trim())) {
@@ -642,16 +642,16 @@ export default function EditIdentityModal({
                         updates.clientLinks = updates.clientLinks.filter(l => l.type !== 'parrainage')
                       } else {
                         // Internal Referrer Link
-                        if (modalSelectedReferrer && modalSelectedReferrer.id !== couple.id) {
+                        if (modalSelectedReferrer && modalSelectedReferrer.id !== client.id) {
                           if (!updates.clientLinks.some(l => l.type === 'parrainage' && l.clientId === modalSelectedReferrer.id)) {
                             updates.clientLinks.push({ clientId: modalSelectedReferrer.id, type: 'parrainage', role: 'filleul' })
                           }
                           // Note: Reverse link on modalSelectedReferrer should ideally be handled by a service or transaction
                           // For now, we follow the existing pattern but attempt to be safer
                           const updatedSelectedReferrerLinks = modalSelectedReferrer.clientLinks ? [...modalSelectedReferrer.clientLinks] : []
-                          if (!updatedSelectedReferrerLinks.some(l => l.type === 'parrainage' && l.clientId === couple.id)) {
-                            updatedSelectedReferrerLinks.push({ clientId: couple.id, type: 'parrainage', role: 'parrain' })
-                            await updateClient(modalSelectedReferrer.id, { clientLinks: updatedSelectedReferrerLinks })
+                          if (!updatedSelectedReferrerLinks.some(l => l.type === 'parrainage' && l.clientId === client.id)) {
+                            updatedSelectedReferrerLinks.push({ clientId: client.id, type: 'parrainage', role: 'parrain' })
+                            await utils.updateClient(modalSelectedReferrer.id, { clientLinks: updatedSelectedReferrerLinks })
                           }
                         }
 
@@ -673,10 +673,10 @@ export default function EditIdentityModal({
                             let proId
                             if (existingPro) {
                               const updatedReferrals = existingPro.referrals ? [...existingPro.referrals] : []
-                              if (!updatedReferrals.some(r => r.clientId === couple.id)) {
-                                updatedReferrals.push({ clientId: couple.id, date: today, clientName: getCoupleName({ ...couple, partnerA: updatedPartnerA, partnerB: updatedPartnerB }) })
+                              if (!updatedReferrals.some(r => r.clientId === client.id)) {
+                                updatedReferrals.push({ clientId: client.id, date: today, clientName: getClientName({ ...client, partnerA: updatedPartnerA, partnerB: updatedPartnerB }) })
                               }
-                              await updatePro(existingPro.id, {
+                              await utils.updatePro(existingPro.id, {
                                 firstName: modalExternalReferrer.firstName || existingPro.firstName,
                                 lastName: modalExternalReferrer.lastName.trim(),
                                 email: modalExternalReferrer.email || existingPro.email,
@@ -686,14 +686,14 @@ export default function EditIdentityModal({
                               })
                               proId = existingPro.id
                             } else {
-                              const newPro = await createPro({
+                              const newPro = await utils.createPro({
                                 firstName: modalExternalReferrer.firstName || '',
                                 lastName: modalExternalReferrer.lastName.trim(),
                                 email: modalExternalReferrer.email || '',
                                 phone: modalExternalReferrer.phone || '',
                                 note: modalExternalReferrer.role || '',
                                 createdAt: today,
-                                referrals: [{ clientId: couple.id, date: today, clientName: getCoupleName({ ...couple, partnerA: updatedPartnerA, partnerB: updatedPartnerB }) }]
+                                referrals: [{ clientId: client.id, date: today, clientName: getClientName({ ...client, partnerA: updatedPartnerA, partnerB: updatedPartnerB }) }]
                               })
                               proId = newPro?.id || ('pro-' + Date.now())
                             }
@@ -716,7 +716,7 @@ export default function EditIdentityModal({
                                 referrerType: 'particulier',
                                 note: modalExternalReferrer.role || ''
                               }
-                              await updateClient(existingProspect.id, prospectUpdates)
+                              await utils.updateClient(existingProspect.id, prospectUpdates)
                             } else {
                               // Create New Prospect
                               const newProspect = {
@@ -732,9 +732,9 @@ export default function EditIdentityModal({
                                 referrerType: 'particulier',
                                 note: modalExternalReferrer.role || '',
                                 startDate: today,
-                                clientLinks: [{ clientId: couple.id, type: 'parrainage', role: 'parrain' }]
+                                clientLinks: [{ clientId: client.id, type: 'parrainage', role: 'parrain' }]
                               }
-                              const created = await createClient(newProspect)
+                              const created = await utils.createClient(newProspect)
                               if (created?.id) {
                                 updates.clientLinks.push({ clientId: created.id, type: 'parrainage', role: 'filleul' })
                               }
@@ -744,7 +744,7 @@ export default function EditIdentityModal({
                       }
 
                       // Persist main client identity changes to Supabase
-                      const success = await updateClient(couple.id, updates)
+                      const success = await utils.updateClient(client.id, updates)
                       if (success) {
                         setShowEditModal(false)
                       }

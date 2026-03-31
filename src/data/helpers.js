@@ -6,27 +6,27 @@ import { therapyPhases, prospectStages } from './constants'
 
 // ── Noms & initiales ──
 
-export function getCoupleName(couple) {
-  if (!couple?.partnerA) return 'Client inconnu'
-  const fnA = (couple.partnerA.firstName || '').trim() || '...'
-  if (!couple.partnerB) return `${fnA} ${(couple.partnerA.lastName || '').toUpperCase()}`
-  const fnB = (couple.partnerB.firstName || '').trim() || '...'
-  if (couple.partnerA.lastName.toLowerCase() !== couple.partnerB.lastName.toLowerCase()) {
-    return `${fnA} ${couple.partnerA.lastName.toUpperCase()} et ${fnB} ${couple.partnerB.lastName.toUpperCase()}`
+export function getClientName(client) {
+  if (!client?.partnerA) return 'Client inconnu'
+  const fnA = (client.partnerA.firstName || '').trim() || '...'
+  if (!client.partnerB) return `${fnA} ${(client.partnerA.lastName || '').toUpperCase()}`
+  const fnB = (client.partnerB.firstName || '').trim() || '...'
+  if (client.partnerA.lastName.toLowerCase() !== client.partnerB.lastName.toLowerCase()) {
+    return `${fnA} ${client.partnerA.lastName.toUpperCase()} et ${fnB} ${client.partnerB.lastName.toUpperCase()}`
   }
-  return `${fnA} et ${fnB} ${couple.partnerA.lastName.toUpperCase()}`
+  return `${fnA} et ${fnB} ${client.partnerA.lastName.toUpperCase()}`
 }
 
-export function getCoupleInitials(couple) {
-  if (!couple?.partnerA) return '?'
-  const fnA = (couple.partnerA.firstName || '').trim()
-  const lnA = (couple.partnerA.lastName || '').trim()
-  if (!couple.partnerB) {
+export function getClientInitials(client) {
+  if (!client?.partnerA) return '?'
+  const fnA = (client.partnerA.firstName || '').trim()
+  const lnA = (client.partnerA.lastName || '').trim()
+  if (!client.partnerB) {
     const init = fnA && lnA ? `${fnA[0]}${lnA[0]}` : lnA ? lnA[0] : fnA ? fnA[0] : '?'
     return init.toUpperCase()
   }
-  const fnB = (couple.partnerB.firstName || '').trim()
-  const lnB = (couple.partnerB.lastName || '').trim()
+  const fnB = (client.partnerB.firstName || '').trim()
+  const lnB = (client.partnerB.lastName || '').trim()
   const initA = fnA ? fnA[0] : lnA ? lnA[0] : '?'
   const initB = fnB ? fnB[0] : lnB ? lnB[0] : '?'
   return `${initA}${initB}`.toUpperCase()
@@ -58,18 +58,18 @@ export function getClientType(client) {
   if (client.type === 'family') return 'family'
   if (client.type === 'individual' && !hasPartnerB) return 'individual'
   if (hasChildren) return 'family'
-  if (hasPartnerB) return 'couple'
+  if (hasPartnerB) return 'client'
   return client.type || 'individual'
 }
 
 // ── Statut calculé ──
 
-export function getComputedStatus(couple) {
-  if (couple.status === 'inactive') return 'inactive'
-  if (couple.status === 'active') return 'active'
-  if (couple.nextSession && new Date(couple.nextSession) > new Date()) return 'active'
-  if (!couple.lastSession && !couple.startDate) return 'active'
-  const refDate = new Date(couple.lastSession || couple.startDate)
+export function getComputedStatus(client) {
+  if (client.status === 'inactive') return 'inactive'
+  if (client.status === 'active') return 'active'
+  if (client.nextSession && new Date(client.nextSession) > new Date()) return 'active'
+  if (!client.lastSession && !client.startDate) return 'active'
+  const refDate = new Date(client.lastSession || client.startDate)
   const threeMonthsAgo = new Date()
   threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3)
   return refDate < threeMonthsAgo ? 'inactive' : 'active'
@@ -83,10 +83,21 @@ export function formatDate(dateStr) {
 }
 
 export function formatDashboardDate(dateStr) {
-  const now = new Date().toISOString().split('T')[0]
-  if (dateStr === now) return 'Aujourd\'hui'
+  const now = new Date()
+  const nowStr = now.toISOString().split('T')[0]
+  if (dateStr === nowStr) {
+    const todayFull = new Date(dateStr).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
+    return `Aujourd'hui – ${todayFull}`
+  }
   const date = new Date(dateStr)
-  const formatted = date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+  // Show year if more than 6 months away (past or future)
+  const diffMs = Math.abs(date.getTime() - now.getTime())
+  const sixMonthsMs = 6 * 30 * 24 * 60 * 60 * 1000
+  const includeYear = diffMs > sixMonthsMs
+  const opts = includeYear
+    ? { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }
+    : { weekday: 'long', day: 'numeric', month: 'long' }
+  const formatted = date.toLocaleDateString('fr-FR', opts)
   return formatted.charAt(0).toUpperCase() + formatted.slice(1)
 }
 
@@ -110,13 +121,13 @@ export function formatRelativeDate(dateStr) {
 
 // ── Sessions du jour ──
 
-export function getTodaySessions(sessions, couples) {
+export function getTodaySessions(sessions, clients) {
   const today = new Date().toISOString().split('T')[0]
   return sessions
     .filter(s => s.date?.startsWith(today))
     .sort((a, b) => a.date.localeCompare(b.date))
     .map(s => ({
       ...s,
-      couple: couples.find(c => c.id === s.coupleId)
+      client: clients.find(c => c.id === s.clientId)
     }))
 }

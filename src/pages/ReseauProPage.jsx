@@ -308,7 +308,7 @@ export default function ReseauProPage() {
                     {new Date(pro.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </span>
                   <button
-                    onClick={e => { e.stopPropagation(); navigate(`/couples?newClient=1&proRef=${encodeURIComponent(JSON.stringify({ proId: pro.id, firstName: pro.firstName, lastName: pro.lastName }))}`) }}
+                    onClick={e => { e.stopPropagation(); navigate(`/clients?newClient=1&proRef=${encodeURIComponent(JSON.stringify({ proId: pro.id, firstName: pro.firstName, lastName: pro.lastName }))}`) }}
                     style={{
                       background: 'none', border: '1px dashed #C4B5FD', borderRadius: 'var(--radius-sm)',
                       cursor: 'pointer', color: '#8B5CF6', padding: '3px 8px',
@@ -333,7 +333,7 @@ export default function ReseauProPage() {
                       <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 6px', fontSize: '0.714rem' }}>
                         <Users size={10} color="#8B5CF6" />
                         <span
-                          onClick={e => { e.stopPropagation(); r.clientId && navigate(`/couples/${r.clientId}`) }}
+                          onClick={e => { e.stopPropagation(); r.clientId && navigate(`/clients/${r.clientId}`) }}
                           style={{ fontWeight: 500, color: '#8B5CF6', cursor: r.clientId ? 'pointer' : 'default' }}
                           onMouseEnter={e => { if (r.clientId) e.currentTarget.style.textDecoration = 'underline' }}
                           onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}
@@ -503,7 +503,7 @@ export default function ReseauProPage() {
                                     {(pro.referrals || []).map((r, idx) => (
                                       <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 10px', borderRadius: 'var(--radius-md)', background: '#F5F0FF', fontSize: '0.786rem' }}>
                                         <Users size={12} color="#8B5CF6" />
-                                        <span onClick={() => r.clientId && navigate(`/couples/${r.clientId}`)} style={{ fontWeight: 500, color: '#8B5CF6', cursor: r.clientId ? 'pointer' : 'default' }}>{r.clientName}</span>
+                                        <span onClick={() => r.clientId && navigate(`/clients/${r.clientId}`)} style={{ fontWeight: 500, color: '#8B5CF6', cursor: r.clientId ? 'pointer' : 'default' }}>{r.clientName}</span>
                                         <span style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)' }}>{new Date(r.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
                                       </div>
                                     ))}
@@ -512,7 +512,7 @@ export default function ReseauProPage() {
                               </div>
 
                               <button
-                                onClick={() => navigate(`/couples?newClient=1&proRef=${encodeURIComponent(JSON.stringify({ proId: pro.id, firstName: pro.firstName, lastName: pro.lastName }))}`)}
+                                onClick={() => navigate(`/clients?newClient=1&proRef=${encodeURIComponent(JSON.stringify({ proId: pro.id, firstName: pro.firstName, lastName: pro.lastName }))}`)}
                                 className="btn btn-ghost"
                                 style={{ alignSelf: 'flex-start', color: '#8B5CF6', borderColor: '#C4B5FD', fontSize: '0.786rem' }}
                               >

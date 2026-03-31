@@ -47,9 +47,9 @@ Un « client » peut être un couple, un individu, ou une famille. C'est le doss
 |-------|------|-------------|
 | `id` | UUID (auto) | Identifiant unique |
 | `user_id` | UUID → users | Thérapeute propriétaire |
-| `type` | text | `couple`, `individual`, ou `family` |
+| `type` | text | `client` (ex-couple), `individual`, ou `family` |
 | `partner_a` | JSONB | Identité du premier partenaire (`{ firstName, lastName, email, phone }`) |
-| `partner_b` | JSONB | Identité du second partenaire (null si individuel) |
+| `partner_b` | JSONB | Identité du second partenaire (null si individuel, présent si duo/client) |
 | `phase` | text | Phase thérapeutique actuelle (par défaut `prospect`) |
 | `source` | text | Source de recrutement (ex: "Site web", "Parrainage") |
 | `status` | text | `active`, `inactive`, ou `completed` |
@@ -70,6 +70,13 @@ Un « client » peut être un couple, un individu, ou une famille. C'est le doss
 | `created_at` | timestamptz | Date de création |
 | `updated_at` | timestamptz | Dernière modification |
 | `deleted_at` | timestamptz | Archivage (soft delete — null = actif) |
+| `ai_synthesis` | JSONB | Synthèse IA globale (parcours, dynamique...) |
+| `session_rate` | numeric | Tarif spécifique de ce client (facultatif) |
+| `session_frequency` | integer | Fréquence des séances (par défaut 2 pour 1/15j) |
+| `axes_travail` | text | Axes de travail structurés |
+| `points_vigilance` | text | Points de vigilance structurés |
+| `objectifs` | text | Objectifs thérapeutiques structurés |
+| `dynamique_relationnelle` | text | Dynamique relationnelle structurée |
 
 #### Structure JSONB `partner_a` / `partner_b`
 
@@ -192,13 +199,27 @@ Stocke les préférences personnalisées de chaque thérapeute (tarifs, sources,
 |-------|------|-------------|
 | `id` | UUID (auto) | Identifiant unique |
 | `user_id` | UUID (unique) → users | Un seul enregistrement par thérapeute |
-| `session_rates` | JSONB | Tarifs par type : `{ "couple": 75, "individual": 60 }` |
+| `session_rates` | JSONB | Tarifs par type : `{ "client": 75, "individual": 60 }` |
 | `recruitment_sources` | JSONB | Liste des sources : `["Site web", "Parrainage", ...]` |
 | `therapy_config` | JSONB | Configuration : `{ "totalSessions": 20 }` |
 | `therapy_phases` | JSONB | Phases thérapeutiques personnalisées |
 | `default_therapy_config` | JSONB | Configuration par défaut si non spécifié |
 | `created_at` | timestamptz | Date de création |
 | `updated_at` | timestamptz | Dernière modification |
+### 8. `therapy_cycles` — Cycles de thérapie
+
+Stocke les différents cycles de suivi pour un même client.
+
+| Champ | Type | Description |
+|-------|------|-------------|
+| `id` | UUID (auto) | Identifiant unique |
+| `client_id` | UUID → clients | Client concerné |
+| `user_id` | UUID → users | Thérapeute |
+| `start_date` | date | Date de début du cycle |
+| `rate` | numeric | Tarif appliqué pour ce cycle |
+| `total_sessions` | integer | Objectif de séances pour ce cycle |
+| `phase` | text | Phase lors de l'initialisation du cycle |
+| `created_at` | timestamptz | Date de création |
 
 ---
 
@@ -243,9 +264,18 @@ sessions ──< reports     (une séance peut avoir un compte-rendu)
 
 ---
 
-## Sécurité (RLS)
+## Sécurité (RLS) & Performance
 
-Toutes les tables ont **Row Level Security activé**. En développement, une politique permissive `Dev: public access` est en place. En production, les politiques doivent filtrer par `user_id` pour garantir l'isolation des données entre thérapeutes.
+### Row Level Security (RLS)
+Toutes les tables ont **Row Level Security activé**. 
+- **Optimisation de performance** : Les politiques RLS utilisent massivement `(SELECT auth.uid())` au lieu de l'appel direct `auth.uid()`, permettant à PostgreSQL de mettre en cache le résultat et d'accélérer drastiquement les requêtes de lecture.
+- **Isolation** : Chaque enregistrement est filtré par `user_id` lié à l'UID de l'utilisateur authentifié.
+
+### Indexation SQL
+Pour garantir une réactivité maximale en production, les index suivants sont en place :
+- **Clés étrangères** : `user_id`, `client_id`, `referred_by` sont tous indexés dans leurs tables respectives.
+- **Recherche** : Index GIN ou B-Tree sur les colonnes de recherche fréquente.
+- **Soft Delete** : Index partiel sur `deleted_at IS NULL` pour optimiser l'affichage des listes actives.
 
 ---
 
@@ -258,7 +288,7 @@ La conversion est gérée automatiquement par les fonctions `adaptClient` / `una
 | App (camelCase) | DB (snake_case) |
 |-----------------|-----------------|
 | `partnerA` | `partner_a` |
-| `coupleId` | `client_id` |
+| `clientId` | `client_id` |
 | `startDate` | `start_date` |
 | `paymentMethod` | `payment_method` |
 | `hasReport` | `has_report` |

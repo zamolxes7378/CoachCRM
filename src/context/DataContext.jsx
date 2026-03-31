@@ -1,8 +1,8 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
 import { useToast } from './ToastContext'
 import * as ds from '../services/dataService'
-import { checkAllianceTransition, checkAllianceAfterBatchDelete } from '../services/allianceService'
-import { adaptClient, adaptSession, adaptReport, adaptProfessional, unadaptClient, unadaptSession, unadaptProfessional } from '../data/adapters'
+import { checkAllianceTransition, checkAllianceAfterBatchDelete, isAllianceValidated } from '../services/allianceService'
+import { adaptClient, adaptSession, adaptReport, adaptProfessional, adaptTherapyCycle, adaptContact, unadaptClient, unadaptSession, unadaptProfessional, unadaptTherapyCycle, unadaptContact } from '../data/adapters'
 import { Sprout, Search, Target, Award, UserPlus } from 'lucide-react'
 import {
   therapyPhases as defaultPhases, defaultTherapyConfig as defaultTherapyCfg,
@@ -10,7 +10,7 @@ import {
   prospectStages, clientTypeLabels
 } from '../data/constants'
 import {
-  getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel,
+  getClientName, getClientInitials, getPhaseLabel, getStatusLabel,
   getComputedStatus, getProspectStageInfo, getClientType,
   formatDate, formatTime, formatRelativeDate, formatDashboardDate, getTodaySessions
 } from '../data/helpers'
@@ -28,41 +28,52 @@ export function DataProvider({ user, children }) {
   const [rawClients, setRawClients] = useState([])
   const [rawSessions, setRawSessions] = useState([])
   const [rawReports, setRawReports] = useState([])
+  const [rawContacts, setRawContacts] = useState([])
   const [rawProfessionals, setRawProfessionals] = useState([])
+  const [rawTherapyCycles, setRawTherapyCycles] = useState([])
   const [settings, setSettings] = useState(null)
   const [loading, setLoading] = useState(true)
 
   // Derived values — merge DB settings over defaults
-  const sessionRates = { ...defaultRates, ...(settings?.session_rates || {}) }
-  const recruitmentSources = settings?.recruitment_sources?.map(
-    (label) => ({ key: label.toLowerCase().replace(/\s+/g, '_'), label })
-  ) || defaultSources
-  const therapyPhases = settings?.therapy_phases || defaultPhases
-  const defaultTherapyConfig = settings?.default_therapy_config || defaultTherapyCfg
+  const sessionRates = useMemo(() => ({
+    ...defaultRates,
+    ...(settings?.session_rates || {})
+  }), [settings?.session_rates])
+
+  const recruitmentSources = useMemo(() => {
+    return settings?.recruitment_sources?.map(
+      (label) => ({ key: label.toLowerCase().replace(/\s+/g, '_'), label })
+    ) || defaultSources
+  }, [settings?.recruitment_sources])
+
+  const therapyPhases = useMemo(() => settings?.therapy_phases || defaultPhases, [settings?.therapy_phases])
+  const defaultTherapyConfig = useMemo(() => settings?.default_therapy_config || defaultTherapyCfg, [settings?.default_therapy_config])
   const defaultPhaseKey = therapyPhases[0]?.key || 'debut'
 
   const loadData = useCallback(async () => {
     if (!user?.id) return
     setLoading(true)
     try {
-      const [c, s, r, st, p] = await Promise.all([
+      const [c, s, r, st, p, ct, tc] = await Promise.all([
         ds.getClients(user.id),
         ds.getSessions(user.id),
         ds.getReports(user.id),
         ds.getSettings(user.id),
-        ds.getProfessionals(user.id)
+        ds.getProfessionals(user.id),
+        ds.getContacts(user.id),
+        ds.getTherapyCycles(user.id)
       ])
-      // Auto-complete past scheduled sessions on load
+      // Auto-confirm past sessions on load
       const now = new Date()
       const rates = { ...defaultRates, ...(st?.session_rates || {}) }
       const phaseKey = (st?.therapy_phases || defaultPhases)[0]?.key || 'debut'
       for (const sess of s) {
         if (sess.status === 'scheduled' && sess.date) {
           const endTime = new Date(new Date(sess.date).getTime() + (sess.duration || 60) * 60000)
-          // Auto-complete only if past AND payment condition met
+          // Règle : Confirmée si terminée ET (paiement présent OU montant = 0)
           const effectiveAmount = sess.payment_amount ?? rates[c.find(cl => cl.id === sess.client_id)?.type] ?? null
           const paymentCondition = !!sess.payment_method || effectiveAmount === 0
-          if (endTime <= now && paymentCondition) {
+          if (now >= endTime && paymentCondition) {
             await ds.updateSession(sess.id, { status: 'completed' })
             sess.status = 'completed'
             const client = c.find(cl => cl.id === sess.client_id)
@@ -77,14 +88,8 @@ export function DataProvider({ user, children }) {
       for (const client of c) {
         if (client.phase !== 'prospect') {
           const clientSess = s.filter(sess => sess.client_id === client.id)
-          const validSessions = clientSess.filter(sess => {
-            if (sess.status !== 'completed') return false
-            // Use session's own amount, else client's specific rate, else global default rate
-            const effectiveAmount = sess.payment_amount ?? client.session_rate ?? rates[client.type] ?? null
-            return !!sess.payment_method || effectiveAmount === 0
-          })
+          const validSessions = clientSess.filter(sess => isAllianceValidated(sess, rates, client))
           if (validSessions.length === 0) {
-            console.log(`[AllianceAudit] Reverting ${client.id} to prospect (0 valid sessions)`)
             await ds.updateClient(client.id, { phase: 'prospect' })
             client.phase = 'prospect'
           }
@@ -93,6 +98,8 @@ export function DataProvider({ user, children }) {
       setRawClients(c)
       setRawSessions(s)
       setRawReports(r)
+      setRawContacts(ct)
+      setRawTherapyCycles(tc)
       setSettings(st)
       setRawProfessionals(p)
     } catch (err) {
@@ -107,18 +114,30 @@ export function DataProvider({ user, children }) {
 
   // Adapted data (camelCase, compatible with existing pages)
   const clients = useMemo(() => rawClients.map(adaptClient), [rawClients])
-  const sessions = useMemo(() => rawSessions.map(adaptSession).map(s => {
-    if (s.status === 'scheduled') {
+  const sessions = useMemo(() => {
+    return rawSessions.map(adaptSession).map(s => {
+      const now = new Date()
       const endTime = new Date(new Date(s.date).getTime() + (s.duration || 60) * 60000)
-      // Auto-complete display only if past AND payment condition met
-      const effectiveAmount = s.paymentAmount ?? sessionRates[clients.find?.(c => c.id === s.coupleId)?.type] ?? null
-      const paymentCondition = !!s.paymentMethod || effectiveAmount === 0
-      if (endTime <= new Date() && paymentCondition) return { ...s, status: 'completed' }
-    }
-    return s
-  }), [rawSessions])
+      const isCompleted = now >= endTime
+
+      const client = clients?.find(c => c.id === s.clientId)
+      const effectiveAmount = s.paymentAmount ?? sessionRates[client?.type] ?? null
+      const isToConfirm = s.status === 'scheduled' && isCompleted && !s.paymentMethod && effectiveAmount !== 0
+      const isConfirmed = (s.status === 'completed' || (isCompleted && (!!s.paymentMethod || effectiveAmount === 0))) && s.status !== 'cancelled'
+
+      return {
+        ...s,
+        isCompleted,
+        isToConfirm,
+        isConfirmed,
+        status: isConfirmed ? 'completed' : s.status
+      }
+    })
+  }, [rawSessions, clients, sessionRates])
   const reports = useMemo(() => rawReports.map(adaptReport), [rawReports])
+  const contacts = useMemo(() => rawContacts.map(adaptContact), [rawContacts])
   const professionals = useMemo(() => rawProfessionals.map(adaptProfessional), [rawProfessionals])
+  const therapyCycles = useMemo(() => rawTherapyCycles.map(adaptTherapyCycle), [rawTherapyCycles])
 
   // Phase icons & colors — single source of truth
   const defaultPhaseIcons = { prospect: UserPlus, debut: Sprout, analyse: Search, integration: Target, bilan_final: Award }
@@ -141,17 +160,17 @@ export function DataProvider({ user, children }) {
   const getPhaseColor = (key) => phaseColors[key] || phaseColors[defaultPhaseKey] || phaseColors.debut
   const getPhaseIcon = (key) => phaseIcons[key] || phaseIcons[defaultPhaseKey] || Sprout
 
-  const isProspect = useCallback((couple) => {
-    if (!couple) return false
-    return couple.phase === 'prospect'
+  const isProspect = useCallback((client) => {
+    if (!client) return false
+    return client.phase === 'prospect'
   }, [])
 
   const value = {
-    clients, sessions, reports, settings, loading, professionals,
+    clients, sessions, reports, contacts, settings, loading, professionals, therapyCycles,
     sessionRates, recruitmentSources, therapyPhases, defaultTherapyConfig,
     phaseIcons, phaseColors, defaultPhaseKey, getPhaseColor, getPhaseIcon, isProspect,
     prospectStages,
-    getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel,
+    getClientName, getClientInitials, getPhaseLabel, getStatusLabel,
     getComputedStatus, getProspectStageInfo, getClientType, clientTypeLabels,
     formatDate, formatTime, formatRelativeDate, formatDashboardDate, getTodaySessions,
     refreshData: loadData,
@@ -168,14 +187,11 @@ export function DataProvider({ user, children }) {
     createClient: async (client) => {
       try {
         if (!user?.id) {
-          console.error('createClient BLOCKED: user.id is missing!', user)
           showToast('Erreur : session utilisateur invalide. Rechargez la page.', 'error')
           return null
         }
         const payload = { ...unadaptClient(client), user_id: user.id }
-        console.log('[createClient] payload:', JSON.stringify(payload, null, 2))
         const result = await ds.createClient(payload)
-        console.log('[createClient] result:', result)
         if (result) {
           await loadData()
           showToast('Client créé avec succès.', 'success')
@@ -226,14 +242,11 @@ export function DataProvider({ user, children }) {
     createSession: async (session) => {
       try {
         if (!user?.id) {
-          console.error('createSession BLOCKED: user.id is missing!', user)
           showToast('Erreur : session utilisateur invalide. Rechargez la page.', 'error')
           return null
         }
         const payload = { ...unadaptSession(session), user_id: user.id }
-        console.log('[createSession] payload:', JSON.stringify(payload, null, 2))
         const result = await ds.createSession(payload)
-        console.log('[createSession] result:', result)
         if (result) {
           await checkAllianceTransition(result, session, rawClients, rawSessions, sessionRates, defaultPhaseKey)
           await loadData()
@@ -243,15 +256,18 @@ export function DataProvider({ user, children }) {
       } catch (err) {
         console.error('createSession error:', err)
         showToast('Erreur lors de la création de la séance.', 'error')
+        return null
       }
     },
     createContact: async (contact) => {
-      const result = await ds.createContact({ ...contact, user_id: user.id })
+      const result = await ds.createContact(unadaptContact({ ...contact, userId: user.id }))
       if (result) await loadData()
       return result
     },
-    updateContact: async (...args) => {
-      return ds.updateContact(...args)
+    updateContact: async (id, updates) => {
+      const result = await ds.updateContact(id, unadaptContact(updates))
+      if (result) await loadData()
+      return result
     },
     deleteContact: async (id) => {
       const result = await ds.deleteContact(id)
@@ -339,6 +355,36 @@ export function DataProvider({ user, children }) {
       } catch (err) {
         console.error('deleteProfessionals error:', err)
         showToast('Erreur lors de la suppression groupée.', 'error')
+      }
+    },
+    createTherapyCycle: async (cycle) => {
+      try {
+        const result = await ds.createTherapyCycle({ ...unadaptTherapyCycle(cycle), user_id: user.id })
+        if (result) await loadData()
+        return result
+      } catch (err) {
+        console.error('createTherapyCycle error:', err)
+        showToast('Erreur lors de la création du cycle.', 'error')
+      }
+    },
+    deleteTherapyCycle: async (id) => {
+      try {
+        const result = await ds.deleteTherapyCycle(id)
+        if (result) await loadData()
+        return result
+      } catch (err) {
+        console.error('deleteTherapyCycle error:', err)
+        showToast('Erreur lors de la suppression du cycle.', 'error')
+      }
+    },
+    updateTherapyCycle: async (id, updates) => {
+      try {
+        const result = await ds.updateTherapyCycle(id, unadaptTherapyCycle(updates))
+        if (result) await loadData()
+        return result
+      } catch (err) {
+        console.error('updateTherapyCycle error:', err)
+        showToast('Erreur lors de la mise à jour du cycle.', 'error')
       }
     }
   }

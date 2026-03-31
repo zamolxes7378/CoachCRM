@@ -2,7 +2,7 @@ import { Heart, Shield, Sparkles, Users, Euro, Calendar, ArrowRight, CheckCircle
 import { supabase } from '../lib/supabase'
 import { useState } from 'react'
 
-export default function LoginPage() {
+export default function LoginPage({ error }) {
   const [hoveredFeature, setHoveredFeature] = useState(null)
   const [loginError, setLoginError] = useState(null)
 
@@ -30,7 +30,7 @@ export default function LoginPage() {
   ]
 
   const testimonials = [
-    { name: 'Anne-Chantal Meyer', role: 'Thérapeute de couple, Le Mans', text: 'CoachCRM a transformé ma gestion administrative. Je gagne 2h par semaine.' },
+    { name: 'Anne-Chantal Meyer', role: 'Thérapeute, Le Mans', text: 'CoachCRM a transformé ma gestion administrative. Je gagne 2h par semaine.' },
     { name: 'Jean-Pierre Rousseau', role: 'Sophrologue, Niort', text: 'L\'IA me permet de produire des synthèses de qualité en quelques secondes.' }
   ]
 
@@ -185,6 +185,22 @@ export default function LoginPage() {
           </p>
 
           {/* Google Login Button */}
+          {error && (
+            <div style={{
+              padding: '12px', background: 'rgba(255, 68, 68, 0.1)', border: '1px solid rgba(255, 68, 68, 0.2)',
+              borderRadius: '8px', color: '#ff6b6b', fontSize: '0.857rem', marginBottom: '16px', textAlign: 'center'
+            }}>
+              {error}
+            </div>
+          )}
+          {loginError && (
+            <div style={{
+              padding: '12px', background: 'rgba(255, 68, 68, 0.1)', border: '1px solid rgba(255, 68, 68, 0.2)',
+              borderRadius: '8px', color: '#ff6b6b', fontSize: '0.857rem', marginBottom: '16px', textAlign: 'center'
+            }}>
+              {loginError}
+            </div>
+          )}
           <button
             onClick={handleGoogleLogin}
             style={{
@@ -268,7 +284,7 @@ export default function LoginPage() {
             })}
           </div>
 
-          {/* Demo CTA */}
+          {/* CTA */}
           <button
             onClick={() => window.open('mailto:contact@coachcrm.fr?subject=Demande de démo CoachCRM', '_blank')}
             style={{

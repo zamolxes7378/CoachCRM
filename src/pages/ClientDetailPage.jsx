@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import AddSessionButton from '../components/AddSessionButton'
-import { ArrowLeft, TrendingUp, PenTool, CheckCircle, XCircle, Clock, AlertTriangle, FileText, Calendar, Mic, MicOff, Loader, CreditCard, Landmark, Banknote, Phone, Mail, MessageSquare, Plus, Share2, Edit3, Sparkles, RefreshCw, Globe, Hourglass, Euro, X, Trash2, BookOpen, ChevronRight, Heart, AlertCircle, Crosshair, Check, HelpCircle, Link2, Users, User, Star, Baby, Briefcase, Sprout, Search, Target, Award, UserPlus } from 'lucide-react'
+import { ArrowLeft, TrendingUp, PenTool, CheckCircle, XCircle, Clock, AlertTriangle, Calendar, Mic, MicOff, Loader, CreditCard, Landmark, Banknote, Phone, Mail, MessageSquare, Plus, Share2, Edit3, Sparkles, RefreshCw, Globe, Hourglass, Euro, X, Trash2, BookOpen, ChevronRight, Heart, AlertCircle, Crosshair, Check, HelpCircle, Link2, Users, User, Star, Baby, Briefcase, Sprout, Search, Target, Award, UserPlus } from 'lucide-react'
+import ReportIcon from '../components/ReportIcon'
+import { ClientTypeIcon } from '../components/ClientTypeBadge'
 // professionals removed — now from DataContext
 import { useData } from '../context/DataContext'
 import { useConfirm } from '../context/ConfirmContext'
@@ -14,88 +16,84 @@ import SessionDetailModal from '../components/client/SessionDetailModal'
 import EditIdentityModal from '../components/client/EditIdentityModal'
 import useSessionModalState from '../hooks/useSessionModalState'
 import SessionCard from '../components/session/SessionCard'
+import ConfirmBadge from '../components/ConfirmBadge'
+import PaymentBadge from '../components/PaymentBadge'
 import useEditIdentityState from '../hooks/useEditIdentityState'
 
 
 
 
 
-export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
+export default function ClientDetailPage({ clientIdProp, sessionIdProp, onClose } = {}) {
   const params = useParams()
-  const id = coupleIdProp || params.id
+  const id = clientIdProp || params.id
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const from = location.state?.from
-  const { clients, sessions: allSessions, reports: allReports, recruitmentSources, sessionRates, therapyPhases: therapyPhasesData, phaseIcons, phaseColors, defaultPhaseKey, getPhaseColor, getPhaseIcon, getCoupleName, getCoupleInitials, getPhaseLabel, getStatusLabel, getClientType, isProspect, formatDate, formatTime, updateSession, updateClient, createClient, createSession, deleteSession, refreshData, professionals, createProfessional: createPro, updateProfessional: updatePro } = useData()
+  const { clients, sessions: allSessions, reports: allReports, contacts: allContacts, therapyCycles: allTherapyCycles, recruitmentSources, sessionRates, therapyPhases: therapyPhasesData, phaseIcons, phaseColors, defaultPhaseKey, getPhaseColor, getPhaseIcon, getClientName, getClientInitials, getPhaseLabel, getStatusLabel, getClientType, isProspect, formatDate, formatTime, updateSession, updateClient, createClient, createSession, deleteSession, refreshData, professionals, createProfessional: createPro, updateProfessional: updatePro, createContact, updateContact, deleteContact, createTherapyCycle, updateTherapyCycle, deleteTherapyCycle } = useData()
   const { showToast } = useToast()
   const confirm = useConfirm()
-  const couple = clients.find(c => c.id === id)
+  const client = clients.find(c => c.id === id)
   // Sanitize: compute non-self-referencing clientLinks without mutation
   const sanitizedClientLinks = useMemo(() => {
-    return couple?.clientLinks?.filter(l => l.clientId !== couple.id) || []
-  }, [couple])
+    return client?.clientLinks?.filter(l => l.clientId !== client.id) || []
+  }, [client])
+  const therapyCycles = useMemo(() => {
+    const defaultRate = client?.sessionRate || sessionRates.client
+    const initialRate = client?.sessionRate ?? defaultRate
+    const dbCycles = allTherapyCycles.filter(tc => tc.clientId === id)
+    if (dbCycles.length > 0) return dbCycles.sort((a, b) => a.startDate.localeCompare(b.startDate))
+    return [{ id: 'tc_initial', startDate: client?.startDate || client?.createdAt?.split('T')[0] || '2025-01-01', rate: initialRate, totalSessions: client?.totalSessions || 20, phase: client?.phase || (therapyPhasesData[0]?.key || 'debut') }]
+  }, [allTherapyCycles, id, client, sessionRates, therapyPhasesData])
+
+  const activeCycle = therapyCycles[therapyCycles.length - 1]
+  const currentRate = activeCycle?.rate || client?.sessionRate || (client?.type === 'individual' ? sessionRates.individual : sessionRates.client)
+
   // Session modal state (from hook)
-  const { state: sessionModalState, actions: sessionModalActions } = useSessionModalState({ sessions: allSessions.filter(s => s.coupleId === id), updateSession, sessionRate: couple?.type === 'individual' ? sessionRates.individual : sessionRates.couple, originalRate: couple?.type === 'individual' ? sessionRates.individual : sessionRates.couple })
+  const { state: sessionModalState, actions: sessionModalActions } = useSessionModalState({
+    sessions: allSessions.filter(s => s.clientId === id),
+    updateSession,
+    sessionRate: currentRate,
+    originalRate: currentRate
+  })
   const { sessionUpdates, expandedSessionId, rateOverrides, recordingSessionId, recordingStep, editingCoveredSessions, editingInvoiceSessions } = sessionModalState
   const { setSessionUpdates, setExpandedSessionId, setRateOverrides, setEditingCoveredSessions, setEditingInvoiceSessions, getRate, handleStartRecording, handleSaveCR } = sessionModalActions
 
   // Edit identity state (from hook)
-  const { state: editIdentityState, actions: editIdentityActions } = useEditIdentityState({ couple, getClientType })
+  const { state: editIdentityState, actions: editIdentityActions } = useEditIdentityState({ client, getClientType })
   const { editPartnerA, editPartnerB, editChildren, editType, editReferents, editSource, showEditModal, showDeleteConfirm, modalShowAddLink, modalAddLinkSearch, modalReferrerSearch, modalSelectedReferrer, modalShowReferrerDropdown, modalExternalReferrer } = editIdentityState
   const { setEditPartnerA, setEditPartnerB, setEditChildren, setEditType, setEditReferents, setEditSource, setShowEditModal, setShowDeleteConfirm, setModalShowAddLink, setModalAddLinkSearch, setModalReferrerSearch, setModalSelectedReferrer, setModalShowReferrerDropdown, setModalExternalReferrer } = editIdentityActions
 
-    const [status, setStatus] = useState(couple?.status || 'active')
-  const [phase, setPhase] = useState(couple?.phase || 'prospect')
-  const [totalSessions, setTotalSessions] = useState(couple?.totalSessions || 20)
+  const [totalSessions] = useState(client?.totalSessions || 20)
   const [editingTotal, setEditingTotal] = useState(false)
-  const [tempTotal, setTempTotal] = useState(totalSessions)
+  const [tempTotal, setTempTotal] = useState(client?.totalSessions || 20)
   const [showContactForm, setShowContactForm] = useState(false)
   const [contactType, setContactType] = useState('phone')
   const [contactNote, setContactNote] = useState('')
   const [editingContactId, setEditingContactId] = useState(null)
   const [phaseFilter, setPhaseFilter] = useState(null)
   const [contactDate, setContactDate] = useState(new Date().toISOString().slice(0, 16))
-  const [contacts, setContacts] = useState(() => {
-    // Use stored contacts if available (e.g. mirror parrainage events)
-    if (couple?.contacts && couple.contacts.length > 0) return couple.contacts
-    // For legacy mock clients only, show sample contacts
-    if (couple?.id && /^c\d+$/.test(couple.id)) return [
-      { id: 'c1', type: 'phone', date: '2026-03-18T09:30', note: 'Appel de suivi — le couple se sent bien, RAS.' },
-      { id: 'c2', type: 'email', date: '2026-03-10T14:00', note: 'Envoi du récapitulatif de la séance 7.' },
-      { id: 'c3', type: 'sms', date: '2026-03-05T11:15', note: 'Confirmation du RDV du 7 mars.' },
-    ]
-    return []
-  })
+  const contacts = useMemo(() => allContacts.filter(c => c.clientId === id), [allContacts, id])
   const totalInputRef = useRef(null)
-  const [aiSynthesis, setAiSynthesis] = useState(null)
   const [aiGenerating, setAiGenerating] = useState(false)
-  const [globalNote, setGlobalNote] = useState(couple?.notes || '')
   const [showNotesModal, setShowNotesModal] = useState(false)
   const [confirmingContactId, setConfirmingContactId] = useState(null)
   const [confirmContactDate, setConfirmContactDate] = useState('')
-  const [noteCategories, setNoteCategories] = useState({
-    dynamique: couple?.noteDynamique || '',
-    axes: couple?.noteAxes || '',
-    vigilance: couple?.noteVigilance || '',
-    objectifs: couple?.noteObjectifs || ''
-  })
-  const defaultRate = couple?.type === 'individual' ? sessionRates.individual : sessionRates.couple
-  const initialRate = couple?.sessionRate ?? defaultRate
-  const [therapyCycles, setTherapyCycles] = useState([{ id: 'tc1', startDate: couple?.startDate || '2025-01-01', rate: initialRate, totalSessions: couple?.totalSessions || 20, phase: couple?.phase || (therapyPhasesData[0]?.key || 'debut') }])
-  const activeCycle = therapyCycles[therapyCycles.length - 1]
-  const [sessionRate, setSessionRate] = useState(initialRate)
+
+  const safeGetRate = (sid) => (typeof getRate === 'function' ? getRate(sid) : (activeCycle?.rate || currentRate))
+
+  const [sessionRate, setSessionRate] = useState(activeCycle?.rate || client?.sessionRate || sessionRates.client)
   const [editingRate, setEditingRate] = useState(false)
-  const [tempRate, setTempRate] = useState(activeCycle.rate)
+  const [tempRate, setTempRate] = useState(activeCycle?.rate)
   const rateInputRef = useRef(null)
   const [editingSessionRate, setEditingSessionRate] = useState(null)
   const [tempSessionRate, setTempSessionRate] = useState('')
-  const [originalRate] = useState(activeCycle.rate) // rate at initialization, for past sessions
+  const [originalRateState] = useState(activeCycle?.rate) // renamed to avoid confusion with hook param
   const todayStr = new Date().toISOString().split('T')[0]
   const [phaseDropdownOpen, setPhaseDropdownOpen] = useState(false)
-  const [sessionFrequency, setSessionFrequency] = useState(couple?.sessionFrequency || 2)
   const [editingFrequency, setEditingFrequency] = useState(false)
-  const [tempFrequency, setTempFrequency] = useState(2)
+  const [tempFrequency, setTempFrequency] = useState(client?.sessionFrequency || 2)
   const frequencyInputRef = useRef(null)
   const [showAddLink, setShowAddLink] = useState(false)
   const [addLinkType, setAddLinkType] = useState('dossier')
@@ -114,28 +112,38 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
     if (editingTotal && totalInputRef.current) totalInputRef.current.focus()
   }, [editingTotal])
 
-  // Auto-expand session from query param (e.g. navigating from dashboard)
+  // Auto-expand session from query param or prop
   useEffect(() => {
-    const sid = searchParams.get('sessionId')
-    if (sid) setExpandedSessionId(sid)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    const sid = sessionIdProp || searchParams.get('sessionId')
+    if (sid) {
+      // If opened via clientIdProp (modal context, e.g. from Finances), 
+      // wait for parent animation to finish (slideUp 0.25s)
+      const delay = clientIdProp ? 300 : 0
+      const timer = setTimeout(() => {
+        setExpandedSessionId(sid)
+        // Small delay to ensure the DOM is rendered
+        setTimeout(() => {
+          const el = document.getElementById(`session-${sid}`)
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }, 100)
+      }, delay)
+      return () => clearTimeout(timer)
+    }
+  }, [sessionIdProp, clientIdProp, searchParams])
 
-  if (!couple) {
-    return <div className="empty-state"><p>Couple non trouvé</p></div>
-  }
 
-  const sessions = allSessions.filter(s => s.coupleId === id).map(s => {
+  const sessions = allSessions.filter(s => s.clientId === id).map(s => {
     // Auto-complete: only if past AND payment condition met (paymentMethod set OR paymentAmount = 0)
     if (s.status === 'scheduled') {
       const endTime = new Date(new Date(s.date).getTime() + (s.duration || 60) * 60000)
-      const effectiveAmount = s.paymentAmount ?? sessionRates[couple?.type] ?? null
+      const effectiveAmount = s.paymentAmount ?? sessionRates.client ?? null
       const paymentCondition = !!s.paymentMethod || effectiveAmount === 0
       if (endTime <= new Date() && paymentCondition) return { ...s, status: 'completed' }
     }
     return s
   }).sort((a, b) => (b.date || '').localeCompare(a.date || ''))
-  const reports = allReports.filter(r => r.coupleId === id)
-  const PhaseIcon = getPhaseIcon(phase)
+  const reports = allReports.filter(r => r.clientId === id)
+  const PhaseIcon = client ? getPhaseIcon(client.phase) : HelpCircle
 
   // Compute session numbers chronologically
   const sortedSessions = [...sessions].filter(s => s.status !== 'cancelled').sort((a, b) => (a.date || '').localeCompare(b.date || ''))
@@ -151,9 +159,16 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
 
   // Cycle-aware counts
   const activeCycleSessions = sessions.filter(s => getSessionCycle(s)?.id === activeCycle.id)
-  const completedCount = activeCycleSessions.filter(s => s.status === 'completed').length
-  const reportsCount = activeCycleSessions.filter(s => s.hasReport || sessionUpdates[s.id]?.hasReport).length
-  const pendingReportsCount = activeCycleSessions.filter(s => s.status === 'completed' && !(s.hasReport || sessionUpdates[s.id]?.hasReport)).length
+  const [completedCount, reportsCount, pendingReportsCount] = useMemo(() => {
+    const completed = activeCycleSessions.filter(s => s.status === 'completed')
+    const hasR = activeCycleSessions.filter(s => s.hasReport || sessionUpdates[s.id]?.hasReport)
+    const pending = activeCycleSessions.filter(s => s.status === 'completed' && !(s.hasReport || sessionUpdates[s.id]?.hasReport))
+    return [completed.length, hasR.length, pending.length]
+  }, [activeCycleSessions, sessionUpdates])
+
+  if (!client) {
+    return <div className="empty-state"><p>Client non trouvé</p></div>
+  }
 
   // Compute next/last session
   const now = new Date()
@@ -165,18 +180,19 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
   const handleSaveTotal = () => {
     const val = parseInt(tempTotal)
     if (val > 0) {
-      setTotalSessions(val)
-      couple.totalSessions = val
-      updateClient(couple.id, { totalSessions: val })
+      updateClient(client.id, { totalSessions: val })
     }
     setEditingTotal(false)
   }
 
-  const handleAddContact = () => {
+  const handleAddContact = async () => {
     if (!contactNote.trim()) return
-    setContacts(prev => [{
-      id: `c${Date.now()}`, type: contactType, date: contactDate, note: contactNote.trim()
-    }, ...prev])
+    await createContact({
+      clientId: id,
+      type: contactType,
+      date: contactDate,
+      note: contactNote.trim()
+    })
     setContactNote('')
     setEditingContactId(null)
     setShowContactForm(false)
@@ -190,19 +206,20 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
     setShowContactForm(true)
   }
 
-  const handleUpdateContact = () => {
+  const handleUpdateContact = async () => {
     if (!contactNote.trim()) return
-    setContacts(prev => prev.map(c => c.id === editingContactId
-      ? { ...c, type: contactType, date: contactDate, note: contactNote.trim() }
-      : c
-    ))
+    await updateContact(editingContactId, {
+      type: contactType,
+      date: contactDate,
+      note: contactNote.trim()
+    })
     setContactNote('')
     setEditingContactId(null)
     setShowContactForm(false)
   }
 
-  const handleDeleteContact = (contactId) => {
-    setContacts(prev => prev.filter(c => c.id !== contactId))
+  const handleDeleteContact = async (contactId) => {
+    await deleteContact(contactId)
   }
 
   const contactIcons = { phone: Phone, email: Mail, sms: MessageSquare, social: Share2, web: Globe, parrainage: Award }
@@ -210,15 +227,15 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
   const contactColors = { phone: { bg: '#E8F5E9', color: '#2E7D32' }, email: { bg: '#E3F2FD', color: '#1565C0' }, sms: { bg: '#FFF3E0', color: '#E65100' }, social: { bg: '#F3E5F5', color: '#7B1FA2' }, web: { bg: '#E0F2F1', color: '#00695C' }, parrainage: { bg: '#F5F0FF', color: '#8B5CF6' } }
 
   // Generate virtual parrainage events from clientLinks (dynamic — disappear if link removed)
-  const parrainageEvents = (couple.clientLinks || []).filter(l => l.type === 'parrainage' || l.type === 'parrainage-pro').map(link => {
+  const parrainageEvents = (client.clientLinks || []).filter(l => l.type === 'parrainage' || l.type === 'parrainage-pro').map(link => {
     const isPro = link.type === 'parrainage-pro'
-    const linkedName = isPro ? link.proName : (() => { const c = clients.find(c => c.id === link.clientId); return c ? getCoupleName(c) : link.clientId })() 
+    const linkedName = isPro ? link.proName : (() => { const c = clients.find(c => c.id === link.clientId); return c ? getClientName(c) : link.clientId })()
     const isParrain = link.role === 'parrain'
     return {
       id: `parrainage-link-${link.clientId || link.proId}`,
       itemType: 'contact',
       type: 'parrainage',
-      date: (couple.createdAt || couple.startDate || new Date().toISOString()).split('T')[0],
+      date: (client.createdAt || client.startDate || new Date().toISOString()).split('T')[0],
       note: isParrain ? `A parrainé ${linkedName}` : `Parrainé par ${linkedName}`,
       linkedClientId: isPro ? null : link.clientId,
       linkedClientName: linkedName,
@@ -271,36 +288,25 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
         } else if (from) {
           navigate(from)
         } else {
-          navigate(couple.phase === 'prospect' ? '/couples?tab=prospects' : '/couples')
+          navigate(client.phase === 'prospect' ? '/clients?tab=prospects' : '/clients')
         }
       }} style={{ marginBottom: 'var(--space-md)' }}>
         <ArrowLeft size={18} /> Retour
       </button>
 
       {/* Header */}
-      <div className="couple-header">
-        <div className="couple-avatar" onClick={() => { setEditPartnerA({ ...couple.partnerA }); setEditPartnerB(couple.partnerB ? { ...couple.partnerB } : {}); setEditChildren(couple.children || []); setEditType(getClientType(couple)); setShowEditModal(true) }} style={{ background: status === 'inactive' ? 'var(--primary-200)' : couple.phase === 'prospect' ? '#E8D8FE' : 'var(--accent-main)', color: status === 'inactive' ? 'white' : couple.phase === 'prospect' ? '#6B46C1' : 'white', cursor: 'pointer' }} title="Modifier l'identité">{getCoupleInitials(couple)}</div>
-        <div className="couple-info">
+      <div className="client-header">
+        <div className="client-avatar" onClick={() => { setEditPartnerA({ ...client.partnerA }); setEditPartnerB(client.partnerB ? { ...client.partnerB } : {}); setEditChildren(client.children || []); setEditType(getClientType(client)); setShowEditModal(true) }} style={{ background: client.status === 'inactive' ? 'var(--primary-200)' : client.phase === 'prospect' ? '#E8D8FE' : 'var(--accent-main)', color: client.status === 'inactive' ? 'white' : client.phase === 'prospect' ? '#6B46C1' : 'white', cursor: 'pointer' }} title="Modifier l'identité">{getClientInitials(client)}</div>
+        <div className="client-info">
           <div style={{ fontSize: '0.857rem', color: 'var(--text-secondary)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
-            {getClientType(couple) === 'individual' && <><User size={18} /> <span>Individuel</span></>}
-            {getClientType(couple) === 'couple' && <><Users size={18} /> <span>Couple</span></>}
-            {getClientType(couple) === 'family' && (
-              <>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="7" cy="6" r="2.5"/><circle cx="17" cy="6" r="2.5"/><circle cx="12" cy="9" r="2"/>
-                  <path d="M1 20v-1.5a4.5 4.5 0 0 1 4.5-4.5h3a4.5 4.5 0 0 1 4.5 4.5V20"/>
-                  <path d="M15.5 14h3a4.5 4.5 0 0 1 4.5 4.5V20"/>
-                </svg>
-                <span>Famille</span>
-              </>
-            )}
+            {(() => { const cType = getClientType(client); return <><ClientTypeIcon type={cType} size={18} /> <span>{cType === 'individual' ? 'Individuel' : cType === 'family' ? 'Famille' : 'Couple'}</span></> })()}
           </div>
           <h1
-            onClick={() => { setEditPartnerA({ ...couple.partnerA }); setEditPartnerB(couple.partnerB ? { ...couple.partnerB } : {}); setEditChildren(couple.children || []); setEditType(getClientType(couple)); setShowEditModal(true) }}
+            onClick={() => { setEditPartnerA({ ...client.partnerA }); setEditPartnerB(client.partnerB ? { ...client.partnerB } : {}); setEditChildren(client.children || []); setEditType(getClientType(client)); setShowEditModal(true) }}
             style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
             title="Modifier l'identité"
           >
-            {getCoupleName(couple)}
+            {getClientName(client)}
             <Edit3 size={14} style={{ color: 'var(--text-tertiary)', opacity: 0.5, transition: 'opacity 0.2s' }} />
           </h1>
 
@@ -308,10 +314,8 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
         <div style={{ marginLeft: 'auto' }}>
           <div
             onClick={() => {
-              const newStatus = status === 'active' ? 'inactive' : 'active'
-              setStatus(newStatus)
-              couple.status = newStatus
-              updateClient(couple.id, { status: newStatus })
+              const newStatus = client.status === 'active' ? 'inactive' : 'active'
+              updateClient(client.id, { status: newStatus })
             }}
             style={{
               display: 'flex', alignItems: 'center', gap: 8,
@@ -323,26 +327,22 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
           >
             <span style={{
               fontSize: '0.857rem', fontWeight: 600,
-              color: status === 'active' ? '#276749' : 'var(--text-tertiary)'
+              color: client.status === 'active' ? 'var(--primary-800)' : 'var(--text-tertiary)'
             }}>
-              {status === 'active' ? 'Actif' : 'Inactif'}
+              {client.status === 'active' ? 'Actif' : 'Inactif'}
             </span>
             <div style={{
               width: 48, height: 26, borderRadius: 13,
-              background: status === 'active' ? '#C6F6D5' : '#D1D5DB',
+              background: client.status === 'active' ? 'var(--primary-800)' : 'var(--primary-100)',
               position: 'relative', transition: 'background 0.3s ease',
-              flexShrink: 0,
-              boxShadow: status === 'active'
-                ? 'inset 0 2px 4px rgba(0,0,0,0.08), 0 1px 2px rgba(39,103,73,0.15)'
-                : 'inset 0 2px 4px rgba(0,0,0,0.15), 0 1px 2px rgba(0,0,0,0.05)'
+              flexShrink: 0
             }}>
               <div style={{
                 width: 22, height: 22, borderRadius: '50%',
-                background: 'linear-gradient(180deg, #FFFFFF 0%, #F0F0F0 100%)',
+                background: 'linear-gradient(180deg, #FFFFFF 0%, #F8F9FA 100%)',
                 position: 'absolute', top: 2,
-                left: status === 'active' ? 24 : 2,
-                transition: 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.2), 0 1px 2px rgba(0,0,0,0.1)'
+                left: client.status === 'active' ? 24 : 2,
+                transition: 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
               }} />
             </div>
           </div>
@@ -351,7 +351,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
 
       {/* Client Links Section */}
       {(() => {
-        const links = couple.clientLinks || []
+        const links = client.clientLinks || []
         const linkConfig = {
           dossier: { color: '#6366F1', bg: '#EEF2FF', Icon: Link2, label: 'Dossier lié' },
           parrainage: { color: '#8B5CF6', bg: '#F5F0FF', Icon: Award, label: 'Parrainage' },
@@ -370,10 +370,10 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
               const isPro = link.type === 'parrainage-pro'
               const linked = isPro ? null : clients.find(c => c.id === link.clientId)
               if (!isPro && !linked) return null
-              const displayName = isPro ? link.proName : getCoupleName(linked)
+              const displayName = isPro ? link.proName : getClientName(linked)
               const roleLabel = link.type === 'parrainage' && link.role
                 ? (link.role === 'filleul' ? '· Parrain' : '· Filleul')
-                : isPro ? '· Parrain Pro' : (getClientType(linked) === 'individual' ? 'Individuel' : getClientType(linked) === 'couple' ? 'Couple' : 'Famille')
+                : isPro ? '· Parrain Pro' : '· Client'
               return (
                 <div
                   key={idx}
@@ -389,7 +389,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                     transition: 'all 0.2s',
                     position: 'relative'
                   }}
-                  onClick={() => isPro ? navigate('/admin/reseau-pro') : navigate(`/couples/${linked.id}`)}
+                  onClick={() => isPro ? navigate('/admin/reseau-pro') : navigate(`/clients/${linked.id}`)}
                   title={`${cfg.label} — cliquer pour ouvrir`}
                   onMouseEnter={e => { e.currentTarget.style.background = cfg.color + '20'; e.currentTarget.querySelector('.link-x')?.style && (e.currentTarget.querySelector('.link-x').style.opacity = '1') }}
                   onMouseLeave={e => { e.currentTarget.style.background = cfg.bg; e.currentTarget.querySelector('.link-x')?.style && (e.currentTarget.querySelector('.link-x').style.opacity = '0') }}
@@ -403,13 +403,13 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                     className="link-x"
                     onClick={e => {
                       e.stopPropagation()
-                      couple.clientLinks = couple.clientLinks.filter((_, i) => i !== idx)
+                      client.clientLinks = client.clientLinks.filter((_, i) => i !== idx)
                       // Also remove reverse link (only for non-pro links)
                       if (linked && linked.clientLinks) {
-                        linked.clientLinks = linked.clientLinks.filter(l => l.clientId !== couple.id)
+                        linked.clientLinks = linked.clientLinks.filter(l => l.clientId !== client.id)
                         updateClient(linked.id, { clientLinks: linked.clientLinks })
                       }
-                      updateClient(couple.id, { clientLinks: couple.clientLinks })
+                      updateClient(client.id, { clientLinks: client.clientLinks })
                       setShowAddLink(prev => !prev) // force re-render
                       setTimeout(() => setShowAddLink(false), 0)
                     }}
@@ -446,42 +446,42 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
 
               {showAddLink && (
                 <>
-                <div onClick={() => { setShowAddLink(false); setAddLinkSearch('') }} style={{ position: 'fixed', inset: 0, zIndex: 19 }} />
-                <div style={{
-                  position: 'absolute', top: '100%', left: 0, zIndex: 20,
-                  marginTop: 6, width: 260,
-                  background: 'var(--bg-card)',
-                  border: '1px solid var(--border-light)',
-                  borderRadius: 'var(--radius-lg)',
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-                  padding: 'var(--space-sm)'
-                }}>
-                  {/* Search */}
-                  <input
-                    className="input"
-                    placeholder="Rechercher un client..."
-                    value={addLinkSearch}
-                    onChange={e => setAddLinkSearch(e.target.value)}
-                    autoFocus
-                    style={{ fontSize: '0.786rem', marginBottom: 'var(--space-xs)' }}
-                  />
+                  <div onClick={() => { setShowAddLink(false); setAddLinkSearch('') }} style={{ position: 'fixed', inset: 0, zIndex: 19 }} />
+                  <div style={{
+                    position: 'absolute', top: '100%', left: 0, zIndex: 20,
+                    marginTop: 6, width: 260,
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border-light)',
+                    borderRadius: 'var(--radius-lg)',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                    padding: 'var(--space-sm)'
+                  }}>
+                    {/* Search */}
+                    <input
+                      className="input"
+                      placeholder="Rechercher un client..."
+                      value={addLinkSearch}
+                      onChange={e => setAddLinkSearch(e.target.value)}
+                      autoFocus
+                      style={{ fontSize: '0.786rem', marginBottom: 'var(--space-xs)' }}
+                    />
 
-                  {/* Results */}
-                  <div style={{ maxHeight: 160, overflowY: 'auto' }}>
-                    {clients
-                      .filter(c => c.id !== couple.id && !c.deleted)
-                      .filter(c => !links.some(l => l.clientId === c.id))
-                      .filter(c => !addLinkSearch || getCoupleName(c).toLowerCase().includes(addLinkSearch.toLowerCase()))
-                      .slice(0, 8)
-                      .map(c => (
+                    {/* Results */}
+                    <div style={{ maxHeight: 160, overflowY: 'auto' }}>
+                      {clients
+                        .filter(c => c.id !== client.id && !c.deleted)
+                        .filter(c => !links.some(l => l.clientId === c.id))
+                        .filter(c => !addLinkSearch || getClientName(c).toLowerCase().includes(addLinkSearch.toLowerCase()))
+                        .slice(0, 8)
+                        .map(c => (
                           <div
                             key={c.id}
                             onClick={() => {
-                              if (!couple.clientLinks) couple.clientLinks = []
-                              couple.clientLinks.push({ clientId: c.id, type: 'dossier' })
+                              if (!client.clientLinks) client.clientLinks = []
+                              client.clientLinks.push({ clientId: c.id, type: 'dossier' })
                               if (!c.clientLinks) c.clientLinks = []
-                              c.clientLinks.push({ clientId: couple.id, type: 'dossier' })
-                              updateClient(couple.id, { clientLinks: couple.clientLinks })
+                              c.clientLinks.push({ clientId: client.id, type: 'dossier' })
+                              updateClient(client.id, { clientLinks: client.clientLinks })
                               updateClient(c.id, { clientLinks: c.clientLinks })
                               setShowAddLink(false)
                               setAddLinkSearch('')
@@ -496,15 +496,12 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                           >
                             <Link2 size={13} color="#6366F1" />
-                            <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{getCoupleName(c)}</span>
-                            <span style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)', marginLeft: 'auto' }}>
-                              {getClientType(c) === 'individual' ? 'Individuel' : getClientType(c) === 'couple' ? 'Couple' : 'Famille'}
-                            </span>
+                            <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{getClientName(c)}</span>
                           </div>
                         ))
-                    }
+                      }
+                    </div>
                   </div>
-                </div>
                 </>
               )}
             </div>
@@ -543,14 +540,14 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
             const phaseCounts = {}
             therapyPhases.forEach(p => { phaseCounts[p] = sessions.filter(s => s.phase === p && s.status !== 'cancelled').length })
             const totalPhased = therapyPhases.reduce((sum, p) => sum + (phaseCounts[p] || 0), 0)
-            const currentPhaseIcon = getPhaseIcon(phase)
+            const currentPhaseIcon = getPhaseIcon(client.phase)
             const CurrentPhaseIcon = currentPhaseIcon
             // Derive display phase from nearest future session (or most recent past)
             const nowTs = new Date().toISOString()
             const activeSess = sessions.filter(s => s.status !== 'cancelled' && getSessionCycle(s)?.id === activeCycle.id)
             const futureFirst = activeSess.filter(s => s.date && s.date > nowTs).sort((a, b) => (a.date || '').localeCompare(b.date || ''))[0]
             const pastFirst = activeSess.filter(s => s.date && s.date <= nowTs).sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0]
-            const displayPhase = futureFirst?.phase || pastFirst?.phase || phase
+            const displayPhase = futureFirst?.phase || pastFirst?.phase || client.phase
             const DisplayIcon = getPhaseIcon(displayPhase)
             return (
 
@@ -627,7 +624,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                 Prochain RDV : {formatDate(nextSessionDate)}
               </span>
             </div>
-          ) : status === 'active' ? (
+          ) : client.status === 'active' ? (
             <div style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '4px 10px', background: '#FFFBEB',
@@ -684,7 +681,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
             <div className="stat-label" style={{ fontSize: '0.643rem' }}>Objectif</div>
           </div>
           <div className="card" style={{ textAlign: 'center', padding: 'var(--space-sm)', cursor: 'pointer' }}
-            onClick={() => { setTempRate(sessionRate); setEditingRate(true); setTimeout(() => rateInputRef.current?.focus(), 50) }}
+            onClick={() => { setTempRate(activeCycle.rate); setEditingRate(true); setTimeout(() => rateInputRef.current?.focus(), 50) }}
           >
             <Euro size={24} style={{ color: '#E67E22', marginBottom: 4 }} />
             {editingRate ? (
@@ -693,14 +690,18 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                   ref={rateInputRef}
                   type="number" min="0" step="5" value={tempRate}
                   onChange={e => setTempRate(e.target.value)}
-                  onBlur={() => { 
-                     const v = parseFloat(tempRate); 
-                     if (!isNaN(v) && v >= 0) { 
-                       setSessionRate(v); 
-                       updateClient(couple.id, { sessionRate: v });
-                     } 
-                     setEditingRate(false); 
-                   }}
+                  onBlur={async () => {
+                    const v = parseFloat(tempRate);
+                    if (!isNaN(v) && v >= 0) {
+                      // 1. Update client default rate
+                      await updateClient(client.id, { sessionRate: v });
+                      // 2. Update active therapy cycle rate if it exists in DB (not the virtual tc_initial)
+                      if (activeCycle && activeCycle.id !== 'tc_initial') {
+                        await updateTherapyCycle(activeCycle.id, { rate: v });
+                      }
+                    }
+                    setEditingRate(false);
+                  }}
                   onKeyDown={e => e.key === 'Enter' && e.target.blur()}
                   onClick={e => e.stopPropagation()}
                   style={{ width: 50, border: '2px solid #E67E22', borderRadius: 6, textAlign: 'center', fontSize: '1.286rem', fontWeight: 700, padding: '1px 2px', background: '#FFF3E0', color: '#E67E22', outline: 'none' }}
@@ -708,14 +709,14 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
               </div>
             ) : (
               <div className="stat-value" style={{ fontSize: '1.286rem', color: '#E67E22', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
-                {sessionRate}€
+                {activeCycle.rate}€
                 <Edit3 size={12} style={{ color: 'var(--text-tertiary)' }} />
               </div>
             )}
             <div className="stat-label" style={{ fontSize: '0.643rem' }}>Tarif spécifique</div>
           </div>
           <div className="card" style={{ textAlign: 'center', padding: 'var(--space-sm)', cursor: 'pointer' }}
-            onClick={() => { setTempFrequency(sessionFrequency); setEditingFrequency(true); setTimeout(() => frequencyInputRef.current?.focus(), 50) }}
+            onClick={() => { setTempFrequency(client?.sessionFrequency || 2); setEditingFrequency(true); setTimeout(() => frequencyInputRef.current?.focus(), 50) }}
             title="Cliquer pour modifier la fréquence"
           >
             <RefreshCw size={24} style={{ color: '#2B6CB0', marginBottom: 4 }} />
@@ -725,7 +726,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                   ref={frequencyInputRef}
                   type="number" min="1" max="8" value={tempFrequency}
                   onChange={e => setTempFrequency(e.target.value)}
-                  onBlur={() => { const v = parseInt(tempFrequency); if (v > 0) setSessionFrequency(v); setEditingFrequency(false) }}
+                  onBlur={() => { const v = parseInt(tempFrequency); if (v > 0) updateClient(client.id, { sessionFrequency: v }); setEditingFrequency(false) }}
                   onKeyDown={e => e.key === 'Enter' && e.target.blur()}
                   onClick={e => e.stopPropagation()}
                   style={{ width: 40, border: '2px solid #2B6CB0', borderRadius: 6, textAlign: 'center', fontSize: '1.286rem', fontWeight: 700, padding: '1px 2px', background: '#EBF8FF', color: '#2B6CB0', outline: 'none' }}
@@ -733,14 +734,14 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
               </div>
             ) : (
               <div className="stat-value" style={{ fontSize: '1.286rem', color: '#2B6CB0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
-                {sessionFrequency}/M
+                {client?.sessionFrequency || 2}/M
                 <Edit3 size={12} style={{ color: 'var(--text-tertiary)' }} />
               </div>
             )}
             <div className="stat-label" style={{ fontSize: '0.643rem' }}>Fréquence</div>
           </div>
           <div className="card" style={{ textAlign: 'center', padding: 'var(--space-sm)' }}>
-            <FileText size={24} style={{ color: pendingReportsCount > 0 ? 'var(--warning)' : 'var(--info)', marginBottom: 4 }} />
+            <ReportIcon size={24} color={pendingReportsCount > 0 ? 'var(--warning)' : 'var(--info)'} style={{ marginBottom: 4 }} />
             <div className="stat-value" style={{ fontSize: '1.286rem', color: pendingReportsCount > 0 ? 'var(--warning)' : undefined }}>{pendingReportsCount}</div>
             <div className="stat-label" style={{ fontSize: '0.643rem' }}>CR en attente</div>
           </div>
@@ -764,28 +765,28 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                 <Plus size={14} /> Contact
               </button>
               <AddSessionButton label="Séance" onClick={async () => {
-                  // Default date = today, time = current hour
-                  const now = new Date()
-                  const h = now.getHours()
-                  const dateStr = now.toISOString().split('T')[0]
-                  const timeStr = `${String(h).padStart(2, '0')}:00`
-                  // Inherit phase
-                  const recentSessions = sessions.filter(s => s.coupleId === id && s.status !== 'cancelled').sort((a, b) => (b.date || '').localeCompare(a.date || ''))
-                  const lastSessionPhase = recentSessions[0]?.phase
-                  const couplePhase = couple?.phase !== 'prospect' ? couple?.phase : null
-                  const inheritedPhase = lastSessionPhase || couplePhase || (therapyPhasesData[0]?.key || 'debut')
-                  // Create session and immediately open the SessionDetailModal
-                  const newSession = await createSession({
-                    coupleId: id,
-                    date: `${dateStr}T${timeStr}:00`,
-                    duration: 60,
-                    phase: inheritedPhase,
-                    status: 'scheduled',
-                  })
-                  if (newSession?.id) {
-                    setExpandedSessionId(newSession.id)
-                  }
-                }} />
+                // Default date = today, time = current hour
+                const now = new Date()
+                const h = now.getHours()
+                const dateStr = now.toISOString().split('T')[0]
+                const timeStr = `${String(h).padStart(2, '0')}:00`
+                // Inherit phase
+                const recentSessions = sessions.filter(s => s.clientId === id && s.status !== 'cancelled').sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+                const lastSessionPhase = recentSessions[0]?.phase
+                const clientPhase = client?.phase !== 'prospect' ? client?.phase : null
+                const inheritedPhase = lastSessionPhase || clientPhase || (therapyPhasesData[0]?.key || 'debut')
+                // Create session and immediately open the SessionDetailModal
+                const newSession = await createSession({
+                  clientId: id,
+                  date: `${dateStr}T${timeStr}:00`,
+                  duration: 60,
+                  phase: inheritedPhase,
+                  status: 'scheduled',
+                })
+                if (newSession?.id) {
+                  setExpandedSessionId(newSession.id)
+                }
+              }} />
             </div>
           </div>
 
@@ -867,13 +868,13 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                         type="date"
                         key={item.cycleId + '-' + item.startDate}
                         defaultValue={item.startDate}
-                        min={couple?.startDate || '2020-01-01'}
+                        min={client?.startDate || '2020-01-01'}
                         max={new Date().toISOString().slice(0, 10)}
                         onChange={e => {
                           const newDate = e.target.value
                           if (!newDate) return
                           // Reject dates before dossier creation or in the future
-                          const minDate = couple?.startDate || '2020-01-01'
+                          const minDate = client?.startDate || '2020-01-01'
                           const today = new Date().toISOString().slice(0, 10)
                           if (newDate < minDate || newDate > today) {
                             e.target.value = item.startDate
@@ -895,212 +896,212 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
               if (item.itemType === 'contact') {
                 const ContactIcon = contactIcons[item.type] || Phone
                 const cc = contactColors[item.type] || contactColors.phone
-                    const isContactFuture = new Date(item.date) > new Date()
-                    return (
+                const isContactFuture = new Date(item.date) > new Date()
+                return (
                   <>
-                  <div key={item.id} style={{
-                    display: 'flex', alignItems: 'center', gap: 'var(--space-sm)',
-                    padding: 'var(--space-sm)',
-                    background: 'white',
-                    borderRadius: 'var(--radius-md)',
-                    borderLeft: `3px solid ${cc.color}`,
-                    width: '70%',
-                    marginLeft: 'auto',
-                    opacity: isContactFuture && !item.done ? 0.7 : 1
-                  }}>
-                    <div style={{
-                      width: 32, height: 32, borderRadius: 'var(--radius-full)',
-                      background: 'white', color: cc.color,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      flexShrink: 0, border: `1px solid ${cc.color}20`
+                    <div key={item.id} style={{
+                      display: 'flex', alignItems: 'center', gap: 'var(--space-sm)',
+                      padding: 'var(--space-sm)',
+                      background: 'white',
+                      borderRadius: 'var(--radius-md)',
+                      borderLeft: `3px solid ${cc.color}`,
+                      width: '70%',
+                      marginLeft: 'auto',
+                      opacity: isContactFuture && !item.done ? 0.7 : 1
                     }}>
-                      <ContactIcon size={16} />
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '0.714rem', fontWeight: 600, color: cc.color, display: 'flex', alignItems: 'center', gap: 4 }}>
-                        {contactLabels[item.type]} · {formatDate(item.date)} · {formatTime(item.date)}
-                        {item.type !== 'parrainage' && isContactFuture && !item.done && (
-                          <span style={{ color: 'var(--text-tertiary)', display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-                            <Clock size={10} /> Planifié
-                          </span>
-                        )}
-                        {item.type !== 'parrainage' && item.done && (
-                          <span style={{ color: 'var(--success)', display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-                            <CheckCircle size={10} /> Effectué
-                          </span>
-                        )}
+                      <div style={{
+                        width: 32, height: 32, borderRadius: 'var(--radius-full)',
+                        background: 'white', color: cc.color,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        flexShrink: 0, border: `1px solid ${cc.color}20`
+                      }}>
+                        <ContactIcon size={16} />
                       </div>
-                      <div style={{ fontSize: '0.786rem', color: 'var(--text-secondary)', marginTop: 2 }}>
-                        {item.type === 'parrainage' && item.linkedClientId ? (
-                          <>
-                            {item.note.replace(item.linkedClientName, '').trim()}{' '}
-                            <span
-                              onClick={(e) => { e.stopPropagation(); navigate(`/couples/${item.linkedClientId}`) }}
-                              style={{ color: '#8B5CF6', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: 2 }}
-                            >
-                              {item.linkedClientName}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '0.714rem', fontWeight: 600, color: cc.color, display: 'flex', alignItems: 'center', gap: 4 }}>
+                          {contactLabels[item.type]} · {formatDate(item.date)} · {formatTime(item.date)}
+                          {item.type !== 'parrainage' && isContactFuture && !item.done && (
+                            <span style={{ color: 'var(--text-tertiary)', display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                              <Clock size={10} /> Planifié
                             </span>
-                          </>
-                        ) : item.note}
+                          )}
+                          {item.type !== 'parrainage' && item.done && (
+                            <span style={{ color: 'var(--success)', display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                              <CheckCircle size={10} /> Effectué
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '0.786rem', color: 'var(--text-secondary)', marginTop: 2 }}>
+                          {item.type === 'parrainage' && item.linkedClientId ? (
+                            <>
+                              {item.note.replace(item.linkedClientName, '').trim()}{' '}
+                              <span
+                                onClick={(e) => { e.stopPropagation(); navigate(`/clients/${item.linkedClientId}`) }}
+                                style={{ color: '#8B5CF6', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: 2 }}
+                              >
+                                {item.linkedClientName}
+                              </span>
+                            </>
+                          ) : item.note}
+                        </div>
                       </div>
-                    </div>
-                    {item.type !== 'parrainage' && (
-                    <div style={{ display: 'flex', gap: 2, flexShrink: 0, alignItems: 'center' }}>
-                      {(isContactFuture || item.done) && (
-                        <button onClick={() => {
-                          if (item.done) {
-                            setContacts(prev => prev.map(c => c.id === item.id ? { ...c, done: false } : c))
-                          } else {
-                            setConfirmingContactId(confirmingContactId === item.id ? null : item.id)
-                            setConfirmContactDate(new Date().toISOString().slice(0, 16))
-                          }
-                        }} style={{
-                          width: 26, height: 26, borderRadius: 'var(--radius-full)',
-                          background: item.done ? 'var(--success)' : 'transparent',
-                          cursor: 'pointer', display: 'flex',
-                          alignItems: 'center', justifyContent: 'center',
-                          color: item.done ? 'white' : 'var(--success)',
-                          transition: 'all 0.2s',
-                          border: item.done ? '2px solid var(--success)' : '1.5px solid var(--success)'
-                        }}
-                          onMouseEnter={e => { if (!item.done) { e.currentTarget.style.background = 'var(--success)'; e.currentTarget.style.color = 'white' } }}
-                          onMouseLeave={e => { if (!item.done) { e.currentTarget.style.background = item.done ? 'var(--success)' : 'transparent'; e.currentTarget.style.color = item.done ? 'white' : 'var(--success)' } }}
-                          title={item.done ? 'Marquer comme non effectué' : 'Confirmer comme effectué'}
-                        >
-                          <CheckCircle size={14} />
-                        </button>
-                      )}
-                      <button onClick={() => handleEditContact(item)} style={{
-                        width: 24, height: 24, borderRadius: 'var(--radius-sm)', border: 'none',
-                        background: 'transparent', cursor: 'pointer', display: 'flex',
-                        alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)',
-                        transition: 'all 0.15s'
-                      }} onMouseEnter={e => { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = 'var(--primary-600)' }}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-tertiary)' }}
-                        title="Modifier">
-                        <Edit3 size={12} />
-                      </button>
-                      <button onClick={() => handleDeleteContact(item.id)} style={{
-                        width: 24, height: 24, borderRadius: 'var(--radius-sm)', border: 'none',
-                        background: 'transparent', cursor: 'pointer', display: 'flex',
-                        alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)',
-                        transition: 'all 0.15s'
-                      }} onMouseEnter={e => { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = 'var(--error)' }}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-tertiary)' }}
-                        title="Supprimer">
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
-                    )}
-                  </div>
-                  {/* Inline date confirmation */}
-                  {confirmingContactId === item.id && (
-                    <div style={{
-                      display: 'flex', alignItems: 'center', gap: 8,
-                      padding: '6px 12px', marginTop: 4,
-                      background: 'white', borderRadius: 'var(--radius-md)',
-                      border: '1px solid var(--border-light)',
-                      width: '70%', marginLeft: 'auto',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                      animation: 'fadeIn 0.15s ease-out'
-                    }}>
-                      <span style={{ fontSize: '0.714rem', color: 'var(--text-secondary)', fontWeight: 600, whiteSpace: 'nowrap' }}>Date de réalisation :</span>
-                      <input
-                        type="datetime-local"
-                        value={confirmContactDate}
-                        onChange={e => setConfirmContactDate(e.target.value)}
-                        max={new Date().toISOString().slice(0, 16)}
-                        style={{ fontSize: '0.714rem', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)', padding: '3px 6px', fontFamily: 'inherit', flex: 1 }}
-                      />
-                      <button
-                        onClick={() => {
-                          setContacts(prev => prev.map(c => c.id === item.id ? { ...c, done: true, date: confirmContactDate } : c))
-                          setConfirmingContactId(null)
-                        }}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: 4,
-                          padding: '4px 10px', borderRadius: 'var(--radius-sm)',
-                          background: 'var(--success)', color: 'white', border: 'none',
-                          fontSize: '0.714rem', fontWeight: 600, cursor: 'pointer',
-                          fontFamily: 'inherit', whiteSpace: 'nowrap'
-                        }}
-                      >
-                        <CheckCircle size={12} /> Confirmer
-                      </button>
-                      <button
-                        onClick={() => setConfirmingContactId(null)}
-                        style={{
-                          padding: '4px 8px', borderRadius: 'var(--radius-sm)',
-                          background: 'transparent', color: 'var(--text-tertiary)', border: '1px solid var(--border-light)',
-                          fontSize: '0.714rem', cursor: 'pointer', fontFamily: 'inherit'
-                        }}
-                      >
-                        Annuler
-                      </button>
-                    </div>
-                  )}
-                  {/* Inline edit form for this contact */}
-                  {editingContactId === item.id && showContactForm && (
-                    <div style={{
-                      padding: 'var(--space-sm)', marginTop: 4,
-                      background: '#FAFAFA', borderRadius: 'var(--radius-md)',
-                      border: '1px solid var(--border-light)',
-                      width: '70%', marginLeft: 'auto',
-                      animation: 'fadeIn 0.15s ease-out'
-                    }}>
-                      <div style={{ display: 'flex', gap: 'var(--space-xs)', marginBottom: 'var(--space-xs)', flexWrap: 'wrap' }}>
-                        {['phone', 'email', 'sms', 'social', 'web'].map(t => {
-                          const Icon = contactIcons[t]
-                          const ctc = contactColors[t]
-                          return (
-                            <button key={t} onClick={() => setContactType(t)} style={{
-                              padding: '4px 8px', borderRadius: 'var(--radius-md)',
-                              border: '2px solid transparent',
-                              background: contactType === t ? ctc.bg : 'white',
-                              color: ctc.color, fontSize: '0.643rem', fontWeight: 600,
-                              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3
-                            }}>
-                              <Icon size={11} /> {contactLabels[t]}
+                      {item.type !== 'parrainage' && (
+                        <div style={{ display: 'flex', gap: 2, flexShrink: 0, alignItems: 'center' }}>
+                          {(isContactFuture || item.done) && (
+                            <button onClick={async () => {
+                              if (item.done) {
+                                await updateContact(item.id, { done: false })
+                              } else {
+                                setConfirmingContactId(confirmingContactId === item.id ? null : item.id)
+                                setConfirmContactDate(new Date().toISOString().slice(0, 16))
+                              }
+                            }} style={{
+                              width: 26, height: 26, borderRadius: 'var(--radius-full)',
+                              background: item.done ? 'var(--success)' : 'transparent',
+                              cursor: 'pointer', display: 'flex',
+                              alignItems: 'center', justifyContent: 'center',
+                              color: item.done ? 'white' : 'var(--success)',
+                              transition: 'all 0.2s',
+                              border: item.done ? '2px solid var(--success)' : '1.5px solid var(--success)'
+                            }}
+                              onMouseEnter={e => { if (!item.done) { e.currentTarget.style.background = 'var(--success)'; e.currentTarget.style.color = 'white' } }}
+                              onMouseLeave={e => { if (!item.done) { e.currentTarget.style.background = item.done ? 'var(--success)' : 'transparent'; e.currentTarget.style.color = item.done ? 'white' : 'var(--success)' } }}
+                              title={item.done ? 'Marquer comme non effectué' : 'Confirmer comme effectué'}
+                            >
+                              <CheckCircle size={14} />
                             </button>
-                          )
-                        })}
-                      </div>
-                      <input type="datetime-local" className="input" value={contactDate}
-                        onChange={e => setContactDate(e.target.value)}
-                        style={{ fontSize: '0.714rem', marginBottom: 'var(--space-xs)', width: '100%' }}
-                      />
-                      <textarea className="input" placeholder="Note sur le contact…" value={contactNote}
-                        onChange={e => setContactNote(e.target.value)} rows={3}
-                        onKeyDown={e => e.stopPropagation()}
-                        style={{ fontSize: '0.714rem', marginBottom: 'var(--space-xs)', width: '100%', resize: 'vertical', lineHeight: 1.5 }}
-                      />
-                      <div style={{ display: 'flex', gap: 'var(--space-xs)', justifyContent: 'flex-end' }}>
-                        <button className="btn btn-ghost" style={{ fontSize: '0.643rem', padding: '3px 6px' }} onClick={() => { setShowContactForm(false); setEditingContactId(null); setContactNote('') }}>Annuler</button>
-                        <button className="btn btn-primary" style={{ fontSize: '0.643rem', padding: '3px 8px' }} onClick={handleUpdateContact}>Modifier</button>
-                      </div>
+                          )}
+                          <button onClick={() => handleEditContact(item)} style={{
+                            width: 24, height: 24, borderRadius: 'var(--radius-sm)', border: 'none',
+                            background: 'transparent', cursor: 'pointer', display: 'flex',
+                            alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)',
+                            transition: 'all 0.15s'
+                          }} onMouseEnter={e => { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = 'var(--primary-600)' }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-tertiary)' }}
+                            title="Modifier">
+                            <Edit3 size={12} />
+                          </button>
+                          <button onClick={() => handleDeleteContact(item.id)} style={{
+                            width: 24, height: 24, borderRadius: 'var(--radius-sm)', border: 'none',
+                            background: 'transparent', cursor: 'pointer', display: 'flex',
+                            alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)',
+                            transition: 'all 0.15s'
+                          }} onMouseEnter={e => { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = 'var(--error)' }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-tertiary)' }}
+                            title="Supprimer">
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      )}
                     </div>
-                  )}
+                    {/* Inline date confirmation */}
+                    {confirmingContactId === item.id && (
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        padding: '6px 12px', marginTop: 4,
+                        background: 'white', borderRadius: 'var(--radius-md)',
+                        border: '1px solid var(--border-light)',
+                        width: '70%', marginLeft: 'auto',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                        animation: 'fadeIn 0.15s ease-out'
+                      }}>
+                        <span style={{ fontSize: '0.714rem', color: 'var(--text-secondary)', fontWeight: 600, whiteSpace: 'nowrap' }}>Date de réalisation :</span>
+                        <input
+                          type="datetime-local"
+                          value={confirmContactDate}
+                          onChange={e => setConfirmContactDate(e.target.value)}
+                          max={new Date().toISOString().slice(0, 16)}
+                          style={{ fontSize: '0.714rem', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)', padding: '3px 6px', fontFamily: 'inherit', flex: 1 }}
+                        />
+                        <button
+                          onClick={async () => {
+                            await updateContact(item.id, { done: true, date: confirmContactDate })
+                            setConfirmingContactId(null)
+                          }}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 4,
+                            padding: '4px 10px', borderRadius: 'var(--radius-sm)',
+                            background: 'var(--success)', color: 'white', border: 'none',
+                            fontSize: '0.714rem', fontWeight: 600, cursor: 'pointer',
+                            fontFamily: 'inherit', whiteSpace: 'nowrap'
+                          }}
+                        >
+                          <CheckCircle size={12} /> Confirmer
+                        </button>
+                        <button
+                          onClick={() => setConfirmingContactId(null)}
+                          style={{
+                            padding: '4px 8px', borderRadius: 'var(--radius-sm)',
+                            background: 'transparent', color: 'var(--text-tertiary)', border: '1px solid var(--border-light)',
+                            fontSize: '0.714rem', cursor: 'pointer', fontFamily: 'inherit'
+                          }}
+                        >
+                          Annuler
+                        </button>
+                      </div>
+                    )}
+                    {/* Inline edit form for this contact */}
+                    {editingContactId === item.id && showContactForm && (
+                      <div style={{
+                        padding: 'var(--space-sm)', marginTop: 4,
+                        background: '#FAFAFA', borderRadius: 'var(--radius-md)',
+                        border: '1px solid var(--border-light)',
+                        width: '70%', marginLeft: 'auto',
+                        animation: 'fadeIn 0.15s ease-out'
+                      }}>
+                        <div style={{ display: 'flex', gap: 'var(--space-xs)', marginBottom: 'var(--space-xs)', flexWrap: 'wrap' }}>
+                          {['phone', 'email', 'sms', 'social', 'web'].map(t => {
+                            const Icon = contactIcons[t]
+                            const ctc = contactColors[t]
+                            return (
+                              <button key={t} onClick={() => setContactType(t)} style={{
+                                padding: '4px 8px', borderRadius: 'var(--radius-md)',
+                                border: '2px solid transparent',
+                                background: contactType === t ? ctc.bg : 'white',
+                                color: ctc.color, fontSize: '0.643rem', fontWeight: 600,
+                                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3
+                              }}>
+                                <Icon size={11} /> {contactLabels[t]}
+                              </button>
+                            )
+                          })}
+                        </div>
+                        <input type="datetime-local" className="input" value={contactDate}
+                          onChange={e => setContactDate(e.target.value)}
+                          style={{ fontSize: '0.714rem', marginBottom: 'var(--space-xs)', width: '100%' }}
+                        />
+                        <textarea className="input" placeholder="Note sur le contact…" value={contactNote}
+                          onChange={e => setContactNote(e.target.value)} rows={3}
+                          onKeyDown={e => e.stopPropagation()}
+                          style={{ fontSize: '0.714rem', marginBottom: 'var(--space-xs)', width: '100%', resize: 'vertical', lineHeight: 1.5 }}
+                        />
+                        <div style={{ display: 'flex', gap: 'var(--space-xs)', justifyContent: 'flex-end' }}>
+                          <button className="btn btn-ghost" style={{ fontSize: '0.643rem', padding: '3px 6px' }} onClick={() => { setShowContactForm(false); setEditingContactId(null); setContactNote('') }}>Annuler</button>
+                          <button className="btn btn-primary" style={{ fontSize: '0.643rem', padding: '3px 8px' }} onClick={handleUpdateContact}>Modifier</button>
+                        </div>
+                      </div>
+                    )}
                   </>
                 )
               }
 
               // Session card
               const session = item
-              const effectivePhase = (session.phase === 'prospect' ? defaultPhaseKey : session.phase) || couple?.phase || defaultPhaseKey
+              const effectivePhase = (session.phase === 'prospect' ? defaultPhaseKey : session.phase) || client?.phase || defaultPhaseKey
               const sessionNum = sessionNumbers[session.id]
               const update = sessionUpdates[session.id]
               const hasReport = session.hasReport || update?.hasReport
               const summary = update?.summary || session.summary
               const isRecording = recordingSessionId === session.id
               const isPast = new Date(session.date) <= new Date()
-              const sessionRate = getRate(session.id)
+              const sessionRate = safeGetRate(session.id)
               // Compute invoice info (includes sessions covered by another invoice)
               const hasSelfInv = session.needsInvoice
               const covBy = sessions.find(other => other.needsInvoice && other.id !== session.id && (other.invoiceCoveredSessionIds || []).includes(session.id))
               const needsF = hasSelfInv || !!covBy
               const fSent = hasSelfInv ? session.invoiceSent : covBy?.invoiceSent
               return (
-                <div key={session.id}>
+                <div key={session.id} id={`session-${session.id}`}>
                   <SessionCard
                     session={session}
                     sessionNumber={sessionNum}
@@ -1108,6 +1109,8 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                     PhaseIcon={getPhaseIcon(effectivePhase)}
                     phaseLabel={getPhaseLabel(effectivePhase)}
                     showClientName={false}
+                    clientType={getClientType(client)}
+                    maxChars={35}
                     sessionRate={sessionRate}
                     isExpanded={expandedSessionId === session.id}
                     showExpandedStyle={true}
@@ -1118,7 +1121,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                     formatTime={formatTime}
                     onClick={() => setExpandedSessionId(session.id)}
                     dimmed={therapyCycles.length > 1 && getSessionCycle(session)?.id !== activeCycle.id}
-                    isProspect={isProspect(couple)}
+                    isProspect={isProspect(client)}
                     onDelete={session.status === 'cancelled' ? async (sid) => {
                       const ok = await confirm('Supprimer définitivement cette séance annulée ?\nElle disparaîtra du timeline et du calendrier.', { variant: 'destructive' })
                       if (!ok) return
@@ -1148,16 +1151,16 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                     <input
                       type="date"
                       className="input"
-                      defaultValue={couple.startDate?.split('T')[0]}
+                      defaultValue={client.startDate?.split('T')[0]}
                       autoFocus
                       style={{ fontSize: '0.714rem', padding: '2px 6px', width: 130 }}
                       onBlur={async (e) => {
                         const newDate = e.target.value
-                        if (newDate && newDate !== couple.startDate?.split('T')[0]) {
+                        if (newDate && newDate !== client.startDate?.split('T')[0]) {
                           const ok = await confirm('Modifier la date de création du dossier ? Cela affecte l\'historique du client.', { variant: 'danger' })
                           if (ok) {
-                            couple.startDate = newDate
-                            await updateClient(couple.id, { startDate: newDate })
+                            client.startDate = newDate
+                            await updateClient(client.id, { startDate: newDate })
                           }
                         }
                         setEditingStartDate(false)
@@ -1171,7 +1174,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                     onClick={() => setEditingStartDate(true)}
                     title="Cliquer pour modifier la date de création"
                   >
-                    Création du dossier · {formatDate(couple.startDate)}
+                    Création du dossier · {formatDate(client.startDate)}
                     <Edit3 size={10} style={{ opacity: 0.4 }} />
                   </span>
                 )}
@@ -1196,20 +1199,16 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                 style={{ fontSize: '0.643rem', padding: '3px 8px' }}
                 onClick={async () => {
                   if (!await confirm('Démarrer une nouvelle thérapie ? Les séances actuelles seront archivées.')) return
-                  const newCycle = {
-                    id: `tc${Date.now()}`,
+                  const newCycle = await createTherapyCycle({
+                    clientId: id,
                     startDate: new Date().toISOString().slice(0, 10),
-                    rate: sessionRate,
+                    rate: currentRate,
                     totalSessions: 20,
                     phase: therapyPhasesData[0]?.key || 'debut'
+                  })
+                  if (newCycle) {
+                    await updateClient(client.id, { phase: therapyPhasesData[0]?.key || 'debut', totalSessions: 20 })
                   }
-                  setTherapyCycles(prev => [...prev, newCycle])
-                  setTotalSessions(20)
-                  setSessionRate(newCycle.rate)
-                  setTempRate(newCycle.rate)
-                  couple.phase = therapyPhasesData[0]?.key || 'debut'
-                  updateClient(couple.id, { phase: therapyPhasesData[0]?.key || 'debut' })
-                  setPhase(therapyPhasesData[0]?.key || 'debut')
                 }}
               >
                 <RefreshCw size={12} /> Nouvelle thérapie
@@ -1234,13 +1233,14 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
               <button
                 onClick={() => {
                   setAiGenerating(true)
-                  setTimeout(() => {
-                    setAiSynthesis({
-                      text: `Après ${completedCount} séances, le couple montre une progression significative dans sa capacité à communiquer de manière constructive. Les principaux axes de travail identifiés :\n\n• **Communication** : Nette amélioration de l'écoute active. Le couple utilise désormais régulièrement la reformulation.\n• **Gestion des conflits** : Les mécanismes de désamorçage mis en place sont efficaces. Réduction de 60% des escalades conflictuelles rapportées.\n• **Attachement** : Travail en cours sur les schémas relationnels hérités. Prise de conscience des patterns répétitifs.\n• **Rituels** : Le rituel de communication hebdomadaire est bien ancré et apprécié par les deux partenaires.${globalNote ? '\n\n**Notes du thérapeute intégrées** : Les observations personnelles du praticien ont été prises en compte dans cette synthèse.' : ''}\n\n**Recommandation** : Poursuivre le travail sur l'expression des besoins individuels et consolider les acquis en gestion de conflits.`,
+                  setTimeout(async () => {
+                    const synthesis = {
+                      text: `Après ${completedCount} séances, le client montre une progression significative dans sa capacité à communiquer de manière constructive. Les principaux axes de travail identifiés :\n\n• **Communication** : Nette amélioration de l'écoute active. Le client utilise désormais régulièrement la reformulation.\n• **Gestion des conflits** : Les mécanismes de désamorçage mis en place sont efficaces. Réduction de 60% des escalades conflictuelles rapportées.\n• **Attachement** : Travail en cours sur les schémas relationnels hérités. Prise de conscience des patterns répétitifs.\n• **Rituels** : Le rituel de communication hebdomadaire est bien ancré et apprécié.${client.notes ? '\n\n**Notes du thérapeute intégrées** : Les observations personnelles du praticien ont été prises en compte dans cette synthèse.' : ''}\n\n**Recommandation** : Poursuivre le travail sur l'expression des besoins individuels et consolider les acquis en gestion de conflits.`,
                       date: new Date().toLocaleString('fr-FR'),
                       sessions: completedCount,
-                      sources: `${reportsCount} compte${reportsCount > 1 ? 's' : ''} rendu${reportsCount > 1 ? 's' : ''}${globalNote ? ' + notes du dossier' : ''}`
-                    })
+                      sources: `${reportsCount} compte${reportsCount > 1 ? 's' : ''} rendu${reportsCount > 1 ? 's' : ''}${client.notes ? ' + notes du dossier' : ''}`
+                    }
+                    await updateClient(client.id, { aiSynthesis: synthesis })
                     setAiGenerating(false)
                   }, 2500)
                 }}
@@ -1253,14 +1253,14 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                   backdropFilter: 'blur(4px)'
                 }}
               >
-                {aiGenerating ? <><RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} /> Analyse…</> : <><Sparkles size={12} /> {aiSynthesis ? 'Régénérer' : 'Générer'}</>}
+                {aiGenerating ? <><RefreshCw size={12} style={{ animation: 'spin 1s linear infinite' }} /> Analyse…</> : <><Sparkles size={12} /> {client.aiSynthesis ? 'Régénérer' : 'Générer'}</>}
               </button>
             </div>
             <div style={{ padding: 'var(--space-md)' }}>
-              {aiSynthesis ? (
+              {client?.aiSynthesis?.text ? (
                 <>
                   <div style={{ fontSize: '0.857rem', color: 'var(--text-primary)', lineHeight: 1.8, whiteSpace: 'pre-line' }}>
-                    {aiSynthesis.text.split('\n').map((line, i) => {
+                    {client.aiSynthesis.text.split('\n').map((line, i) => {
                       const boldMatch = line.match(/\*\*(.*?)\*\*/g)
                       if (boldMatch) {
                         const parts = line.split(/\*\*(.*?)\*\*/)
@@ -1277,7 +1277,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                     fontSize: '0.643rem', color: 'var(--text-tertiary)'
                   }}>
                     <Sparkles size={10} style={{ color: '#764ba2' }} />
-                    Généré par IA · {aiSynthesis.date} · Basé sur {aiSynthesis.sources || `${aiSynthesis.sessions} comptes rendus`}
+                    Généré par IA · {client.aiSynthesis.date} · Basé sur {client.aiSynthesis.sources || `${client.aiSynthesis.sessions} comptes rendus`}
                   </div>
                 </>
               ) : (
@@ -1287,7 +1287,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                 }}>
                   <Sparkles size={32} style={{ color: '#764ba230', marginBottom: 8 }} />
                   <p style={{ fontSize: '0.857rem', marginBottom: 4 }}>Aucune synthèse générée</p>
-                  <p style={{ fontSize: '0.714rem' }}>Cliquez sur « Générer » pour créer une synthèse IA à partir des {reportsCount} comptes rendus{globalNote ? ' et de vos notes du dossier' : ''} disponibles.</p>
+                  <p style={{ fontSize: '0.714rem' }}>Cliquez sur « Générer » pour créer une synthèse IA à partir des {reportsCount} comptes rendus{client?.notes ? ' et de vos notes du dossier' : ''} disponibles.</p>
                 </div>
               )}
             </div>
@@ -1312,7 +1312,7 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: '0.786rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>Mes notes du dossier</div>
                 <div style={{ fontSize: '0.714rem', color: 'var(--text-secondary)', lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                  {globalNote || 'Aucune note — cliquez pour rédiger'}
+                  {client?.notes || 'Aucune note — cliquez pour rédiger'}
                 </div>
               </div>
               <ChevronRight size={16} style={{ color: 'var(--text-tertiary)', flexShrink: 0, alignSelf: 'center' }} />
@@ -1332,20 +1332,20 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
               const now = new Date()
               const cancelledWithPayment = sessions.filter(s => s.status === 'cancelled' && s.paymentAmount && s.paymentAmount > 0)
               const allBillableSessions = [...completedSessions, ...scheduledSessions, ...cancelledWithPayment]
-              const pAmountOf = s => s.paymentAmount ?? getRate(s.id)
-              
+              const pAmountOf = s => s.paymentAmount ?? safeGetRate(s.id)
+
               // totalBilled (Honoraires dûs) = completed + past scheduled + cancelled-with-payment
-              const totalBilled = sessions.filter(s => 
-                s.status === 'completed' || 
+              const totalBilled = sessions.filter(s =>
+                s.status === 'completed' ||
                 (s.status === 'scheduled' && new Date(s.date) <= now) ||
                 (s.status === 'cancelled' && s.paymentAmount > 0)
               ).reduce((sum, s) => sum + pAmountOf(s), 0)
 
               // totalPlanned (Honoraires planifiés) = future scheduled sessions
-              const totalPlanned = sessions.filter(s => 
+              const totalPlanned = sessions.filter(s =>
                 s.status === 'scheduled' && new Date(s.date) > now
               ).reduce((sum, s) => sum + pAmountOf(s), 0)
-              
+
               const totalForecast = totalBilled + totalPlanned
               const paidSessions = allBillableSessions.filter(s => s.paymentReceived)
               const totalCollected = paidSessions.reduce((sum, s) => sum + pAmountOf(s), 0)
@@ -1357,6 +1357,11 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                 return !!coveredBy
               })
               const remaining = totalForecast - totalCollected
+
+              // Safety aliases for potential scoped variables
+              const currentPhase = client?.phase || defaultPhaseKey
+              const currentRate = activeCycle?.rate || client?.sessionRate || sessionRates.client
+              const currentFrequency = client?.sessionFrequency || 2
 
               return (
                 <>
@@ -1403,51 +1408,53 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
 
                   {/* Alerts */}
                   {(() => {
-                    const unpaidCompleted = unpaid.filter(s => s.status === 'completed')
+                    const unpaidCompleted = unpaid.filter(s => s.status === 'completed' || s.isToConfirm)
                     return unpaidCompleted.length > 0 && (
-                    <div style={{
-                      display: 'flex', alignItems: 'center', gap: 6,
-                      padding: '6px 10px', background: '#FFFBEB',
-                      borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-xs)',
-                      border: '1px solid #FEF3C7'
-                    }}>
-                      <HelpCircle size={14} style={{ color: '#D97706', flexShrink: 0 }} />
-                      <span style={{ fontSize: '0.714rem', color: '#D97706', fontWeight: 600 }}>
-                        Séances à confirmer : {unpaidCompleted.length} séance{unpaidCompleted.length > 1 ? 's' : ''}
-                      </span>
-                    </div>
-                  )})()}
-                  {deferredSessions.length > 0 && (() => {
-                    const totalDue = totalBilled - totalCollected
-                    return (
-                    <div
-                      onClick={() => {
-                        const lines = deferredSessions.map(ds => {
-                          const dsNum = sessionNumbers[ds.id]
-                          const dsRate = getRate(ds.id)
-                          const pmLabel = { cheque: 'chèque', virement: 'virement' }[ds.paymentMethod] || ''
-                          return `• Séance ${dsNum} du ${formatDate(ds.date)} – ${dsRate}€ (${pmLabel})`
-                        }).join('\n')
-                        const reminder = `Relance paiement – ${deferredSessions.length} séance${deferredSessions.length > 1 ? 's' : ''} en attente d'encaissement.\nBonjour,\nJe me permets de vous contacter concernant les règlements suivants :\n${lines}\nMerci de procéder au règlement à votre convenance.\nBien cordialement`
-                        setContactNote(reminder)
-                        setShowContactForm(true)
-                      }}
-                      style={{
+                      <div style={{
                         display: 'flex', alignItems: 'center', gap: 6,
-                        padding: '6px 10px', background: '#FFF5F5',
+                        padding: '6px 10px', background: '#FFFBEB',
                         borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-xs)',
-                        border: '1px solid #FED7D7', cursor: 'pointer', transition: 'background 0.1s'
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.background = '#FED7D7'}
-                      onMouseLeave={e => e.currentTarget.style.background = '#FFF5F5'}
-                      title="Cliquer pour relancer les paiements"
-                    >
-                      <Hourglass size={14} style={{ color: 'var(--error)', flexShrink: 0 }} />
-                      <span style={{ fontSize: '0.714rem', color: 'var(--error)', fontWeight: 600 }}>
-                        Paiements en attente d'encaissement : {totalDue}€
-                      </span>
-                    </div>
-                  )})()}
+                        border: '1px solid #FEF3C7'
+                      }}>
+                        <HelpCircle size={14} style={{ color: '#D97706', flexShrink: 0 }} />
+                        <span style={{ fontSize: '0.714rem', color: '#D97706', fontWeight: 600 }}>
+                          Séances à confirmer : {unpaidCompleted.length} séance{unpaidCompleted.length > 1 ? 's' : ''}
+                        </span>
+                      </div>
+                    )
+                  })()}
+                  {deferredSessions.length > 0 && (() => {
+                    const totalDueRem = (totalBilled || 0) - (totalCollected || 0)
+                    return (
+                      <div
+                        onClick={() => {
+                          const lines = deferredSessions.map(ds => {
+                            const dsNum = sessionNumbers?.[ds.id] || '?'
+                            const dsRate = safeGetRate(ds.id)
+                            const pmLabel = { cheque: 'chèque', virement: 'virement' }[ds.paymentMethod] || ''
+                            return `• Séance ${dsNum} du ${formatDate(ds.date)} – ${dsRate}€ (${pmLabel})`
+                          }).join('\n')
+                          const reminder = `Relance paiement – ${deferredSessions.length} séance${deferredSessions.length > 1 ? 's' : ''} en attente d'encaissement.\nBonjour,\nJe me permets de vous contacter concernant les règlements suivants :\n${lines}\nMerci de procéder au règlement à votre convenance.\nBien cordialement`
+                          setContactNote(reminder)
+                          setShowContactForm(true)
+                        }}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 6,
+                          padding: '6px 10px', background: '#FFF5F5',
+                          borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-xs)',
+                          border: '1px solid #FED7D7', cursor: 'pointer', transition: 'background 0.1s'
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#FED7D7'}
+                        onMouseLeave={e => e.currentTarget.style.background = '#FFF5F5'}
+                        title="Cliquer pour relancer les paiements"
+                      >
+                        <Hourglass size={14} style={{ color: 'var(--error)', flexShrink: 0 }} />
+                        <span style={{ fontSize: '0.714rem', color: 'var(--error)', fontWeight: 600 }}>
+                          Paiements en attente d'encaissement : {totalDueRem}€
+                        </span>
+                      </div>
+                    )
+                  })()}
                   {pendingInvoices.length > 0 && (
                     <div style={{
                       display: 'flex', alignItems: 'center', gap: 6,
@@ -1456,13 +1463,13 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                       border: '1px solid #BEE3F8'
                     }}>
                       <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, flexShrink: 0 }}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A365D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary-500)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                           <polyline points="14 2 14 8 20 8" />
-                          <text x="12" y="17" textAnchor="middle" fill="#1A365D" stroke="none" fontSize="10" fontWeight="800">€</text>
+                          <text x="12" y="17" textAnchor="middle" fill="var(--primary-500)" stroke="none" fontSize="10" fontWeight="800">€</text>
                         </svg>
                       </span>
-                      <span style={{ fontSize: '0.714rem', color: '#1A365D', fontWeight: 600 }}>
+                      <span style={{ fontSize: '0.714rem', color: 'var(--primary-500)', fontWeight: 600 }}>
                         Factures à émettre : {pendingInvoices.length} séance{pendingInvoices.length > 1 ? 's' : ''}
                       </span>
                     </div>
@@ -1475,87 +1482,83 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
                       const sortedBillable = [...allBillableSessions].sort((a, b) => (b.date || '').localeCompare(a.date || ''))
                       let lastFinCycleId = null
                       return sortedBillable.map((s, idx) => {
-                      const sCycle = getSessionCycle(s)
-                      const sNum = sessionNumbers[s.id]
-                      const isPaid = s.paymentReceived
-                      const noPayment = !s.paymentMethod
-                      const rate = getRate(s.id)
-                      const isScheduled = s.status === 'scheduled'
-                      const isCancelled = s.status === 'cancelled'
-                      const showSep = therapyCycles.length > 1 && sCycle && lastFinCycleId !== null && sCycle.id !== lastFinCycleId
-                      lastFinCycleId = sCycle?.id
-                      return (
-                        <React.Fragment key={s.id}>
-                        {showSep && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '4px 0' }}>
-                            <div style={{ flex: 1, height: 1, background: 'var(--primary-200)' }} />
-                            <span style={{ fontSize: '0.571rem', fontWeight: 600, color: 'var(--primary-400)', whiteSpace: 'nowrap' }}>
-                              Thérapie #{therapyCycles.indexOf(sCycle) + 1}
-                            </span>
-                            <div style={{ flex: 1, height: 1, background: 'var(--primary-200)' }} />
-                          </div>
-                        )}
-                        <div key={s.id}
-                          onClick={() => setExpandedSessionId(s.id)}
-                          style={{
-                            display: 'flex', alignItems: 'center',
-                            padding: '3px 0', borderBottom: '1px solid var(--border-light)',
-                            gap: 6, cursor: 'pointer',
-                            borderRadius: 'var(--radius-sm)', transition: 'background 0.1s',
-                            opacity: isScheduled && !isPaid ? 0.6 : 1
-                          }}
-                          onMouseEnter={e => e.currentTarget.style.background = 'var(--primary-50)'}
-                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                          title="Ouvrir le détail de la séance"
-                        >
-                          <span style={{ fontSize: '0.714rem', color: isCancelled ? 'var(--error)' : isScheduled ? 'var(--text-tertiary)' : 'var(--text-secondary)', flex: 1, display: 'flex', alignItems: 'center', gap: 4 }}>
-                            {isCancelled ? `Annulée · ${formatDate(s.date)}` : (() => {
-                              if (isScheduled && !isCancelled) {
-                                const spc = getPhaseColor(s.phase)
-                                return <>
-                                  <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: spc.bg, color: spc.color, fontWeight: 700, fontSize: '0.643rem', padding: '1px 5px', borderRadius: 'var(--radius-sm)', minWidth: 20 }}>S{sNum}</span>
-                                  <span>· {formatDate(s.date)}</span>
-                                  <span style={{ fontSize: '0.571rem', fontWeight: 600, color: 'var(--text-tertiary)' }}>Planifiée</span>
-                                </>
-                              }
-                              return `S${sNum} · ${formatDate(s.date)}`
-                            })()}
-                          </span>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                            {isScheduled && !isPaid ? null : pAmountOf(s) === 0 ? (
-                              <span style={{ fontSize: '0.643rem', fontWeight: 700, color: 'var(--error)' }}>Séance offerte</span>
-                            ) : noPayment ? (
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: '0.571rem', fontWeight: 700, color: '#D97706', letterSpacing: '0.02em' }}>
-                                <HelpCircle size={9} /> CONFIRMER
-                              </span>
-                            ) : (
-                              <span style={{ fontSize: '0.643rem', fontWeight: isPaid ? 700 : 400, color: isPaid ? 'var(--success)' : 'var(--text-tertiary)' }}>
-                                {{ cheque: 'Chèque', virement: 'Virement', especes: 'Espèces' }[s.paymentMethod]}
-                                {isPaid ? ' ✓' : ''}
-                              </span>
-                            )}
-                            {(() => {
-                              const hasSelfInvoice = s.needsInvoice
-                              const coveredBy = sessions.find(other => other.needsInvoice && other.id !== s.id && (other.invoiceCoveredSessionIds || []).includes(s.id))
-                              const needsFact = hasSelfInvoice || !!coveredBy
-                              const factSent = hasSelfInvoice ? s.invoiceSent : coveredBy?.invoiceSent
-                              return needsFact ? (
-                                <span style={{ fontSize: '0.571rem', fontWeight: 700, color: factSent ? 'var(--success)' : '#1A365D', letterSpacing: '0.02em' }}>
-                                  FACTURE{factSent ? ' ✓' : ''}
+                        const sCycle = getSessionCycle(s)
+                        const sNum = sessionNumbers[s.id]
+                        const isPaid = s.paymentReceived
+                        const noPayment = !s.paymentMethod
+                        const rate = safeGetRate(s.id)
+                        const isScheduled = s.status === 'scheduled'
+                        const isCancelled = s.status === 'cancelled'
+                        const isToConfirm = s.isToConfirm || (isScheduled && s.isCompleted)
+                        const showSep = therapyCycles.length > 1 && sCycle && lastFinCycleId !== null && sCycle.id !== lastFinCycleId
+                        lastFinCycleId = sCycle?.id
+                        return (
+                          <React.Fragment key={s.id}>
+                            {showSep && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '4px 0' }}>
+                                <div style={{ flex: 1, height: 1, background: 'var(--primary-200)' }} />
+                                <span style={{ fontSize: '0.571rem', fontWeight: 600, color: 'var(--primary-400)', whiteSpace: 'nowrap' }}>
+                                  Thérapie #{therapyCycles.indexOf(sCycle) + 1}
                                 </span>
-                              ) : null
-                            })()}
-                          </div>
-                          <span style={{
-                            fontSize: '0.714rem', fontWeight: 700, minWidth: 40, textAlign: 'right',
-                            color: isScheduled && !isPaid ? 'var(--text-tertiary)' : (isPaid ? 'var(--success)' : 'var(--error)')
-                          }}>
-                            {isCancelled ? pAmountOf(s) : getRate(s.id)}€
-                          </span>
-                        </div>
-                        </React.Fragment>
-                      )
-                    })
+                                <div style={{ flex: 1, height: 1, background: 'var(--primary-200)' }} />
+                              </div>
+                            )}
+                            <div key={s.id}
+                              onClick={() => setExpandedSessionId(s.id)}
+                              style={{
+                                display: 'flex', alignItems: 'center',
+                                padding: '3px 0', borderBottom: '1px solid var(--border-light)',
+                                gap: 6, cursor: 'pointer',
+                                borderRadius: 'var(--radius-sm)', transition: 'background 0.1s',
+                                opacity: isScheduled && !isPaid && !isToConfirm ? 0.6 : 1
+                              }}
+                              onMouseEnter={e => e.currentTarget.style.background = 'var(--primary-50)'}
+                              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                              title="Ouvrir le détail de la séance"
+                            >
+                              <span style={{ fontSize: '0.714rem', color: isCancelled ? 'var(--error)' : isScheduled ? 'var(--text-tertiary)' : 'var(--text-secondary)', flex: 1, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                {isCancelled ? `Annulée · ${formatDate(s.date)}` : (() => {
+                                  if (isScheduled && !isCancelled && !isToConfirm) {
+                                    const spc = getPhaseColor(s.phase)
+                                    return <>
+                                      <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: spc.bg, color: spc.color, fontWeight: 700, fontSize: '0.643rem', padding: '1px 5px', borderRadius: 'var(--radius-sm)', minWidth: 20 }}>S{sNum}</span>
+                                      <span>· {formatDate(s.date)}</span>
+                                      <span style={{ fontSize: '0.571rem', fontWeight: 600, color: 'var(--text-tertiary)' }}>Planifiée</span>
+                                    </>
+                                  }
+                                  return `S${sNum} · ${formatDate(s.date)}`
+                                })()}
+                              </span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                {isScheduled && !isPaid && !isToConfirm ? null : pAmountOf(s) === 0 ? (
+                                  <span style={{ fontSize: '0.643rem', fontWeight: 700, color: 'var(--error)' }}>Séance offerte</span>
+                                ) : noPayment && (!isScheduled || isToConfirm) ? (
+                                  <ConfirmBadge />
+                                ) : (
+                                  <PaymentBadge method={s.paymentMethod} received={isPaid} size="sm" />
+                                )}
+                                {(() => {
+                                  const hasSelfInvoice = s.needsInvoice
+                                  const coveredBy = sessions.find(other => other.needsInvoice && other.id !== s.id && (other.invoiceCoveredSessionIds || []).includes(s.id))
+                                  const needsFact = hasSelfInvoice || !!coveredBy
+                                  const factSent = hasSelfInvoice ? s.invoiceSent : coveredBy?.invoiceSent
+                                  return needsFact ? (
+                                    <span style={{ fontSize: '0.571rem', fontWeight: 700, color: factSent ? 'var(--success)' : 'var(--primary-500)', letterSpacing: '0.02em' }}>
+                                      FACTURE{factSent ? ' ✓' : ''}
+                                    </span>
+                                  ) : null
+                                })()}
+                              </div>
+                              <span style={{
+                                fontSize: '0.714rem', fontWeight: 700, minWidth: 40, textAlign: 'right',
+                                color: isScheduled && !isPaid && !isToConfirm ? 'var(--text-tertiary)' : (isPaid ? 'var(--success)' : 'var(--error)')
+                              }}>
+                                {isCancelled ? pAmountOf(s) : safeGetRate(s.id)}€
+                              </span>
+                            </div>
+                          </React.Fragment>
+                        )
+                      })
                     })()}
                   </div>
                 </>
@@ -1568,30 +1571,49 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
       {/* Mes notes du dossier */}
       {showNotesModal && (
         <NotesModal
-          coupleName={getCoupleName(couple)}
-          noteCategories={noteCategories}
-          setNoteCategories={setNoteCategories}
-          globalNote={globalNote}
-          setGlobalNote={setGlobalNote}
+          clientName={getClientName(client)}
+          noteCategories={{
+            dynamique: client.noteDynamique || '',
+            axes: client.noteAxes || '',
+            vigilance: client.noteVigilance || '',
+            objectifs: client.noteObjectifs || ''
+          }}
+          setNoteCategories={(updater) => {
+            const current = {
+              dynamique: client.noteDynamique || '',
+              axes: client.noteAxes || '',
+              vigilance: client.noteVigilance || '',
+              objectifs: client.noteObjectifs || ''
+            }
+            const next = typeof updater === 'function' ? updater(current) : updater
+            updateClient(client.id, {
+              noteDynamique: next.dynamique,
+              noteAxes: next.axes,
+              noteVigilance: next.vigilance,
+              noteObjectifs: next.objectifs
+            })
+          }}
+          globalNote={client.notes || ''}
+          setGlobalNote={(val) => updateClient(client.id, { notes: val })}
           onClose={() => setShowNotesModal(false)}
         />
       )}
 
       {/* Session Detail Modal */}
       {expandedSessionId && (() => {
-        const session = allSessions.filter(s => s.coupleId === id).find(s => s.id === expandedSessionId)
+        const session = allSessions.filter(s => s.clientId === id).find(s => s.id === expandedSessionId)
         if (!session) return null
         const sessionNum = sessionNumbers[session.id]
         return (
           <SessionDetailModal
             session={session}
-            couple={couple}
-            sessions={allSessions.filter(s => s.coupleId === id)}
+            client={client}
+            sessions={allSessions.filter(s => s.clientId === id)}
             sessionNum={sessionNum}
             sessionModal={sessionModalState}
             sessionActions={sessionModalActions}
             therapy={{ phasesData: therapyPhasesData, defaultPhaseKey, phaseIcons, phaseColors, getPhaseColor, getPhaseIcon, sessionNumbers }}
-            utils={{ updateSession, formatDate, getCoupleName }}
+            utils={{ updateSession, formatDate, getClientName }}
           />
         )
       })()}
@@ -1599,28 +1621,28 @@ export default function CoupleDetailPage({ coupleIdProp, onClose } = {}) {
       {/* Edit Identity Panel */}
       {showEditModal && (
         <EditIdentityModal
-          couple={couple}
+          client={client}
           editState={editIdentityState}
           editActions={editIdentityActions}
-          therapy={{ phasesData: therapyPhasesData, phaseIcons, phaseColors, getPhaseColor, getPhaseIcon, phase, setPhase, status }}
+          therapy={{ phasesData: therapyPhasesData, phaseIcons, phaseColors, getPhaseColor, getPhaseIcon, phase: client.phase, setPhase: (val) => updateClient(client.id, { phase: val }), status: client.status }}
           data={{ clients, professionals, recruitmentSources }}
-          utils={{ updateClient, createClient, updatePro, createPro, navigate, getCoupleName, getClientType, getCoupleInitials, findDuplicateClients, findDuplicatePros, DuplicateAlert, formatDate, getPhaseLabel, showToast }}
+          utils={{ updateClient, createClient, updatePro, createPro, navigate, getClientName, getClientType, getClientInitials, findDuplicateClients, findDuplicatePros, DuplicateAlert, formatDate, getPhaseLabel, showToast }}
         />
       )}
 
       {/* Delete Confirmation */}
       {showDeleteConfirm && (
         <DeleteConfirmModal
-          couple={couple}
-          coupleName={getCoupleName(couple)}
+          client={client}
+          clientName={getClientName(client)}
           onConfirm={async () => {
             const now = new Date().toISOString()
             if (updateClient) {
-              await updateClient(couple.id, { deleted: true, deletedAt: now })
+              await updateClient(client.id, { deleted: true, deletedAt: now })
             }
             setShowDeleteConfirm(false)
             setShowEditModal(false)
-            navigate(couple.phase === 'prospect' ? '/couples?tab=prospects' : '/couples')
+            navigate(client.phase === 'prospect' ? '/clients?tab=prospects' : '/clients')
           }}
           onCancel={() => setShowDeleteConfirm(false)}
         />

@@ -29,12 +29,12 @@ export const recruitmentSources = [
 ]
 
 export const sessionRates = {
-  couple: 75,
+  client: 75,
   individual: 60
 }
 
 export const clientTypeLabels = {
   individual: 'Individuel',
-  couple: 'Couple',
+  client: 'Couple',
   family: 'Famille'
 }
