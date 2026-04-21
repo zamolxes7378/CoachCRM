@@ -22,6 +22,13 @@ const ReseauProPage = lazy(() => import('./pages/ReseauProPage'))
 const SettingsPage = lazy(() => import('./pages/SettingsPage'))
 const HelpPage = lazy(() => import('./pages/HelpPage'))
 
+// Pages publiques légales (accessibles sans authentification)
+const MentionsLegalesPage = lazy(() => import('./pages/public/MentionsLegalesPage'))
+const ConfidentialitePage = lazy(() => import('./pages/public/ConfidentialitePage'))
+const CguPage = lazy(() => import('./pages/public/CguPage'))
+const CookiesPage = lazy(() => import('./pages/public/CookiesPage'))
+const AccessibilitePage = lazy(() => import('./pages/public/AccessibilitePage'))
+
 /**
  * GlobalErrorBoundary — Capture les erreurs de rendu React pour éviter la page blanche.
  */
@@ -87,6 +94,33 @@ function PendingInviteScreen({ email, onSignOut }) {
         </button>
       </div>
     </div>
+  )
+}
+
+const PUBLIC_LEGAL_PATHS = [
+  '/mentions-legales',
+  '/confidentialite',
+  '/cgu',
+  '/cookies',
+  '/accessibilite',
+]
+
+/** Renders public legal routes independently of authentication state. */
+function PublicLegalRoutes() {
+  return (
+    <Suspense fallback={
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
+        <div className="spinner" />
+      </div>
+    }>
+      <Routes>
+        <Route path="/mentions-legales" element={<MentionsLegalesPage />} />
+        <Route path="/confidentialite" element={<ConfidentialitePage />} />
+        <Route path="/cgu" element={<CguPage />} />
+        <Route path="/cookies" element={<CookiesPage />} />
+        <Route path="/accessibilite" element={<AccessibilitePage />} />
+      </Routes>
+    </Suspense>
   )
 }
 
@@ -227,6 +261,15 @@ export default function App() {
     }
   }
 
+  // Public legal routes are always accessible — check before any auth gate
+  if (PUBLIC_LEGAL_PATHS.includes(window.location.pathname)) {
+    return (
+      <BrowserRouter>
+        <PublicLegalRoutes />
+      </BrowserRouter>
+    )
+  }
+
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg-main)' }}>
@@ -269,6 +312,11 @@ export default function App() {
                   </div>
                 }>
                   <Routes>
+                    <Route path="/mentions-legales" element={<MentionsLegalesPage />} />
+                    <Route path="/confidentialite" element={<ConfidentialitePage />} />
+                    <Route path="/cgu" element={<CguPage />} />
+                    <Route path="/cookies" element={<CookiesPage />} />
+                    <Route path="/accessibilite" element={<AccessibilitePage />} />
                     <Route path="/" element={<DashboardPage user={user} />} />
                     <Route path="/clients" element={<ClientsPage />} />
                     <Route path="/clients/:id" element={<ClientDetailPage />} />
