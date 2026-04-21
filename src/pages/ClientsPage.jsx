@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react'
+import { todayIso } from '../lib/date'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Plus, Search, Users, User, TrendingUp, X, ArrowDownUp, ArrowUpAZ, Calendar, Globe, Phone, UserCheck, CheckCircle, XCircle, HelpCircle, Link2, Award, LayoutGrid, LayoutList, Star, Baby, Trash2, Briefcase, Sprout, UserPlus, CheckSquare, Square, Archive } from 'lucide-react'
 // professionals removed — now from DataContext
@@ -1038,7 +1039,7 @@ export default function ClientsPage() {
                     onClick={async () => {
                       setCreateError(null)
                       try {
-                        const today = new Date().toISOString().split('T')[0]
+                        const today = todayIso()
                         // Build new client object
                         const newClient = {
                           type: newClientType || 'client',
@@ -1099,7 +1100,7 @@ export default function ClientsPage() {
                             }
                           } else {
                             // Professionnel externe → créer dans Supabase professionals + lien parrainage-pro
-                            const today2 = new Date().toISOString().split('T')[0]
+                            const today2 = todayIso()
                             const proName = `${externalReferrer.firstName || ''} ${externalReferrer.lastName || ''}`.trim()
                             // Check if this pro already exists
                             const existingPro = professionals.find(p =>

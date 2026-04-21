@@ -15,6 +15,7 @@ import { useConfirm } from '../context/ConfirmContext'
 import ActionDetailPanel from '../components/dashboard/ActionDetailPanel'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import { useEscapeKey } from '../hooks/useEscapeKey'
+import { todayIso } from '../lib/date'
 
 
 export default function DashboardPage({ user }) {
@@ -28,7 +29,7 @@ export default function DashboardPage({ user }) {
   const [searchDate, setSearchDate] = useState('')
   const [showNewSession, setShowNewSession] = useState(false)
   const [newSessionClient, setNewSessionClient] = useState('')
-  const [newSessionDate, setNewSessionDate] = useState(() => new Date().toISOString().split('T')[0])
+  const [newSessionDate, setNewSessionDate] = useState(() => todayIso())
   const [newSessionTime, setNewSessionTime] = useState(() => {
     const now = new Date()
     return `${String(now.getHours()).padStart(2, '0')}:00`
@@ -60,7 +61,7 @@ export default function DashboardPage({ user }) {
   const allSessionsWithClient = sessions
     .map(s => ({ ...s, client: clients.find(c => c.id === s.clientId) }))
 
-  const todayStr = new Date().toISOString().split('T')[0]
+  const todayStr = todayIso()
   const pastSessions = allSessionsWithClient.filter(s => (s.date?.split('T')[0] || '') < todayStr).sort((a, b) => (b.date || '').localeCompare(a.date || ''))
   const upcomingSessions = allSessionsWithClient.filter(s => (s.date?.split('T')[0] || '') >= todayStr).sort((a, b) => (a.date || '').localeCompare(b.date || ''))
   const allSessions = [...pastSessions, ...upcomingSessions]
@@ -142,7 +143,7 @@ export default function DashboardPage({ user }) {
                 const now = new Date()
                 setShowNewSession(true)
                 setNewSessionClient('')
-                setNewSessionDate(now.toISOString().split('T')[0])
+                setNewSessionDate(todayIso())
                 setNewSessionTime(`${String(now.getHours()).padStart(2, '0')}:00`)
               }} />
               <NewClientButton onClick={() => navigate('/clients?newClient=1')} />
@@ -229,7 +230,7 @@ export default function DashboardPage({ user }) {
                     {Object.entries(groupedSessions).map(([dateKey, sessions], groupIdx) => (
                       <div key={dateKey} style={{ marginBottom: 'var(--space-md)' }}>
                         {(() => {
-                          const today = new Date().toISOString().split('T')[0]
+                          const today = todayIso()
                           const isToday = dateKey === today
                           return (
                             <div style={{

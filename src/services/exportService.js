@@ -1,3 +1,5 @@
+import { todayIso } from '../lib/date'
+
 export async function exportClientDossierExcel(client, sessions, reports, formatDate, getPhaseLabel) {
   const [{ default: ExcelJS }, { saveAs }] = await Promise.all([
     import('exceljs'),
@@ -90,6 +92,6 @@ export async function exportClientDossierExcel(client, sessions, reports, format
   // Export File
   const buffer = await workbook.xlsx.writeBuffer()
   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-  const fileName = `Dossier_Client_${client.firstName}_${client.lastName}_${new Date().toISOString().split('T')[0]}.xlsx`
+  const fileName = `Dossier_Client_${client.firstName}_${client.lastName}_${todayIso()}.xlsx`
   saveAs(blob, fileName)
 }

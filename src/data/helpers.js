@@ -3,6 +3,7 @@
 // ═══════════════════════════════════════════════════════
 
 import { therapyPhases, prospectStages } from './constants'
+import { todayIso } from '../lib/date'
 
 // ── Noms & initiales ──
 
@@ -89,7 +90,7 @@ export function formatDashboardDate(dateStr) {
   const date = new Date(dateStr)
   if (isNaN(date.getTime())) return '—'
   const now = new Date()
-  const nowStr = now.toISOString().split('T')[0]
+  const nowStr = todayIso()
   if (dateStr === nowStr) {
     const todayFull = date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
     return `Aujourd'hui – ${todayFull}`
@@ -129,7 +130,7 @@ export function formatRelativeDate(dateStr) {
 // ── Sessions du jour ──
 
 export function getTodaySessions(sessions, clients) {
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayIso()
   return sessions
     .filter(s => s.date?.startsWith(today))
     .sort((a, b) => a.date.localeCompare(b.date))
