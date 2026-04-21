@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useToast } from './ToastContext'
 import * as ds from '../services/dataService'
 import * as invService from '../services/invoiceService'
@@ -29,6 +29,8 @@ export function DataProvider({ user, children }) {
   const { showToast } = useToast()
   const [rawClients, setRawClients] = useState([])
   const [rawSessions, setRawSessions] = useState([])
+  const rawSessionsRef = useRef(rawSessions)
+  useEffect(() => { rawSessionsRef.current = rawSessions }, [rawSessions])
   const [rawReports, setRawReports] = useState([])
   const [rawContacts, setRawContacts] = useState([])
   const [rawProfessionals, setRawProfessionals] = useState([])
@@ -257,7 +259,8 @@ export function DataProvider({ user, children }) {
         if (row) {
           setRawSessions(prev => applyInsert(prev, row))
           // Alliance check may update the client's phase — re-fetch that client
-          await checkAllianceTransition(row, session, rawClients, rawSessions, sessionRates, defaultPhaseKey)
+          const updatedSessions = [row, ...rawSessions]
+          await checkAllianceTransition(row, session, rawClients, updatedSessions, sessionRates, defaultPhaseKey)
           if (row.client_id) await _refreshAllianceClients([row.client_id])
           showToast('Séance créée avec succès.', 'success')
         }
@@ -271,7 +274,7 @@ export function DataProvider({ user, children }) {
     deleteSession: async (id) => {
       try {
         // Snapshot before deletion for alliance check
-        const sessionsSnapshot = [...rawSessions]
+        const sessionsSnapshot = [...rawSessionsRef.current]
         const ok = await ds.deleteSession(id)
         if (ok) {
           setRawSessions(prev => applyDelete(prev, id))
@@ -292,7 +295,7 @@ export function DataProvider({ user, children }) {
     deleteSessions: async (ids) => {
       try {
         // Snapshot raw sessions BEFORE deletion for alliance check
-        const sessionsSnapshot = [...rawSessions]
+        const sessionsSnapshot = [...rawSessionsRef.current]
         const ok = await ds.deleteSessions(ids)
         if (ok) {
           setRawSessions(prev => applyDeleteMany(prev, ids))
