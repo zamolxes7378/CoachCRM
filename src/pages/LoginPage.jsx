@@ -271,7 +271,7 @@ export default function LoginPage({ error }) {
           }}>
             {[
               { icon: CheckCircle, text: 'Gratuit jusqu\'à 5 clients, sans engagement' },
-              { icon: Shield, text: 'Données hébergées en France, conformes RGPD' },
+              { icon: Shield, text: 'Hébergement Supabase · région UE (eu-west-2, Londres — GDPR-adéquat)' },
               { icon: Sparkles, text: 'IA intégrée, aucune configuration requise' }
             ].map((item, i) => {
               const TrustIcon = item.icon
@@ -303,7 +303,10 @@ export default function LoginPage({ error }) {
 
           {/* Footer */}
           <p style={{ marginTop: 20, fontSize: '0.643rem', color: 'rgba(255,255,255,0.25)', lineHeight: 1.5 }}>
-            En vous connectant, vous acceptez nos <span style={{ color: 'rgba(218,165,32,0.6)', cursor: 'pointer' }}>conditions d'utilisation</span> et notre <span style={{ color: 'rgba(218,165,32,0.6)', cursor: 'pointer' }}>politique de confidentialité</span>.
+            En vous connectant, vous acceptez nos{' '}
+            <a href="/mentions-legales" style={{ color: 'rgba(218,165,32,0.6)' }}>Mentions légales</a>
+            {' '}et notre{' '}
+            <a href="/confidentialite" style={{ color: 'rgba(218,165,32,0.6)' }}>Confidentialité</a>.
           </p>
 
 
