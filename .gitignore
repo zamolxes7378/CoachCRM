@@ -7,3 +7,6 @@ dist/
 # Never commit live seed or data-migration scripts with real credentials
 supabase/seed.sql
 supabase/transfer_*.sql
+
+# Sidecar file for scripts/history-purge.sh — contains leaked literals
+scripts/.purge-strings.local

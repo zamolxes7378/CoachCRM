@@ -66,15 +66,20 @@ Remplir les valeurs réelles dans `.env` :
 
 ```env
 VITE_SUPABASE_URL=https://<your-project-id>.supabase.co
-VITE_SUPABASE_ANON_KEY=<your-anon-key>
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_<your-publishable-key>
 ```
 
 Les valeurs se trouvent dans le dashboard Supabase :
-→ **Settings → API** — colonne "Project URL" et "anon / public" key.
+→ **Settings → API Keys** — onglet "API Keys" (nouveau modèle publishable/secret).
+CoachCRM utilise les clés `sb_publishable_*` côté client. Les anciennes clés
+`anon` / `service_role` (JWT) ont été désactivées — si vous voyez
+`VITE_SUPABASE_ANON_KEY` quelque part, la valeur est obsolète et doit être
+remplacée.
 
 > ⚠️ Ne jamais commiter de valeurs réelles dans ce fichier ou dans la documentation.
-> La clé anon est côté client, mais son exposition dans le code source est évitable
-> et complique la rotation. Toujours la lire depuis les variables d'environnement.
+> La clé publishable est côté client (public par conception) mais son exposition
+> dans le code source est évitable et complique la rotation. Toujours la lire
+> depuis les variables d'environnement.
 
 ---
 
