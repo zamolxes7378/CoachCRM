@@ -129,7 +129,7 @@ export default function AdminPage() {
             {admins.map(a => (
               <tr key={a.id}>
                 <td style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
-                  {a.photo_url && <img src={a.photo_url} alt="" style={{ width: 28, height: 28, borderRadius: '50%' }} />}
+                  {a.photo_url && <img src={a.photo_url} alt="" loading="lazy" referrerPolicy="no-referrer" style={{ width: 28, height: 28, borderRadius: '50%' }} />}
                   {a.name || 'Sans nom'}
                 </td>
                 <td className="caption" style={{ color: 'var(--text-secondary)' }}>{a.email}</td>
