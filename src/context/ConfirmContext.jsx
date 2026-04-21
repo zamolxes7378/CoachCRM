@@ -36,7 +36,8 @@ export function ConfirmProvider({ children }) {
             ref={dialogRef}
             role="alertdialog"
             aria-modal="true"
-            aria-labelledby="confirm-dialog-title"
+            aria-labelledby={state.title ? "confirm-dialog-title" : undefined}
+            aria-label={state.title ? undefined : (state.message?.slice(0, 80) || "Confirmation")}
             aria-describedby="confirm-dialog-message"
             className="confirm-dialog"
             onClick={e => e.stopPropagation()}

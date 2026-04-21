@@ -272,14 +272,14 @@ h3,
   color: var(--accent-main);
 }
 
-.sidebar-brand h1 {
+.sidebar-brand .h1 {
   font-size: 1.143rem;
   font-weight: 700;
   color: var(--text-inverse);
   letter-spacing: -0.3px;
 }
 
-.sidebar-brand h1 span {
+.sidebar-brand .h1 span {
   font-weight: 400;
   color: var(--text-sidebar-muted);
 }
