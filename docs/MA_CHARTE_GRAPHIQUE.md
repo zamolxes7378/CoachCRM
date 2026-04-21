@@ -38,10 +38,10 @@ COULEURS PRINCIPALES
 │   ├── 50:  #F0F4F8   ← Fond de page / surfaces très légères
 │   ├── 100: #D9E2EC   ← Bordures, séparateurs
 │   ├── 200: #BCCCDC   ← Éléments désactivés
-│   ├── 300: #9FB3C8   ← Texte tertiaire
+│   ├── 300: #9FB3C8   ← Réservé aux éléments décoratifs / icônes (ne pas utiliser pour du texte)
 │   ├── 400: #829AB1   ← Icônes secondaires
-│   ├── 500: #627D98   ← Texte secondaire
-│   ├── 600: #486581   ← Texte principal
+│   ├── 500: #627D98   ← Texte tertiaire (≥18pt uniquement — ratio 4.12:1)
+│   ├── 600: #486581   ← Texte secondaire (ratio 5.44:1 — passe AA)
 │   ├── 700: #334E68   ← Titres, navigation active
 │   ├── 800: #243B53   ← En-têtes, sidebar
 │   └── 900: #102A43   ← Texte fort, accents
@@ -58,11 +58,15 @@ COULEURS PRINCIPALES
 │   ├── Sidebar:      #243B53  ← Sidebar (fond sombre bleu marine)
 │   └── Sidebar Text: #D9E2EC  ← Texte dans la sidebar
 │
-└── Sémantiques
-    ├── Success:  #38A169  (vert uniquement pour validation, discret)
-    ├── Warning:  #D69E2E  (doré)
+└── Sémantiques  [valeurs mises à jour Track I — audit a11y 2026-04-21]
+    ├── Success:  #2F855A  (vert — ratio 4.63:1 sur blanc, passe AA)  [était #38A169 = 3.07:1]
+    ├── Warning:  #D69E2E  (doré — réserver aux ≥18pt ou avec fond coloré; ratio 2.35:1 sur blanc)
     ├── Error:    #C53030  (rouge doux)
-    └── Info:     #3182CE  (bleu informatif)
+    └── Info:     #2B6CB0  (bleu — ratio 5.20:1 sur blanc, passe AA)  [était #3182CE = 4.01:1]
+
+Tokens texte (--text-secondary / --text-tertiary) :
+  --text-secondary: #486581  (primary-600 — ratio 5.44:1 sur blanc)  [était #627D98 = 4.12:1]
+  --text-tertiary:  #627D98  (primary-500 — ratio 4.12:1, acceptable ≥18pt)  [était #9FB3C8 = 2.15:1]
 ```
 
 ### Mode Sombre (option)
