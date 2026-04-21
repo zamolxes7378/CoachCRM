@@ -11,6 +11,7 @@ import { countClientsBySource, exportSponsorshipCSV } from '../services/sponsors
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import { useEscapeKey } from '../hooks/useEscapeKey'
 import { getClientName } from '../data/helpers'
+import { MONTHS_FR } from '../lib/date'
 
 const AbsenceDash = () => (
   <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', minHeight: '1em' }}>
@@ -74,7 +75,6 @@ export default function FinancesPage() {
     }
   }
 
-  const MONTHS_FR = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
   const MONTHS_SHORT = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc']
 
   const [modalClientId, setModalClientId] = useState(null)
@@ -472,7 +472,7 @@ export default function FinancesPage() {
           <table className="table-standard">
             <thead>
               <tr>
-                {['Date', 'Type', 'Client', 'Source', 'Statut', 'Montant', 'Paiement', 'Encaissé', 'Facture'].map(h => (
+                {['Date', 'Type', 'Client', 'Source', 'Statut', 'Montant', 'Paiement', 'Encaissé', 'Rappel'].map(h => (
                   <th key={h} style={{ textAlign: ['Date', 'Client'].includes(h) ? 'left' : 'center' }}>
                     {h}
                   </th>
@@ -585,7 +585,7 @@ export default function FinancesPage() {
                   {currentStats.paid.length}/{currentStats.billable.length} encaissé{currentStats.paid.length > 1 ? 's' : ''}
                 </td>
                 <td style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)' }}>
-                  {currentStats.allSessions.filter(s => !!getInvoiceForSession(s.id)).length} facture{currentStats.allSessions.filter(s => !!getInvoiceForSession(s.id)).length > 1 ? 's' : ''}
+                  {currentStats.allSessions.filter(s => !!getInvoiceForSession(s.id)).length} rappel{currentStats.allSessions.filter(s => !!getInvoiceForSession(s.id)).length > 1 ? 's' : ''} de paiement
                 </td>
               </tr>
             </tfoot>
@@ -629,7 +629,7 @@ export default function FinancesPage() {
                 return d >= exportFrom && d <= exportTo
               })
               const rows = [
-                ['Date', 'Client', 'Type', 'Statut', 'Montant', 'Paiement', 'Encaissé', 'Facture'],
+                ['Date', 'Client', 'Type', 'Statut', 'Montant', 'Paiement', 'Encaissé', 'Rappel de paiement'],
                 ...[...filtered].sort((a, b) => (a.date || '').localeCompare(b.date || '')).map(s => [
                   formatDate(s.date),
                   getClientNameByContext(s.clientId),

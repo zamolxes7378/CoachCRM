@@ -27,6 +27,8 @@ import ClientStatsPanel from '../components/client/ClientStatsPanel'
 import ClientNotesPreview from '../components/client/ClientNotesPreview'
 import ClientCreationMarker from '../components/client/ClientCreationMarker'
 import { exportClientDossierExcel } from '../services/exportService'
+import { AiTransparencyBanner } from '../components/AiTransparencyBanner'
+import { supabase } from '../lib/supabase.js'
 
 export default function ClientDetailPage({ clientIdProp, sessionIdProp, onClose } = {}) {
   const params = useParams()
@@ -76,6 +78,15 @@ export default function ClientDetailPage({ clientIdProp, sessionIdProp, onClose 
   const [phaseFilter, setPhaseFilter] = useState(null)
   const [contactDate, setContactDate] = useState(new Date().toISOString().slice(0, 16))
   const contacts = useMemo(() => allContacts.filter(c => c.clientId === id), [allContacts, id])
+  const handleValidateAiReport = async (reportId) => {
+    const { data: { user: currentUser } } = await supabase.auth.getUser()
+    await supabase.from('reports').update({
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: currentUser?.id ?? null,
+    }).eq('id', reportId)
+    refreshData()
+  }
+
   const [aiGenerating, setAiGenerating] = useState(false)
   const [showNotesModal, setShowNotesModal] = useState(false)
   const [confirmingContactId, setConfirmingContactId] = useState(null)
@@ -369,6 +380,15 @@ export default function ClientDetailPage({ clientIdProp, sessionIdProp, onClose 
         </div>
 
         <div>
+
+          {/* AI Report Transparency Banners */}
+          {reports.filter(r => r.ai_generated).map(report => (
+            <AiTransparencyBanner
+              key={report.id}
+              report={report}
+              onValidate={() => handleValidateAiReport(report.id)}
+            />
+          ))}
 
           {/* AI Synthesis */}
           <ClientAiSynthesisPanel
