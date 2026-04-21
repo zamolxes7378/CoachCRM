@@ -252,7 +252,7 @@ Utilisé lorsqu'une information est manquante ou non applicable pour maintenir l
 | **Rapport disponible** | `SessionCard.jsx` | Icône à côté du résumé CR | `size={16\|18}` |
 | **Rédiger CR** | `SessionCard.jsx` | Badge orange « Rédiger CR » | `size={11}` |
 | **Carte urgence** | `DashboardPage.jsx` | `N CR à rédiger` (fond `#EBF8FF`) | `size={18}` |
-| **KPI stats** | `ClientDetailPage.jsx` | Compteur « CR en attente » | `size={24} color={warning\|info}` |
+| **KPI stats** | `ClientStatsPanel.jsx` | Compteur « CR en attente » | `size={24} color={warning\|info}` |
 | **Label section** | `SessionDetailModal.jsx` | Titre « Compte-rendu » / « Note de préparation » | `size={14}` |
 
 
@@ -299,7 +299,7 @@ L'icône famille est encapsulée dans `ClientTypeBadge.jsx` via le sous-composan
 |----------|-----------------------|----------------|
 | Wizard de création (ClientsPage) | 36–40px | `CLIENT_TYPE_STYLES` |
 | Vue cartes (ClientsPage grid) | 22px | `CLIENT_TYPE_STYLES` |
-| En-tête fiche client (ClientDetailPage) | 18px | `ClientTypeIcon` |
+| En-tête fiche client (ClientHeaderPanel) | 18px | `ClientTypeIcon` |
 | Panneau édition (EditIdentityModal) | 15px | `CLIENT_TYPE_STYLES` |
 | **Vignette ronde SessionCard** | 40px | `ClientTypeBadge` |
 | **Vignette ronde ActionDetailPanel** | 40px (avec bordure) | `ClientTypeBadge` + `showBorder` |
@@ -606,8 +606,8 @@ Le format « Tableau Standard » s'applique à **tous** les tableaux de l'applic
 | # | Vue | Composant | Élément rendu |
 |---|-----|-----------|---------------|
 | 1 | **SessionCard** (badge) | `SessionCard.jsx` | `<HelpCircle size={9} /> CONFIRMER` |
-| 2 | **Fiche client — alerte globale** | `ClientDetailPage.jsx` | `<HelpCircle size={14} /> Séances à confirmer : N séances` |
-| 3 | **Fiche client — badge par séance** | `ClientDetailPage.jsx` | `<HelpCircle size={9} /> À CONFIRMER / À RÉGLER` |
+| 2 | **Fiche client — alerte globale** | `ClientTimelinePanel.jsx` / `ClientFinancialPanel.jsx` | `<HelpCircle size={14} /> Séances à confirmer : N séances` |
+| 3 | **Fiche client — badge par séance** | `ClientTimelinePanel.jsx` | `<HelpCircle size={9} /> À CONFIRMER / À RÉGLER` |
 | 4 | **Modale détail séance** | `SessionDetailModal.jsx` | `<HelpCircle size={14} /> Séance à confirmer — Veuillez renseigner...` |
 | 5 | **Dashboard — carte urgence** | `DashboardPage.jsx` | Carte `HelpCircle` + `N paiements à confirmer` |
 | 7 | **Finances — tableau détail** | `FinancesPage.jsx` | Badge texte `À confirmer` (fond `#FFFBEB`, couleur `#D97706`) |
@@ -632,7 +632,7 @@ Icône custom **SVG document + symbole €** utilisée **systématiquement** pou
 
 | Token | Valeur | Usage |
 |-------|--------|-------|
-| **Couleur icône/texte** | `var(--primary-500)` (Bleu) | Icône SVG, libellés, compteurs |
+| **Couleur icône/texte** | `#627D98` (= `var(--primary-500)`) | Icône SVG, libellés, compteurs |
 | **Fond alerte** | `#EBF8FF` (Bleu très pâle) | Background des bandeaux d'alerte |
 | **Bordure** | `#BEE3F8` | Bordure des bandeaux d'alerte |
 
@@ -643,14 +643,28 @@ Icône custom **SVG document + symbole €** utilisée **systématiquement** pou
 | **Dashboard — Action requise** | Carte urgence « N facture(s) à envoyer » | 18px |
 | **Fiche client — Comptabilité** | Bandeau alerte « Factures à émettre : N séances » | 16px |
 
-> **Règle absolue** : La couleur `var(--primary-500)` est la référence unique pour toute la signalétique de facturation en attente. Ne jamais utiliser d'autres nuances de bleu non standard pour ces éléments.
+> [!WARNING]
+> **Contrainte `UrgencyCard`** : Les couleurs passées aux cartes `UrgencyCard` doivent être en **format hex** (ex: `#627D98`), jamais en `var(--xxx)`. Le composant construit la bordure via `${color}30` (ajout d'opacité hex), ce qui ne fonctionne qu'avec des valeurs hex littérales.
 
-### Badge « FACTURE »
+### Badge « FACTURE » — Composant `InvoiceBadge` (obligatoire)
+
+> [!IMPORTANT]
+> **Composant partagé obligatoire** : Tout affichage du statut de facturation doit utiliser le composant `src/components/InvoiceBadge.jsx`.
+> Il est **interdit** de dupliquer le rendu du badge facture inline dans les pages consommatrices.
 
 | État | Libellé | Couleur Texte | Fond |
 |------|---------|---------------|------|
-| **À émettre** | « À émettre » | `var(--primary-500)` (Bleu) | `#EBF8FF` + bordure `#BEE3F8` |
-| **Facturée** | « Facturée » | `var(--success)` (#38A169) | transparent |
+| **À émettre** (`sent=false`) | « FACTURE » | `var(--primary-500)` (Bleu marine) | transparent |
+| **Émise** (`sent=true`) | « FACTURE » | `var(--success)` (#38A169) | transparent |
+
+**Props** : `sent` (boolean), `size` (`sm` / `md`).
+
+**Emplacements** :
+| Vue | Fichier | Taille |
+|-----|---------|--------|
+| **Carte séance** | `SessionCard.jsx` | `sm` |
+| **Suivi financier** | `ClientFinancialPanel.jsx` | `sm` |
+| **Tableau Finances** | `FinancesPage.jsx` | `sm` |
 
 ### Badge « ANNULATION »
 
@@ -664,6 +678,48 @@ Icône custom **SVG document + symbole €** utilisée **systématiquement** pou
 > ⚠️ **Règle absolue** : Le libellé « Annulation tardive » est proscrit. Seul le terme **« Annulation facturée »** doit être utilisé pour les séances annulées avec maintien du tarif.
 
 > ⚠️ **Règle absolue** : ne jamais utiliser `#92400E` ou toute autre nuance de brun pour ces éléments. La couleur `#D97706` est la référence unique pour toute la signalétique de confirmation.
+
+### Badge « CONFIRMER » — Composant `ConfirmBadge` (obligatoire)
+
+> [!IMPORTANT]
+> **Composant partagé obligatoire** : Tout affichage du badge « CONFIRMER » doit utiliser le composant `src/components/ConfirmBadge.jsx`.
+> Il est **interdit** de dupliquer le rendu du badge confirmation inline dans les pages consommatrices.
+
+| Propriété | Valeur |
+|-----------|--------|
+| **Icône** | `HelpCircle` (14px) |
+| **Couleur** | `#D97706` (ambre/moutarde) |
+| **Texte** | « CONFIRMER » |
+| **Tooltip** | « Mode de paiement non renseigné » |
+| **Style** | `fontSize: 0.643rem`, `fontWeight: 600`, `letterSpacing: 0.02em` |
+
+**Contexte d'apparition** : Ce badge s'affiche sur les séances passées dont le paiement n'a pas encore été renseigné (pas de `paymentMethod`). Il signale au thérapeute qu'il doit confirmer le mode de règlement.
+
+**Emplacements** :
+| Vue | Fichier |
+|-----|---------|
+| **Carte séance** | `SessionCard.jsx` |
+| **Suivi financier** | `ClientFinancialPanel.jsx` |
+
+### Badge « PaymentBadge » (Composant partagé)
+
+Badge unifié pour les modes de paiement **Chèque / Virement / Espèces**. Composant : `src/components/PaymentBadge.jsx`.
+
+| État | Couleur texte | Font-weight | Dot | Check |
+|------|--------------|-------------|-----|-------|
+| **Non encaissé** | `var(--error)` (rouge) | 500 | Rouge 5px | — |
+| **Encaissé** | `var(--success)` (vert) | 700 | Vert 5px | — |
+
+**Props** : `method` (`cheque` / `virement` / `especes`), `received` (boolean), `size` (`sm` / `md`).
+
+**Emplacements** :
+| Vue | Fichier | Taille |
+|-----|---------|--------|
+| **Carte séance** | `SessionCard.jsx` | `md` |
+| **Suivi financier** | `ClientFinancialPanel.jsx` | `sm` |
+| **Tableau Finances** | `FinancesPage.jsx` | `sm` |
+
+> **Règle absolue** : Toute affichage d'un mode de paiement (Chèque/Virement/Espèces) doit utiliser `PaymentBadge`. Il est interdit de dupliquer le mapping `{ cheque: 'Chèque', ... }` et les couleurs inline.
 
 ---
 
@@ -717,6 +773,20 @@ Style visuel pour tout champ dont la saisie est requise :
 - Couleur de l'astérisque et de la bordure : `--error` (`#C53030`) — le rouge doux de la palette sémantique
 
 ---
+
+### États de chargement & Erreurs
+
+#### 1. Spinner (Chargement de page)
+Utilisé pour les transitions de page et les chargements de données initiaux.
+- **Sélecteur CSS** : `.spinner`
+- **Design** : Anneau fin, 30x30px (standard) / 18x18px (bouton), couleur `var(--accent-main)`.
+- **Animation** : Rotation fluide `spin 0.8s linear infinite`.
+
+#### 2. État d'erreur (Page / Section)
+Utilisé lorsqu'un composant échoue à charger ses données.
+- **Icône** : `AlertCircle` (Lucide), `size={48}`, couleur `var(--error)`.
+- **Structure** : Icône centrée + Titre H2 + Message explicatif + Bouton d'action [Réessayer].
+- **Mise en page** : Padding `var(--space-xl)`, alignement centré.
 
 ## Modale de Confirmation / Alerte
 

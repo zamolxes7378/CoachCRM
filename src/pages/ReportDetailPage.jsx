@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, FileText, AlertTriangle, PenTool, TrendingUp, BookOpen, Heart, Clock } from 'lucide-react'
+import { ArrowLeft, AlertTriangle, PenTool, TrendingUp, BookOpen, Heart, Clock } from 'lucide-react'
+import ReportIcon from '../components/ReportIcon'
 import { useData } from '../context/DataContext'
 
 export default function ReportDetailPage() {
@@ -35,7 +36,7 @@ export default function ReportDetailPage() {
       {/* Résumé narratif */}
       <div className="report-section">
         <div className="report-section-header">
-          <FileText size={20} />
+          <ReportIcon size={20} />
           <h3>Résumé narratif</h3>
         </div>
         <div className="report-narrative">{report.narrative}</div>

@@ -47,8 +47,8 @@ export function adaptClient(c) {
     deleted: !!c.deleted_at,
     sessionRate: c.session_rate,
     sessionFrequency: c.session_frequency,
-    aiSynthesis: (typeof c.ai_synthesis === 'string' && (c.ai_synthesis.startsWith('{') || c.ai_synthesis.startsWith('['))) 
-      ? JSON.parse(c.ai_synthesis) 
+    aiSynthesis: (typeof c.ai_synthesis === 'string' && (c.ai_synthesis.startsWith('{') || c.ai_synthesis.startsWith('[')))
+      ? JSON.parse(c.ai_synthesis)
       : { text: c.ai_synthesis || '' },
     noteDynamique: c.note_dynamique,
     noteAxes: c.note_axes,
@@ -132,6 +132,20 @@ export function adaptContact(c) {
   }
 }
 
+export function adaptInvoice(inv) {
+  if (!inv) return inv
+  return {
+    id: inv.id,
+    userId: inv.user_id,
+    clientId: inv.client_id,
+    invoiceDate: inv.invoice_date,
+    sent: inv.sent,
+    sentAt: inv.sent_at,
+    createdAt: inv.created_at,
+    sessionIds: (inv.invoice_sessions || []).map(is => is.session_id),
+  }
+}
+
 // ── App → Supabase (writes) ──
 
 export function unadaptClient(c) {
@@ -152,9 +166,9 @@ export function unadaptClient(c) {
   if ('deletedAt' in c) { out.deleted_at = c.deletedAt; delete out.deletedAt }
   if ('sessionRate' in c) { out.session_rate = c.sessionRate; delete out.sessionRate }
   if ('sessionFrequency' in c) { out.session_frequency = c.sessionFrequency; delete out.sessionFrequency }
-  if ('aiSynthesis' in c) { 
-    out.ai_synthesis = typeof c.aiSynthesis === 'object' ? JSON.stringify(c.aiSynthesis) : c.aiSynthesis; 
-    delete out.aiSynthesis 
+  if ('aiSynthesis' in c) {
+    out.ai_synthesis = typeof c.aiSynthesis === 'object' ? JSON.stringify(c.aiSynthesis) : c.aiSynthesis;
+    delete out.aiSynthesis
   }
   if ('noteDynamique' in c) { out.note_dynamique = c.noteDynamique; delete out.noteDynamique }
   if ('noteAxes' in c) { out.note_axes = c.noteAxes; delete out.noteAxes }

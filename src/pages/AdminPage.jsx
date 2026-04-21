@@ -1,18 +1,34 @@
 import { useState, useEffect } from 'react'
-import { Crown, Users, Ear, ShieldCheck, XCircle, CheckCircle } from 'lucide-react'
+import { Crown, Users, Ear, ShieldCheck, XCircle, CheckCircle, AlertCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 export default function AdminPage() {
-
   const [allUsers, setAllUsers] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     async function fetchUsers() {
-      const { data, error } = await supabase.from('users').select('*').order('created_at')
-      if (error) console.error('fetchUsers error:', error)
-      setAllUsers(data || [])
-      setLoading(false)
+      try {
+        console.log('[AdminPage] Fetching users...')
+        const { data, error: supabaseError } = await supabase
+          .from('users')
+          .select('id, name, email, role, photo_url, created_at')
+          .order('created_at', { ascending: false })
+
+        if (supabaseError) {
+          console.error('[AdminPage] Supabase error:', supabaseError)
+          throw supabaseError
+        }
+
+        console.log('[AdminPage] Users fetched:', data?.length || 0)
+        setAllUsers(data || [])
+      } catch (err) {
+        console.error('[AdminPage] Fetch error:', err)
+        setError(err.message || 'Erreur lors du chargement des utilisateurs')
+      } finally {
+        setLoading(false)
+      }
     }
     fetchUsers()
   }, [])
@@ -20,11 +36,40 @@ export default function AdminPage() {
   const admins = allUsers.filter(u => u.role === 'admin')
   const therapists = allUsers.filter(u => u.role !== 'admin')
 
-  const totalClients = therapists.length * 10 // placeholder
-  const totalSessions = therapists.length * 50 // placeholder
-  const activeTherapists = therapists.length
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '—'
+    try {
+      const d = new Date(dateStr)
+      if (isNaN(d.getTime())) return 'Date invalide'
+      return d.toLocaleDateString('fr-FR')
+    } catch (e) {
+      return '—'
+    }
+  }
 
-  if (loading) return <div style={{ padding: 'var(--space-xl)', textAlign: 'center', color: 'var(--text-secondary)' }}>Chargement...</div>
+  if (loading) {
+    return (
+      <div style={{ padding: 'var(--space-xl)', textAlign: 'center', color: 'var(--text-secondary)' }}>
+        <div className="spinner" style={{ margin: '0 auto 16px' }} />
+        Chargement de la console d'administration...
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div style={{ padding: 'var(--space-xl)', textAlign: 'center' }}>
+        <div style={{ color: 'var(--error)', marginBottom: 'var(--space-md)' }}>
+          <AlertCircle size={48} style={{ margin: '0 auto 16px', display: 'block' }} />
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Erreur de chargement</h2>
+          <p>{error}</p>
+        </div>
+        <button className="btn btn-primary" onClick={() => window.location.reload()}>
+          Réessayer
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div>
@@ -85,11 +130,15 @@ export default function AdminPage() {
               <tr key={a.id}>
                 <td style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
                   {a.photo_url && <img src={a.photo_url} alt="" style={{ width: 28, height: 28, borderRadius: '50%' }} />}
-                  {a.name}
+                  {a.name || 'Sans nom'}
                 </td>
                 <td className="caption" style={{ color: 'var(--text-secondary)' }}>{a.email}</td>
-                <td><span className="badge" style={{ background: '#FEF5E7', color: 'var(--accent-dark)' }}><Crown size={12} /> Admin</span></td>
-                <td className="caption" style={{ color: 'var(--text-secondary)' }}>{new Date(a.created_at).toLocaleDateString('fr-FR')}</td>
+                <td>
+                  <span className="badge" style={{ background: '#FEF5E7', color: 'var(--accent-dark)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    <Crown size={12} /> Admin
+                  </span>
+                </td>
+                <td className="caption" style={{ color: 'var(--text-secondary)' }}>{formatDate(a.created_at)}</td>
               </tr>
             ))}
           </tbody>
@@ -99,7 +148,7 @@ export default function AdminPage() {
       {/* Thérapeutes */}
       <div className="card">
         <div className="card-header">
-          <Ear size={22} />
+          <Ear size={22} style={{ color: 'var(--text-secondary)' }} />
           <h3>Thérapeutes inscrits</h3>
         </div>
         {therapists.length === 0 ? (
@@ -120,12 +169,14 @@ export default function AdminPage() {
             <tbody>
               {therapists.map(t => (
                 <tr key={t.id}>
-                  <td style={{ fontWeight: 500 }}>{t.name}</td>
+                  <td style={{ fontWeight: 500 }}>{t.name || 'Sans nom'}</td>
                   <td className="caption" style={{ color: 'var(--text-secondary)' }}>{t.email}</td>
                   <td><span className="badge badge-inactive">Thérapeute</span></td>
-                  <td className="caption" style={{ color: 'var(--text-secondary)' }}>{new Date(t.created_at).toLocaleDateString('fr-FR')}</td>
+                  <td className="caption" style={{ color: 'var(--text-secondary)' }}>{formatDate(t.created_at)}</td>
                   <td>
-                    <span className="badge badge-active"><ShieldCheck size={12} /> Actif</span>
+                    <span className="badge badge-active" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <ShieldCheck size={12} /> Actif
+                    </span>
                   </td>
                 </tr>
               ))}
@@ -133,7 +184,7 @@ export default function AdminPage() {
           </table>
         )}
       </div>
-
     </div>
   )
 }
+

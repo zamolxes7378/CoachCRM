@@ -95,10 +95,11 @@ Le statut affiché est une synthèse dynamique de l'état en base et de la réal
 - Si d'autres séances existent le même jour (autre client) : alerte informative
 
 ### Limites de date
-- **Date minimale** : 1er janvier 2000 — le système empêche la création ou la modification d'une séance antérieure à cette date.
-- **Date maximale** : moment présent + 3 ans — le système empêche la création ou la modification d'une séance au-delà de cette limite.
-- Ces contraintes s'appliquent via les attributs `min`/`max` sur les inputs de date (création dans `DashboardPage` et édition dans `SessionDetailModal`), et le bouton de création est désactivé si la date est hors bornes.
+- **Date minimale** : 1er janvier 2000 — le système empêche la création ou la modification d'une séance (ou d'une date de création de dossier client) antérieure à cette date.
+- **Date maximale** : moment présent + 3 ans — le système empêche la création ou la modification d'une séance (ou d'une date de création de dossier client) au-delà de cette limite.
+- Ces contraintes s'appliquent via les attributs `min`/`max` sur les inputs de date (création dans `DashboardPage`, édition dans `SessionDetailModal`, et date de création du dossier dans `ClientCreationMarker` au sein de `ClientDetailPage`), et le bouton de création est désactivé si la date est hors bornes.
 - **Navigation financière** : Les mêmes bornes (2000 – maintenant + 3 ans) s'appliquent à la navigation temporelle du module Finances (vue consolidée annuelle et vue détaillée mensuelle). Les boutons de navigation sont désactivés visuellement aux limites.
+- **Date de création du dossier client** : L'input date de modification de la `startDate` dans la timeline thérapie applique les mêmes contraintes `min`/`max`. Toute date saisie hors bornes est rejetée automatiquement.
 
 ### Barre d'action flottante (pour sélection multiple)
 - **Contextes** : Utilisé pour les suppressions groupées (Archivage, Suppression Réseau Pro).
@@ -330,6 +331,7 @@ flowchart LR
     F -- Non --> G[Badge 'Paiement en attente' visible]
     F -- Oui --> H[Paiement confirmé ✓]
     H --> I[Propagation aux séances couvertes via coveredSessionIds]
+    D -- Oui --> J[Propagation paymentMethod aux séances couvertes]
 ```
 
 ### Règle du Badge « FACTURE »
@@ -388,8 +390,22 @@ L'alliance thérapeutique est validée par la présence d'au moins une séance �
 >
 > **Règle absolue** : ne jamais utiliser `session.paymentAmount ?? rate` directement. Toujours passer par `getRate()` (modale) ou `getDefaultRate()` (finances) pour garantir la cohérence entre le montant affiché et les tarifs réels (client ou système).
 
-> ⚠️ **Comportement confirmé** :
-> - Le compteur « Séances à confirmer » dans le suivi financier **inclut** les séances offertes
+> [!IMPORTANT]
+> **Règle métier — Changement du tarif spécifique** :
+> Le changement du tarif spécifique d'un client affecte **uniquement les séances planifiées** (status `scheduled`). Les séances déjà réalisées (completed) ou annulées gardent leur tarif, peu importe la manière dont il a été défini.
+>
+> **Implémentation** : Lors du changement de tarif dans `ClientStatsPanel.jsx`, toutes les séances non-planifiées qui n'ont pas encore de `paymentAmount` persisté se voient attribuer l'ancien tarif via `updateSession()` **avant** la mise à jour du tarif client. Ainsi, `getRate()` retournera toujours le montant persisté pour ces séances et ne retombera jamais sur le nouveau tarif par défaut.
+
+> ⚠️ **Comportement confirmé — Paiements multi-séances** :
+> - **Propagation** : Quand des séances sont cochées dans « Séances concernées par ce paiement », elles reçoivent le `paymentMethod` de la séance principale. Le `paymentAmount` de chaque séance **ne change pas** — chaque séance garde son propre tarif.
+> - **Exclusion des séances encaissées** : Une séance déjà encaissée (`paymentReceived = true`) n'apparaît pas dans la liste des « Séances concernées par ce paiement » d'un autre paiement (sauf si elle fait déjà partie du groupe couvert).
+> - **Affichage bidirectionnel** : Ouvrir une séance couverte (S1) affiche le groupe complet (S1, S2, S3) dans « Séances concernées ». Le lookup s'effectue via `effectiveOwner` (parent qui porte les `coveredSessionIds`).
+> - **« Séances à confirmer »** : Exclut les séances couvertes par un paiement groupé (via `coveredSessionIds` d'une autre séance avec `paymentMethod` renseigné). Inclut les séances offertes.
+> - **« Restant dû »** : `totalBilled - totalCollected`. Inclut toutes les séances passées (confirmées ou non) moins celles encaissées. Les séances passées non confirmées sont dans « Honoraires dûs » et contribuent au restant dû.
+> - **Persistance** : `coveredSessionIds` sur la séance propriétaire, `paymentMethod`/`paymentReceived` sur les séances couvertes — tout est persisté en DB.
+> - **Couleur du tarif** dans le détail financier : **vert** (`var(--success)`) uniquement si `paymentReceived = true` ET `paymentMethod` renseigné. **Rouge** (`var(--error)`) dans tous les autres cas. Gris (`var(--text-tertiary)`) pour les séances planifiées futures.
+> - **Calcul des Honoraires dûs / planifiés** : Une séance planifiée (`scheduled`) est comptée dans « Honoraires dûs » uniquement si son **heure de fin** (`date + duration`) est passée. Avant la fin de la séance, elle reste dans « Honoraires planifiés ». Ce calcul est cohérent avec le badge visuel « Planifiée » / « À confirmer ».
+> - **Règle d'encaissement** : Une séance est comptée comme « encaissée » (`totalCollected`, KPI « Encaissé ») uniquement si `paymentReceived = true` **ET** `paymentMethod` est renseigné. Les deux conditions sont requises dans `ClientFinancialPanel`, `FinancesPage` et le Dashboard.
 ## Indicateur de Transformation (Finances)
 
 ### 1. Définition de la Transformation
@@ -509,10 +525,12 @@ Les éléments suivants sont systématiquement persistés en base de données (S
 
 - **Normalisation des Données (Prénoms)** : Il est **obligatoire** de normaliser les prénoms (FirstNames) via la fonction `capitalizeWords` dans les adaptateurs. Chaque mot (séparé par un espace ou un tiret) doit commencer par une majuscule. Cela garantit une UI propre et professionnelle quelles que soient les saisies utilisateur.
     - *Exemple* : `"jean-baptiste"` → `"Jean-Baptiste"`.
-- **Robustesse des Données JSON (Adaptateurs)** : Tout composant manipulant des données provenant de Supabase **DOIT** utiliser des gardes (`optional chaining ?.`) et des fallbacks. (Exemple : `couple?.aiSynthesis`, `couple?.globalNote`, `couple?.notes`, `couple?.phase`).
-- **Helpers de sécurité** : Utilisation de helpers comme `safeGetRate(id)` pour centraliser l'accès aux données financières sensibles et éviter les `ReferenceError` sur des variables de scope.
-- **Validation post-sauvegarde** : Après chaque succès (toast vert), le système doit garantir que l'objet en mémoire est identique à celui en base via un re-fetch ou un update d'état immuable.
 - **Clean Architecture (No Mocks)** : Toute donnée métier ou constante doit provenir des fichiers `src/data/constants.js` ou `src/data/helpers.js`. Le fichier `mockData.js` est proscrit en production pour éviter toute confusion avec des données de test.
+
+### 2. Robustesse de l'affichage (Anti-Crash)
+- **Gestion des dates** : Toute manipulation de date pour affichage **DOIT** utiliser les helpers sécurisés de `src/data/helpers.js` (`formatDate`, `formatTime`). L'utilisation directe de `new Date(str).toLocaleDateString()` est proscrite car elle provoque un crash fatal si `str` est invalide ou `undefined`.
+- **Gardes de rendu** : Les composants de page (ex: `AdminPage`) doivent implémenter un bloc `try-catch` dans leurs effets de chargement et un état d'erreur visuel explicite pour éviter l'écran blanc.
+- **Sécurité des colonnes** : Lors d'un `select('*')` sur Supabase, s'assurer que l'accès aux propriétés de l'objet résultant est protégé par un `optional chaining` ou des valeurs par défaut (ex: `user.name || 'Sans nom'`).
 
 ### 2. Authentification
 - **Timeout de sécurité** : Un délai de **10 secondes** est configuré dans `App.jsx` pour permettre la synchronisation complète des données utilisateur (Goole Auth → Table `users`) avant de basculer sur l'interface principale.
@@ -581,3 +599,19 @@ flowchart LR
 | Administration | `/admin` | Vue d'ensemble des inscrits (Admin) |
 | Paramètres | `/settings` | Préférences personnelles du thérapeute |
 | Aide | `/help` | Guide d'utilisation et aide |
+
+## Conformité RGPD et Protection des Données (Données de Santé)
+
+### 1. Droit à la Portabilité (Art. 20)
+- **Fonctionnalité d'Export** : Chaque dossier client possède un bouton `Exporter le dossier` dans l'en-tête de la fiche (`ClientHeaderPanel`).
+- **Format** : Fichier Excel (.xlsx) structuré, mis en forme avec `exceljs`.
+- **Contenu** : Il consolide les données d'identité, les notes globales, ainsi que l'intégralité de l'historique des séances (dates, tarifs, statuts, CR et notes de préparation).
+
+### 2. Droit à l'Oubli et Minimisation (Art. 17 & 5.1.e)
+- **Suppression à double niveau** :
+  1. *Soft Delete* (Archivage visuel) sur la fiche client.
+  2. *Hard Delete* via la page "Clients Archivés" (Suppression irréversible du client, des séances et des contacts associés).
+- **Purge Automatique des Enregistrements** : Une fonction Edge Supabase (`purge-audio`) s'exécute via cron (ex: `pg_cron`) pour supprimer de manière irréversible tous les enregistrements audio bruts datant de plus de 90 jours dans le bucket de stockage, assurant une stricte minimisation du stockage des données sensibles.
+
+### 3. Isolation (Art. 32)
+- **Sécurité par design (RLS)** : Les données sont strictement cloisonnées par `user_id` au niveau de PostgreSQL (Supabase Row Level Security). Aucun thérapeute ne peut accéder aux dossiers, notes ou CR d'un autre professionnel.

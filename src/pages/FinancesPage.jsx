@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { Euro, TrendingUp, TrendingDown, Minus, Users, User, UserPlus, Calendar, FileText, Hourglass, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Download, BarChart3, ArrowUpRight, ArrowDownRight, XCircle, X, PieChart, Sprout, UserCheck, Zap } from 'lucide-react'
 import ClientTypeBadge from '../components/ClientTypeBadge'
 import PaymentBadge from '../components/PaymentBadge'
+import InvoiceBadge from '../components/InvoiceBadge'
 
 
 import { useData } from '../context/DataContext'
@@ -24,7 +25,7 @@ function getDefaultRate(clientId, clients, sessionRates) {
 }
 
 export default function FinancesPage() {
-  const { clients, sessions: allSessions, recruitmentSources, sessionRates } = useData()
+  const { clients, sessions: allSessions, recruitmentSources, sessionRates, getInvoiceForSession } = useData()
 
 
   // Moved outside component if possible, but keeping it inside for now to access useData or passing params
@@ -108,7 +109,7 @@ export default function FinancesPage() {
     const billable = ms.filter(s => s.status === 'completed' || (s.status === 'cancelled' && s.paymentAmount > 0))
     const caRealise = billable.reduce((sum, s) => sum + (s.paymentAmount || getDefaultRate(s.clientId, clients, sessionRates)), 0)
     const caPrev = caRealise + scheduled.reduce((sum, s) => sum + getDefaultRate(s.clientId, clients, sessionRates), 0)
-    const paid = billable.filter(s => s.paymentReceived)
+    const paid = billable.filter(s => s.paymentReceived && s.paymentMethod)
     const encaisse = paid.reduce((sum, s) => sum + (s.paymentAmount || getDefaultRate(s.clientId, clients, sessionRates)), 0)
 
     // Nouveaux clients: 1ère séance de ce client est dans ce mois
@@ -161,7 +162,7 @@ export default function FinancesPage() {
     const isActuallyBillable = (s) => s.status === 'completed' || (s.status === 'cancelled' && s.paymentAmount > 0)
     const unpaid = sessions.filter(s => isActuallyBillable(s) && !s.paymentReceived && !s.paymentMethod)
     const deferred = sessions.filter(s => isActuallyBillable(s) && s.paymentMethod && !s.paymentReceived)
-    const pendingInvoices = sessions.filter(s => s.needsInvoice && !s.invoiceSent)
+    const pendingInvoices = sessions.filter(s => { const inv = getInvoiceForSession(s.id); return inv && !inv.sent })
     return { unpaid, deferred, pendingInvoices }
   }, [sessions])
 
@@ -229,7 +230,7 @@ export default function FinancesPage() {
             const all = sessions.filter(s => s.clientId === cid && s.status !== 'cancelled').sort((a, b) => (a.date || '').localeCompare(b.date || ''))
             return all.length > 0 && all[0].date && new Date(all[0].date).getFullYear() === y
           })
-          const paid = billable.filter(s => s.paymentReceived)
+          const paid = billable.filter(s => s.paymentReceived && s.paymentMethod)
           const encaisse = paid.reduce((sum, s) => sum + (s.paymentAmount || getDefaultRate(s.clientId, clients, sessionRates)), 0)
           const txAnnulation = (completed.length + cancelled.length) > 0
             ? Math.round((cancelled.length / (completed.length + cancelled.length)) * 100) : 0
@@ -553,17 +554,11 @@ export default function FinancesPage() {
                       )}
                     </td>
                     <td style={{ textAlign: 'center' }}>
-                      {s.needsInvoice ? (
-                        s.invoiceSent ? (
-                          <span style={{ fontSize: '0.571rem', fontWeight: 700, color: 'var(--success)', letterSpacing: '0.02em' }}>
-                            Facturée
-                          </span>
-                        ) : (
-                          <span style={{ fontSize: '0.571rem', fontWeight: 700, color: 'var(--primary-500)', background: '#EBF8FF', padding: '2px 4px', borderRadius: 'var(--radius-sm)', border: '1px solid #BEE3F8' }}>
-                            À ÉMETTRE
-                          </span>
-                        )
-                      ) : <AbsenceDash />}
+                      {(() => {
+                        const inv = getInvoiceForSession(s.id); return inv ? (
+                          <InvoiceBadge sent={inv.sent} />
+                        ) : <AbsenceDash />
+                      })()}
                     </td>
                   </tr>
                 )
@@ -582,7 +577,7 @@ export default function FinancesPage() {
                   {currentStats.paid.length}/{currentStats.billable.length} encaissé{currentStats.paid.length > 1 ? 's' : ''}
                 </td>
                 <td style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)' }}>
-                  {currentStats.allSessions.filter(s => s.needsInvoice).length} facture{currentStats.allSessions.filter(s => s.needsInvoice).length > 1 ? 's' : ''}
+                  {currentStats.allSessions.filter(s => !!getInvoiceForSession(s.id)).length} facture{currentStats.allSessions.filter(s => !!getInvoiceForSession(s.id)).length > 1 ? 's' : ''}
                 </td>
               </tr>
             </tfoot>
@@ -635,7 +630,7 @@ export default function FinancesPage() {
                   s.paymentAmount || getDefaultRate(s.clientId, clients, sessionRates),
                   s.paymentMethod ? { cheque: 'Chèque', virement: 'Virement', especes: 'Espèces' }[s.paymentMethod] || '' : '',
                   s.paymentReceived ? 'Oui' : 'Non',
-                  s.needsInvoice ? (s.invoiceSent ? 'Émise' : 'À émettre') : ''
+                  (() => { const inv = getInvoiceForSession(s.id); return inv ? (inv.sent ? 'Émise' : 'À émettre') : '' })()
                 ])
               ]
               const csv = rows.map(r => r.join(';')).join('\n')

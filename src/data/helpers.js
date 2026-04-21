@@ -78,18 +78,22 @@ export function getComputedStatus(client) {
 // ── Formatage dates ──
 
 export function formatDate(dateStr) {
+  if (!dateStr) return '—'
   const date = new Date(dateStr)
+  if (isNaN(date.getTime())) return '—'
   return date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 export function formatDashboardDate(dateStr) {
+  if (!dateStr) return '—'
+  const date = new Date(dateStr)
+  if (isNaN(date.getTime())) return '—'
   const now = new Date()
   const nowStr = now.toISOString().split('T')[0]
   if (dateStr === nowStr) {
-    const todayFull = new Date(dateStr).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
+    const todayFull = date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
     return `Aujourd'hui – ${todayFull}`
   }
-  const date = new Date(dateStr)
   // Show year if more than 6 months away (past or future)
   const diffMs = Math.abs(date.getTime() - now.getTime())
   const sixMonthsMs = 6 * 30 * 24 * 60 * 60 * 1000
@@ -102,9 +106,12 @@ export function formatDashboardDate(dateStr) {
 }
 
 export function formatTime(dateStr) {
+  if (!dateStr) return '—'
   const date = new Date(dateStr)
+  if (isNaN(date.getTime())) return '—'
   return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 }
+
 
 export function formatRelativeDate(dateStr) {
   const now = new Date()

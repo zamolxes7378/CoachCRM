@@ -5,6 +5,8 @@ import {
 import ReportIcon from '../ReportIcon'
 import ConfirmBadge from '../ConfirmBadge'
 import PaymentBadge from '../PaymentBadge'
+import InvoiceBadge from '../InvoiceBadge'
+import { useData } from '../../context/DataContext'
 import ClientTypeBadge from '../ClientTypeBadge'
 
 /**
@@ -27,7 +29,6 @@ function SessionCard({
   onClick,
   reportSummary = null,
   hasReport = false,
-  invoiceInfo = null,  // { needsInvoice, invoiceSent } or null
   formatDate,
   formatTime,
   // Optional ClientDetailPage-specific styling
@@ -52,6 +53,9 @@ function SessionCard({
   const cardBorder = isExpanded && showExpandedStyle ? '1px solid var(--accent-main)'
     : session.status === 'cancelled' ? 'none'
       : isPast ? 'none' : '1px dashed var(--border-light)'
+
+  const { getInvoiceForSession } = useData()
+  const invoice = getInvoiceForSession(session.id)
 
   return (
     <div
@@ -191,7 +195,7 @@ function SessionCard({
 
           {/* Cancelled badge */}
           {session.status === 'cancelled' && (
-            <span style={{ color: 'var(--error)', display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+            <span style={{ color: 'var(--error)', display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: '0.643rem', fontWeight: 600 }}>
               <XCircle size={10} /> {session.paymentAmount > 0 ? 'Annulation facturée' : 'Annulée'}
             </span>
           )}
@@ -217,15 +221,8 @@ function SessionCard({
           {needsConfirm && <ConfirmBadge />}
 
           {/* Invoice badge */}
-          {invoiceInfo?.needsInvoice && (
-            <span style={{
-              display: 'inline-flex', alignItems: 'center', gap: 3,
-              fontSize: '0.643rem', fontWeight: 600,
-              color: invoiceInfo.invoiceSent ? 'var(--success)' : 'var(--primary-500)',
-              letterSpacing: '0.02em'
-            }} title={invoiceInfo.invoiceSent ? 'Facture envoyée' : 'Facture à envoyer'}>
-              {invoiceInfo.invoiceSent ? 'Facturée' : 'FACTURE'}
-            </span>
+          {invoice && (
+            <InvoiceBadge sent={invoice.sent} />
           )}
         </div>
       </div>

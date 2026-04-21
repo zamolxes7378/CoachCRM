@@ -14,7 +14,7 @@ import { useData } from '../context/DataContext'
  * une synchronisation parfaite des compteurs.
  */
 export default function useUrgencies() {
-    const { clients, sessions, contacts, isProspect, getComputedStatus } = useData()
+    const { clients, sessions, contacts, isProspect, getComputedStatus, getInvoiceForSession } = useData()
 
     const pendingCRs = useMemo(() =>
         sessions.filter(s => s.status === 'completed' && !s.hasReport),
@@ -27,8 +27,8 @@ export default function useUrgencies() {
     )
 
     const pendingInvoiceSessions = useMemo(() =>
-        sessions.filter(s => s.needsInvoice && !s.invoiceSent),
-        [sessions]
+        sessions.filter(s => { const inv = getInvoiceForSession(s.id); return inv && !inv.sent }),
+        [sessions, getInvoiceForSession]
     )
 
     const clientsToReactivate = useMemo(() => {
@@ -86,7 +86,7 @@ export default function useUrgencies() {
                 label: `${pendingInvoiceSessions.length} facture${pendingInvoiceSessions.length > 1 ? 's' : ''} à émettre`,
                 count: pendingInvoiceSessions.length,
                 icon: InvoiceIcon,
-                color: 'var(--primary-500)'
+                color: '#627D98'
             })
         }
 

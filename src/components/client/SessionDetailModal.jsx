@@ -1,5 +1,6 @@
 import React from 'react'
 import { useConfirm } from '../../context/ConfirmContext'
+import { useData } from '../../context/DataContext'
 import {
   X, Mic, Sparkles, CheckCircle, XCircle, RefreshCw, Loader,
   Euro, Banknote, CreditCard, Landmark, Hourglass, Check, Receipt,
@@ -20,7 +21,7 @@ export default function SessionDetailModal({
 }) {
   if (!session) return null
   const confirm = useConfirm()
-
+  const { getInvoiceForSession, createInvoice, updateInvoice: updateInv, emitInvoice, unemitInvoice, deleteInvoice, setInvoiceSessions, sessions: allSessions } = useData()
   // Destructure for convenience
   const { sessionUpdates, recordingSessionId, recordingStep, editingCoveredSessions, editingInvoiceSessions } = sessionModal
   const { setSessionUpdates, setExpandedSessionId, setRateOverrides, setEditingCoveredSessions, setEditingInvoiceSessions, getRate, handleStartRecording, handleSaveCR } = sessionActions
@@ -510,7 +511,15 @@ export default function SessionDetailModal({
 
               {/* Montant du paiement (calculated, read-only) — hidden for free sessions */}
               {(() => {
-                const pAmount = session.paymentAmount ?? rate
+                // Compute effective covered group (bidirectional lookup)
+                const parentSession = sessions.find(other =>
+                  other.id !== session.id && (other.coveredSessionIds || []).includes(session.id)
+                )
+                const effectiveOwner = parentSession || session
+                const effectiveCoveredIds = effectiveOwner.coveredSessionIds?.length
+                  ? effectiveOwner.coveredSessionIds
+                  : [session.id]
+                const pAmount = effectiveCoveredIds.reduce((sum, sid) => sum + getRate(sid), 0)
                 if (pAmount === 0) return null
                 return (
                   <div style={{ marginBottom: 'var(--space-md)' }}>
@@ -537,28 +546,25 @@ export default function SessionDetailModal({
                         }}
                         style={{ fontSize: '0.714rem', flex: '0 0 calc(33.33% - 6px)' }}
                       />
-                      {pAmount > 0 && session.paymentMethod && (
+                      {pAmount > 0 && (session.paymentMethod || parentSession?.paymentMethod) && (
                         <button
                           onClick={() => {
-                            const newStatus = !session.paymentReceived
-                            session.paymentReceived = newStatus
+                            const newStatus = !effectiveOwner.paymentReceived
+                            effectiveOwner.paymentReceived = newStatus
                             // Propagate to all covered sessions
-                            const coveredIds = session.coveredSessionIds?.length ? session.coveredSessionIds : [session.id]
+                            const coveredIds = effectiveCoveredIds
                             coveredIds.forEach(sid => {
                               const coveredSession = sessions.find(s => s.id === sid)
-                              if (coveredSession && coveredSession.id !== session.id) {
+                              if (coveredSession) {
                                 coveredSession.paymentReceived = newStatus
                                 if (newStatus) {
-                                  coveredSession.paymentMethod = coveredSession.paymentMethod || session.paymentMethod
+                                  coveredSession.paymentMethod = coveredSession.paymentMethod || effectiveOwner.paymentMethod
                                 }
                               }
                             })
                             // Persist all changes
-                            updateSession(session.id, { paymentReceived: newStatus })
                             coveredIds.forEach(sid => {
-                              if (sid !== session.id) {
-                                updateSession(sid, { paymentReceived: newStatus, ...(newStatus ? { paymentMethod: session.paymentMethod } : {}) })
-                              }
+                              updateSession(sid, { paymentReceived: newStatus, ...(newStatus ? { paymentMethod: effectiveOwner.paymentMethod } : {}) })
                             })
                             setSessionUpdates(prev => ({ ...prev, [session.id]: { ...prev[session.id], _pay: Date.now() } }))
                           }}
@@ -566,22 +572,22 @@ export default function SessionDetailModal({
                             flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                             padding: '8px', borderRadius: 'var(--radius-md)',
                             fontSize: '0.786rem', fontWeight: 600,
-                            border: session.paymentReceived ? '1px solid #27674930' : '1px solid #FED7D7',
-                            background: session.paymentReceived ? '#F0FFF4' : '#FFF5F5',
-                            color: session.paymentReceived ? '#276749' : 'var(--error)',
+                            border: effectiveOwner.paymentReceived ? '1px solid #27674930' : '1px solid #FED7D7',
+                            background: effectiveOwner.paymentReceived ? '#F0FFF4' : '#FFF5F5',
+                            color: effectiveOwner.paymentReceived ? '#276749' : 'var(--error)',
                             cursor: 'pointer', transition: 'all 0.15s',
                             whiteSpace: 'nowrap'
                           }}
                         >
-                          {session.paymentReceived ? <CheckCircle size={14} /> : <Hourglass size={14} />}
-                          {session.paymentReceived ? 'Encaissé' : 'Paiement en attente'}
+                          {effectiveOwner.paymentReceived ? <CheckCircle size={14} /> : <Hourglass size={14} />}
+                          {effectiveOwner.paymentReceived ? 'Encaissé' : 'Paiement en attente'}
                         </button>
                       )}
                     </div>
                     <div style={{ marginTop: 'var(--space-md)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                         <label style={{ fontSize: '0.643rem', fontWeight: 600, color: 'var(--text-tertiary)' }}>Séances concernées par ce paiement :</label>
-                        {session.paymentReceived && !editingCoveredSessions && (
+                        {effectiveOwner.paymentReceived && !editingCoveredSessions && (
                           <button
                             onClick={() => setEditingCoveredSessions(true)}
                             style={{ fontSize: '0.643rem', color: 'var(--primary-500)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, textDecoration: 'underline' }}
@@ -590,10 +596,10 @@ export default function SessionDetailModal({
                           </button>
                         )}
                       </div>
-                      {session.paymentReceived && !editingCoveredSessions ? (
+                      {effectiveOwner.paymentReceived && !editingCoveredSessions ? (
                         /* Simple display mode */
                         <div style={{ border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', padding: 4 }}>
-                          {(session.coveredSessionIds?.length ? session.coveredSessionIds : [session.id]).map(sid => {
+                          {effectiveCoveredIds.map(sid => {
                             const s = sessions.find(x => x.id === sid)
                             if (!s) return null
                             const sNum = sessionNumbers[s.id]
@@ -610,15 +616,15 @@ export default function SessionDetailModal({
                           <div style={{ maxHeight: 100, overflowY: 'auto', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', padding: 4 }}>
                             {sessions.filter(s => {
                               if (s.status !== 'completed' && s.status !== 'scheduled') return false
-                              const currentCovered = session.coveredSessionIds?.length ? session.coveredSessionIds : [session.id]
-                              if (currentCovered.includes(s.id)) return true
+                              if (effectiveCoveredIds.includes(s.id)) return true
                               if (s.id === session.id) return true
-                              return !sessions.some(other => other.id !== session.id && other.paymentReceived && (other.coveredSessionIds || [other.id]).includes(s.id))
+                              // Exclude sessions already encaissées (independently paid)
+                              if (s.paymentReceived) return false
+                              return !sessions.some(other => other.id !== effectiveOwner.id && other.paymentMethod && (other.coveredSessionIds || []).includes(s.id))
                             }).sort((a, b) => b.date.localeCompare(a.date)).map(s => {
                               const sNum = sessionNumbers[s.id]
-                              const coveredSessions = session.coveredSessionIds?.length ? session.coveredSessionIds : [session.id]
-                              const isChecked = coveredSessions.includes(s.id)
-                              const isCurrentSession = s.id === session.id
+                              const isChecked = effectiveCoveredIds.includes(s.id)
+                              const isCurrentSession = s.id === effectiveOwner.id
                               return (
                                 <label key={s.id} style={{
                                   display: 'flex', alignItems: 'center', gap: 6, padding: '3px 6px',
@@ -632,21 +638,28 @@ export default function SessionDetailModal({
                                     checked={isChecked}
                                     disabled={isCurrentSession}
                                     onChange={() => {
-                                      const current = session.coveredSessionIds?.length ? session.coveredSessionIds : [session.id]
+                                      const current = effectiveCoveredIds
                                       const updated = isChecked
                                         ? current.filter(id => id !== s.id)
                                         : [...current, s.id]
-                                      session.coveredSessionIds = updated
-                                      session.paymentAmount = updated.reduce((sum, sid) => sum + getRate(sid), 0)
-                                      // Sync paymentReceived on the toggled session
+                                      effectiveOwner.coveredSessionIds = updated
+                                      // Persist coveredSessionIds on the owner (paymentAmount unchanged)
+                                      updateSession(effectiveOwner.id, { coveredSessionIds: updated })
+                                      // Sync paymentMethod on the toggled session
                                       if (isChecked) {
                                         // Unchecking: remove payment status from the removed session
                                         s.paymentReceived = false
                                         s.paymentMethod = null
-                                      } else if (session.paymentReceived) {
+                                        updateSession(s.id, { paymentReceived: false, paymentMethod: null })
+                                      } else if (effectiveOwner.paymentReceived) {
                                         // Checking: propagate payment status to the added session
                                         s.paymentReceived = true
-                                        s.paymentMethod = session.paymentMethod
+                                        s.paymentMethod = effectiveOwner.paymentMethod
+                                        updateSession(s.id, { paymentReceived: true, paymentMethod: effectiveOwner.paymentMethod })
+                                      } else if (effectiveOwner.paymentMethod) {
+                                        // Checking (not yet received): propagate paymentMethod only
+                                        s.paymentMethod = effectiveOwner.paymentMethod
+                                        updateSession(s.id, { paymentMethod: effectiveOwner.paymentMethod })
                                       }
                                       setSessionUpdates(prev => ({ ...prev, [session.id]: { ...prev[session.id], _cs: Date.now() } }))
                                     }}
@@ -672,40 +685,23 @@ export default function SessionDetailModal({
                 )
               })()}
 
-              {/* Facture */}
+              {/* Facture — powered by Invoice entity */}
               {(() => {
-                // Detect if this session is covered by another session's invoice
-                const parentInvoiceSession = sessions.find(other => other.needsInvoice && other.id !== session.id && (other.invoiceCoveredSessionIds || []).includes(session.id))
-                const isOwnInvoice = session.needsInvoice
-                const hasCoverage = isOwnInvoice || !!parentInvoiceSession
-                const invoiceIsSent = isOwnInvoice ? session.invoiceSent : parentInvoiceSession?.invoiceSent
+                const invoice = getInvoiceForSession(session.id)
+                const invoiceAmount = invoice
+                  ? (invoice.sessionIds || []).reduce((sum, sid) => sum + getRate(sid), 0)
+                  : 0
+
                 return (
                   <div style={{ marginTop: 'var(--space-md)', paddingTop: 'var(--space-md)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <label style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-tertiary)' }}>{hasCoverage ? <>Montant facturé <span style={{ fontWeight: 400, fontStyle: 'italic' }}>(calculé)</span></> : 'Facturation'}</label>
-                      {hasCoverage && !invoiceIsSent && (
+                      <label style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-tertiary)' }}>
+                        {invoice ? <>Montant facturé <span style={{ fontWeight: 400, fontStyle: 'italic' }}>(calculé)</span></> : 'Facturation'}
+                      </label>
+                      {invoice && !invoice.sent && (
                         <button
-                          onClick={() => {
-                            if (isOwnInvoice) {
-                              session.needsInvoice = false
-                              session.invoiceSent = false
-                              session.invoiceCoveredSessionIds = undefined
-                              updateSession(session.id, { needsInvoice: false, invoiceSent: false, invoiceCoveredSessionIds: null })
-                            } else if (parentInvoiceSession) {
-                              // Remove this session from parent's coverage
-                              const updated = (parentInvoiceSession.invoiceCoveredSessionIds || []).filter(id => id !== session.id)
-                              if (updated.length === 0) {
-                                parentInvoiceSession.needsInvoice = false
-                                parentInvoiceSession.invoiceSent = false
-                                parentInvoiceSession.invoiceCoveredSessionIds = undefined
-                                updateSession(parentInvoiceSession.id, { needsInvoice: false, invoiceSent: false, invoiceCoveredSessionIds: null })
-                              } else {
-                                parentInvoiceSession.invoiceCoveredSessionIds = updated
-                                parentInvoiceSession.paymentAmount = updated.reduce((sum, sid) => sum + getRate(sid), 0)
-                                updateSession(parentInvoiceSession.id, { invoiceCoveredSessionIds: updated, paymentAmount: parentInvoiceSession.paymentAmount })
-                              }
-                            }
-                            setSessionUpdates(prev => ({ ...prev, [session.id]: { ...prev[session.id], _inv: Date.now() } }))
+                          onClick={async () => {
+                            await deleteInvoice(invoice.id)
                           }}
                           title="Annuler le besoin de facture"
                           style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: '0.643rem', color: 'var(--text-tertiary)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, transition: 'color 0.15s' }}
@@ -715,19 +711,23 @@ export default function SessionDetailModal({
                           <XCircle size={12} /> Annuler
                         </button>
                       )}
-                      {invoiceIsSent && (
+                      {invoice?.sent && (
                         <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: '0.643rem', color: 'var(--success)', fontWeight: 600 }}>
                           <CheckCircle size={12} /> Facture émise
                         </span>
                       )}
                     </div>
-                    {!hasCoverage ? (
+
+                    {!invoice ? (
+                      /* No invoice — show "Besoin de facture ?" button */
                       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
                         <button
-                          onClick={() => {
-                            session.needsInvoice = true
-                            updateSession(session.id, { needsInvoice: true })
-                            setSessionUpdates(prev => ({ ...prev, [session.id]: { ...prev[session.id], _inv: Date.now() } }))
+                          onClick={async () => {
+                            await createInvoice({
+                              clientId: client.id,
+                              sessionIds: [session.id],
+                              invoiceDate: session.date?.slice(0, 10)
+                            })
                           }}
                           style={{
                             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
@@ -745,13 +745,14 @@ export default function SessionDetailModal({
                         </button>
                       </div>
                     ) : (
+                      /* Invoice exists — show amount, date, emit/unemit controls */
                       <>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
                           <div style={{ flex: '0 0 calc(33.33% - 6px)', position: 'relative' }}>
                             <input
                               type="number" min="0" step="5"
                               className="input"
-                              value={(() => { const invSessions = session.invoiceCoveredSessionIds || [session.id]; return invSessions.reduce((sum, sid) => sum + getRate(sid), 0) })()}
+                              value={invoiceAmount || ''}
                               readOnly
                               style={{ fontSize: '0.857rem', fontWeight: 700, textAlign: 'center', color: '#E67E22', width: '100%', paddingRight: 24 }}
                             />
@@ -760,36 +761,16 @@ export default function SessionDetailModal({
                           <input
                             type="date"
                             className="input"
-                            value={session.invoiceDate || session.date.slice(0, 10)}
-                            onChange={e => {
-                              session.invoiceDate = e.target.value
-                              updateSession(session.id, { invoiceDate: e.target.value })
-                              setSessionUpdates(prev => ({ ...prev, [session.id]: { ...prev[session.id], _invd: Date.now() } }))
+                            value={invoice.invoiceDate || session.date?.slice(0, 10)}
+                            onChange={async e => {
+                              await updateInv(invoice.id, { invoice_date: e.target.value })
+                              // Refresh happens via loadData in DataContext
                             }}
                             style={{ fontSize: '0.714rem', flex: 1 }}
                           />
-                          {hasCoverage && !invoiceIsSent && (
+                          {!invoice.sent && (
                             <button
-                              onClick={() => {
-                                if (isOwnInvoice) {
-                                  session.invoiceSent = true
-                                  updateSession(session.id, { invoiceSent: true })
-                                  const covered = session.invoiceCoveredSessionIds || [session.id]
-                                  covered.forEach(sid => {
-                                    const covS = sessions.find(x => x.id === sid)
-                                    if (covS && covS.id !== session.id) { covS.invoiceSent = true; updateSession(sid, { invoiceSent: true }) }
-                                  })
-                                } else if (parentInvoiceSession) {
-                                  parentInvoiceSession.invoiceSent = true
-                                  updateSession(parentInvoiceSession.id, { invoiceSent: true })
-                                  const covered = parentInvoiceSession.invoiceCoveredSessionIds || [parentInvoiceSession.id]
-                                  covered.forEach(sid => {
-                                    const covS = sessions.find(x => x.id === sid)
-                                    if (covS) { covS.invoiceSent = true; updateSession(sid, { invoiceSent: true }) }
-                                  })
-                                }
-                                setSessionUpdates(prev => ({ ...prev, [session.id]: { ...prev[session.id], _inv: Date.now() } }))
-                              }}
+                              onClick={async () => { await emitInvoice(invoice.id) }}
                               style={{
                                 flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
                                 padding: '8px', borderRadius: 'var(--radius-md)',
@@ -804,21 +785,9 @@ export default function SessionDetailModal({
                               Émettre la facture
                             </button>
                           )}
-                          {invoiceIsSent && (
+                          {invoice.sent && (
                             <button
-                              onClick={() => {
-                                // Toggle back: un-emit
-                                const owner = isOwnInvoice ? session : parentInvoiceSession
-                                if (owner) {
-                                  owner.invoiceSent = false
-                                  const covered = owner.invoiceCoveredSessionIds || [owner.id]
-                                  covered.forEach(sid => {
-                                    const covS = sessions.find(x => x.id === sid)
-                                    if (covS) { covS.invoiceSent = false }
-                                  })
-                                }
-                                setSessionUpdates(prev => ({ ...prev, [session.id]: { ...prev[session.id], _inv: Date.now() } }))
-                              }}
+                              onClick={async () => { await unemitInvoice(invoice.id) }}
                               style={{
                                 flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
                                 padding: '8px', borderRadius: 'var(--radius-md)',
@@ -834,129 +803,94 @@ export default function SessionDetailModal({
                             </button>
                           )}
                         </div>
-                        {(() => {
-                          const invoiceSessions = session.invoiceCoveredSessionIds || [session.id]
-                          return (
-                            <div style={{ marginTop: 6 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                                <label style={{ fontSize: '0.643rem', fontWeight: 600, color: 'var(--text-tertiary)' }}>Séances concernées par cette facture :</label>
-                                {session.invoiceSent && !editingInvoiceSessions && (
-                                  <button
-                                    onClick={() => {
-                                      // Reset invoiceSent when editing
-                                      const owner = isOwnInvoice ? session : parentInvoiceSession
-                                      if (owner) {
-                                        owner.invoiceSent = false
-                                        const covered = owner.invoiceCoveredSessionIds || [owner.id]
-                                        covered.forEach(sid => {
-                                          const covS = sessions.find(x => x.id === sid)
-                                          if (covS) { covS.invoiceSent = false }
-                                        })
-                                      }
-                                      setEditingInvoiceSessions(true)
-                                      setSessionUpdates(prev => ({ ...prev, [session.id]: { ...prev[session.id], _inv: Date.now() } }))
-                                    }}
-                                    style={{ fontSize: '0.643rem', color: 'var(--primary-500)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, textDecoration: 'underline' }}
-                                  >
-                                    Modifier
-                                  </button>
-                                )}
-                              </div>
-                              {session.invoiceSent && !editingInvoiceSessions ? (
-                                <div style={{ border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', padding: 4 }}>
-                                  {invoiceSessions.map(sid => {
-                                    const s = sessions.find(x => x.id === sid)
-                                    if (!s) return null
-                                    const sNum = sessionNumbers[s.id]
-                                    return (
-                                      <div key={sid} style={{ padding: '3px 6px', fontSize: '0.714rem', color: 'var(--primary-700)', fontWeight: 600 }}>
-                                        S{sNum} · {formatDate(s.date)} ({getRate(s.id)}€)
-                                      </div>
-                                    )
-                                  })}
-                                </div>
-                              ) : (
-                                <>
-                                  <div style={{ maxHeight: 100, overflowY: 'auto', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', padding: 4 }}>
-                                    {sessions.filter(s => {
-                                      if (s.status !== 'completed' && s.status !== 'scheduled') return false
-                                      // Always show sessions already in this invoice
-                                      if (invoiceSessions.includes(s.id)) return true
-                                      // Future sessions: only allow if payment is received
-                                      if (s.status === 'scheduled' && !s.paymentReceived) return false
-                                      // Only exclude sessions whose invoice has been EMITTED (sent)
-                                      if (s.needsInvoice && s.invoiceSent && s.id !== session.id) return false
-                                      // Only exclude sessions covered by another EMITTED invoice
-                                      if (sessions.some(other => other.id !== session.id && other.needsInvoice && other.invoiceSent && (other.invoiceCoveredSessionIds || []).includes(s.id))) return false
-                                      // Don't show cancelled sessions
-                                      if (s.status === 'cancelled') return false
-                                      return true
-                                    }).sort((a, b) => b.date.localeCompare(a.date)).map(s => {
-                                      const sNum = sessionNumbers[s.id]
-                                      const isChecked = invoiceSessions.includes(s.id)
-                                      return (
-                                        <label key={s.id} style={{
-                                          display: 'flex', alignItems: 'center', gap: 6, padding: '3px 6px',
-                                          borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '0.714rem',
-                                          color: isChecked ? 'var(--primary-700)' : 'var(--text-secondary)',
-                                          background: isChecked ? 'var(--primary-50)' : 'transparent',
-                                          transition: 'background 0.1s'
-                                        }}>
-                                          <input
-                                            type="checkbox"
-                                            checked={isChecked}
-                                            onChange={() => {
-                                              const updated = isChecked
-                                                ? invoiceSessions.filter(id => id !== s.id)
-                                                : [...invoiceSessions, s.id]
-                                              if (updated.length === 0) {
-                                                session.needsInvoice = false
-                                                session.invoiceSent = false
-                                                session.invoiceDate = undefined
-                                                session.invoiceCoveredSessionIds = undefined
-                                                updateSession(session.id, { needsInvoice: false, invoiceSent: false, invoiceDate: null, invoiceCoveredSessionIds: null })
-                                              } else if (!updated.includes(session.id)) {
-                                                // Migrate invoice to the first session in the covered list
-                                                const targetSession = sessions.find(ts => ts.id === updated[0])
-                                                if (targetSession) {
-                                                  targetSession.needsInvoice = true
-                                                  targetSession.invoiceSent = session.invoiceSent
-                                                  targetSession.invoiceDate = session.invoiceDate
-                                                  targetSession.invoiceCoveredSessionIds = updated
-                                                  updateSession(targetSession.id, { needsInvoice: true, invoiceSent: session.invoiceSent, invoiceDate: session.invoiceDate, invoiceCoveredSessionIds: updated })
-                                                }
-                                                // Clear from current session
-                                                session.needsInvoice = false
-                                                session.invoiceSent = false
-                                                session.invoiceDate = undefined
-                                                session.invoiceCoveredSessionIds = undefined
-                                                updateSession(session.id, { needsInvoice: false, invoiceSent: false, invoiceDate: null, invoiceCoveredSessionIds: null })
-                                              } else {
-                                                session.invoiceCoveredSessionIds = updated
-                                                updateSession(session.id, { invoiceCoveredSessionIds: updated })
-                                              }
-                                              setSessionUpdates(prev => ({ ...prev, [session.id]: { ...prev[session.id], _inv: Date.now() } }))
-                                            }}
-                                            style={{ accentColor: 'var(--primary-500)' }}
-                                          />
-                                          <span style={{ fontWeight: isChecked ? 600 : 400 }}>S{sNum} · {formatDate(s.date)} ({getRate(s.id)}€)</span>
-                                        </label>
-                                      )
-                                    })}
+
+                        {/* Séances concernées par cette facture */}
+                        <div style={{ marginTop: 6 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                            <label style={{ fontSize: '0.643rem', fontWeight: 600, color: 'var(--text-tertiary)' }}>Séances concernées par cette facture :</label>
+                            {invoice.sent && !editingInvoiceSessions && (
+                              <button
+                                onClick={async () => {
+                                  await unemitInvoice(invoice.id)
+                                  setEditingInvoiceSessions(true)
+                                }}
+                                style={{ fontSize: '0.643rem', color: 'var(--primary-500)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, textDecoration: 'underline' }}
+                              >
+                                Modifier
+                              </button>
+                            )}
+                          </div>
+                          {invoice.sent && !editingInvoiceSessions ? (
+                            /* Read-only display of covered sessions */
+                            <div style={{ border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', padding: 4 }}>
+                              {(invoice.sessionIds || []).map(sid => {
+                                const s = sessions.find(x => x.id === sid)
+                                if (!s) return null
+                                const sNum = sessionNumbers[s.id]
+                                return (
+                                  <div key={sid} style={{ padding: '3px 6px', fontSize: '0.714rem', color: 'var(--primary-700)', fontWeight: 600 }}>
+                                    S{sNum} · {formatDate(s.date)} ({getRate(s.id)}€)
                                   </div>
-                                  {editingInvoiceSessions && (
-                                    <button
-                                      onClick={() => setEditingInvoiceSessions(false)}
-                                      style={{ fontSize: '0.643rem', color: 'var(--primary-500)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, marginTop: 4, textDecoration: 'underline' }}
-                                    >
-                                      Terminé
-                                    </button>
-                                  )}
-                                </>
-                              )}
+                                )
+                              })}
                             </div>
-                          )
-                        })()}
+                          ) : (
+                            /* Interactive edit mode — checkboxes */
+                            <>
+                              <div style={{ maxHeight: 100, overflowY: 'auto', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', padding: 4 }}>
+                                {sessions.filter(s => {
+                                  // Only past sessions
+                                  if (new Date(s.date) > new Date()) return false
+                                  // Already in this invoice? Show it
+                                  if ((invoice.sessionIds || []).includes(s.id)) return true
+                                  // Exclude cancelled sessions with zero amount
+                                  if (s.status === 'cancelled' && !getRate(s.id)) return false
+                                  // Exclude sessions already covered by another invoice
+                                  const otherInv = getInvoiceForSession(s.id)
+                                  if (otherInv && otherInv.id !== invoice.id) return false
+                                  return true
+                                }).sort((a, b) => b.date.localeCompare(a.date) || (sessionNumbers[a.id] || 0) - (sessionNumbers[b.id] || 0)).map(s => {
+                                  const sNum = sessionNumbers[s.id]
+                                  const isChecked = (invoice.sessionIds || []).includes(s.id)
+                                  return (
+                                    <label key={s.id} style={{
+                                      display: 'flex', alignItems: 'center', gap: 6, padding: '3px 6px',
+                                      borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '0.714rem',
+                                      color: isChecked ? 'var(--primary-700)' : 'var(--text-secondary)',
+                                      background: isChecked ? 'var(--primary-50)' : 'transparent',
+                                      transition: 'background 0.1s'
+                                    }}>
+                                      <input
+                                        type="checkbox"
+                                        checked={isChecked}
+                                        onChange={async () => {
+                                          const updated = isChecked
+                                            ? (invoice.sessionIds || []).filter(id => id !== s.id)
+                                            : [...(invoice.sessionIds || []), s.id]
+                                          if (updated.length === 0) {
+                                            await deleteInvoice(invoice.id)
+                                          } else {
+                                            await setInvoiceSessions(invoice.id, updated)
+                                          }
+                                        }}
+                                        style={{ accentColor: 'var(--primary-500)' }}
+                                      />
+                                      <span style={{ fontWeight: isChecked ? 600 : 400 }}>S{sNum} · {formatDate(s.date)} ({getRate(s.id)}€)</span>
+                                    </label>
+                                  )
+                                })}
+                              </div>
+                              {editingInvoiceSessions && (
+                                <button
+                                  onClick={() => setEditingInvoiceSessions(false)}
+                                  style={{ fontSize: '0.643rem', color: 'var(--primary-500)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, marginTop: 4, textDecoration: 'underline' }}
+                                >
+                                  Terminé
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </div>
                       </>
                     )}
                   </div>

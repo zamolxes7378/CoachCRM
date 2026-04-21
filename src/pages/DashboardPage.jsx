@@ -17,7 +17,7 @@ import ActionDetailPanel from '../components/dashboard/ActionDetailPanel'
 
 export default function DashboardPage({ user }) {
   const navigate = useNavigate()
-  const { clients, sessions, reports, contacts, phaseIcons, phaseColors, isProspect, getClientName, getClientInitials, getClientType, formatTime, formatDate, formatRelativeDate, formatDashboardDate, getPhaseLabel, getComputedStatus, createSession, deleteSession, deleteSessions, sessionRates, defaultPhaseKey, getPhaseColor, getPhaseIcon } = useData()
+  const { clients, sessions, reports, contacts, phaseIcons, phaseColors, isProspect, getClientName, getClientInitials, getClientType, formatTime, formatDate, formatRelativeDate, formatDashboardDate, getPhaseLabel, getComputedStatus, createSession, deleteSession, deleteSessions, sessionRates, defaultPhaseKey, getPhaseColor, getPhaseIcon, getInvoiceForSession } = useData()
   const { urgencies, clientsToReactivate, pendingCRs, pendingPaymentSessions, pendingInvoiceSessions } = useUrgencies()
   const confirm = useConfirm()
   const [visibleCount, setVisibleCount] = useState(10)
@@ -73,7 +73,7 @@ export default function DashboardPage({ user }) {
       const datePart = s.date?.split('T')[0] || ''
       matchesDate = datePart >= searchDate
     }
-    const matchesInvoice = !filterInvoice || (s.needsInvoice && !s.invoiceSent)
+    const matchesInvoice = !filterInvoice || ((() => { const inv = getInvoiceForSession(s.id); return inv && !inv.sent })())
     const matchesPayment = !filterPayment || (s.status === 'completed' && (!s.paymentMethod || (s.paymentMethod !== 'especes' && !s.paymentReceived)))
     return matchesName && matchesDate && matchesInvoice && matchesPayment
   }).sort((a, b) => sessionView === 'past' && !isSearchActive
@@ -280,7 +280,7 @@ export default function DashboardPage({ user }) {
                                       hasReport={session.hasReport}
                                       isProspect={isP}
                                       reportSummary={session.summary}
-                                      invoiceInfo={session.needsInvoice ? { needsInvoice: true, invoiceSent: session.invoiceSent } : null}
+
                                       formatDate={formatDate}
                                       formatTime={formatTime}
                                       onClick={selectMode ? () => toggleSelect(session.id) : () => session.clientId && navigate(`/clients/${session.clientId}?sessionId=${session.id}`, { state: { from: '/' } })}
@@ -709,7 +709,7 @@ export default function DashboardPage({ user }) {
             })
         } else if (activeUrgency === 'urg-inv') {
           panelItems = sessions
-            .filter(s => s.needsInvoice && !s.invoiceSent)
+            .filter(s => { const inv = getInvoiceForSession(s.id); return inv && !inv.sent })
             .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
             .map(s => {
               const client = clients.find(c => c.id === s.clientId)

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, Suspense, lazy } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { supabase } from './lib/supabase'
 import { upsertUser } from './services/dataService'
@@ -8,16 +8,18 @@ import { ConfirmProvider } from './context/ConfirmContext'
 import Layout from './components/layout/Layout'
 import LoginPage from './pages/LoginPage'
 import OnboardingWizard from './components/OnboardingWizard'
-import DashboardPage from './pages/DashboardPage'
-import ClientsPage from './pages/ClientsPage'
-import ClientDetailPage from './pages/ClientDetailPage'
-import SessionsPage from './pages/SessionsPage'
-import FinancesPage from './pages/FinancesPage'
-import AdminPage from './pages/AdminPage'
-import DeletedClientsPage from './pages/DeletedClientsPage'
-import ReseauProPage from './pages/ReseauProPage'
-import SettingsPage from './pages/SettingsPage'
-import HelpPage from './pages/HelpPage'
+
+// Code splitting pour les pages
+const DashboardPage = lazy(() => import('./pages/DashboardPage'))
+const ClientsPage = lazy(() => import('./pages/ClientsPage'))
+const ClientDetailPage = lazy(() => import('./pages/ClientDetailPage'))
+const SessionsPage = lazy(() => import('./pages/SessionsPage'))
+const FinancesPage = lazy(() => import('./pages/FinancesPage'))
+const AdminPage = lazy(() => import('./pages/AdminPage'))
+const DeletedClientsPage = lazy(() => import('./pages/DeletedClientsPage'))
+const ReseauProPage = lazy(() => import('./pages/ReseauProPage'))
+const SettingsPage = lazy(() => import('./pages/SettingsPage'))
+const HelpPage = lazy(() => import('./pages/HelpPage'))
 
 /**
  * GlobalErrorBoundary — Capture les erreurs de rendu React pour éviter la page blanche.
@@ -161,12 +163,20 @@ export default function App() {
 
   const handleLogout = async () => {
     try {
-      // Radical cleanup: signOut + localStorage clear + Refresh
-      await supabase.auth.signOut({ scope: 'local' })
-      localStorage.removeItem('coachcrm-auth-token') // Force clear lock/session
-      window.location.href = '/' // Force fresh reload
+      // 1. Reset React state immediately to prevent re-render with stale user
+      setUser(null)
+
+      // 2. Clear ALL auth-related localStorage keys before signOut
+      //    (storageKey configured in supabase.js = 'coachcrm-auth-token')
+      localStorage.removeItem('coachcrm-auth-token')
+      localStorage.removeItem('coachcrm_onboarding_done')
+
+      // 3. Sign out globally (revokes session on Supabase server too)
+      await supabase.auth.signOut({ scope: 'global' })
     } catch (err) {
-      console.warn('Logout error, forcing reload:', err)
+      console.warn('Logout error:', err)
+    } finally {
+      // 4. Force fresh reload regardless of success/failure
       window.location.href = '/'
     }
   }
@@ -198,19 +208,25 @@ export default function App() {
           <DataProvider user={user}>
             <BrowserRouter>
               <Layout user={user} onLogout={handleLogout}>
-                <Routes>
-                  <Route path="/" element={<DashboardPage user={user} />} />
-                  <Route path="/clients" element={<ClientsPage />} />
-                  <Route path="/clients/:id" element={<ClientDetailPage />} />
-                  <Route path="/sessions" element={<SessionsPage />} />
-                  <Route path="/finances" element={<FinancesPage />} />
-                  <Route path="/settings" element={<SettingsPage />} />
-                  <Route path="/help" element={<HelpPage />} />
-                  <Route path="/admin" element={user.role === 'admin' ? <AdminPage /> : <Navigate to="/" />} />
-                  <Route path="/admin/deleted-clients" element={user.role === 'admin' ? <DeletedClientsPage /> : <Navigate to="/" />} />
-                  <Route path="/admin/reseau-pro" element={user.role === 'admin' ? <ReseauProPage /> : <Navigate to="/" />} />
-                  <Route path="*" element={<Navigate to="/" />} />
-                </Routes>
+                <Suspense fallback={
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '50vh' }}>
+                    <div className="spinner" />
+                  </div>
+                }>
+                  <Routes>
+                    <Route path="/" element={<DashboardPage user={user} />} />
+                    <Route path="/clients" element={<ClientsPage />} />
+                    <Route path="/clients/:id" element={<ClientDetailPage />} />
+                    <Route path="/sessions" element={<SessionsPage />} />
+                    <Route path="/finances" element={<FinancesPage />} />
+                    <Route path="/settings" element={<SettingsPage />} />
+                    <Route path="/help" element={<HelpPage />} />
+                    <Route path="/admin" element={user.role === 'admin' ? <AdminPage /> : <Navigate to="/" />} />
+                    <Route path="/admin/deleted-clients" element={user.role === 'admin' ? <DeletedClientsPage /> : <Navigate to="/" />} />
+                    <Route path="/admin/reseau-pro" element={user.role === 'admin' ? <ReseauProPage /> : <Navigate to="/" />} />
+                    <Route path="*" element={<Navigate to="/" />} />
+                  </Routes>
+                </Suspense>
               </Layout>
             </BrowserRouter>
           </DataProvider>

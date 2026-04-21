@@ -47,7 +47,7 @@ export default function ReseauProPage() {
 
   const navigate = useNavigate()
 
-  const { clients, professionals, createProfessional, updateProfessional: updatePro, deleteProfessionals } = useData()
+  const { clients, professionals, createProfessional, updateProfessional: updatePro, deleteProfessionals, formatDate } = useData()
 
   let filtered = professionals.filter(p => {
     if (!search) return true
@@ -305,7 +305,7 @@ export default function ReseauProPage() {
                     {(pro.referrals || []).length} reco{(pro.referrals || []).length > 1 ? 's' : ''}
                   </div>
                   <span style={{ fontSize: '0.571rem', color: 'var(--text-tertiary)' }}>
-                    {new Date(pro.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    {formatDate(pro.createdAt)}
                   </span>
                   <button
                     onClick={e => { e.stopPropagation(); navigate(`/clients?newClient=1&proRef=${encodeURIComponent(JSON.stringify({ proId: pro.id, firstName: pro.firstName, lastName: pro.lastName }))}`) }}
@@ -439,7 +439,7 @@ export default function ReseauProPage() {
                         </div>
                       </td>
                       <td style={{ color: 'var(--text-tertiary)', fontSize: '0.857rem' }}>
-                        {new Date(pro.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {formatDate(pro.createdAt)}
                       </td>
                       <td style={{ textAlign: 'right' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>

@@ -1,8 +1,9 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
 import { useToast } from './ToastContext'
 import * as ds from '../services/dataService'
+import * as invService from '../services/invoiceService'
 import { checkAllianceTransition, checkAllianceAfterBatchDelete, isAllianceValidated } from '../services/allianceService'
-import { adaptClient, adaptSession, adaptReport, adaptProfessional, adaptTherapyCycle, adaptContact, unadaptClient, unadaptSession, unadaptProfessional, unadaptTherapyCycle, unadaptContact } from '../data/adapters'
+import { adaptClient, adaptSession, adaptReport, adaptProfessional, adaptTherapyCycle, adaptContact, adaptInvoice, unadaptClient, unadaptSession, unadaptProfessional, unadaptTherapyCycle, unadaptContact } from '../data/adapters'
 import { Sprout, Search, Target, Award, UserPlus } from 'lucide-react'
 import {
   therapyPhases as defaultPhases, defaultTherapyConfig as defaultTherapyCfg,
@@ -31,6 +32,7 @@ export function DataProvider({ user, children }) {
   const [rawContacts, setRawContacts] = useState([])
   const [rawProfessionals, setRawProfessionals] = useState([])
   const [rawTherapyCycles, setRawTherapyCycles] = useState([])
+  const [rawInvoices, setRawInvoices] = useState([])
   const [settings, setSettings] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -54,52 +56,25 @@ export function DataProvider({ user, children }) {
     if (!user?.id) return
     setLoading(true)
     try {
-      const [c, s, r, st, p, ct, tc] = await Promise.all([
+      const [c, s, r, st, p, ct, tc, inv] = await Promise.all([
         ds.getClients(user.id),
         ds.getSessions(user.id),
         ds.getReports(user.id),
         ds.getSettings(user.id),
         ds.getProfessionals(user.id),
         ds.getContacts(user.id),
-        ds.getTherapyCycles(user.id)
+        ds.getTherapyCycles(user.id),
+        invService.getInvoices(user.id)
       ])
-      // Auto-confirm past sessions on load
-      const now = new Date()
-      const rates = { ...defaultRates, ...(st?.session_rates || {}) }
-      const phaseKey = (st?.therapy_phases || defaultPhases)[0]?.key || 'debut'
-      for (const sess of s) {
-        if (sess.status === 'scheduled' && sess.date) {
-          const endTime = new Date(new Date(sess.date).getTime() + (sess.duration || 60) * 60000)
-          // Règle : Confirmée si terminée ET (paiement présent OU montant = 0)
-          const effectiveAmount = sess.payment_amount ?? rates[c.find(cl => cl.id === sess.client_id)?.type] ?? null
-          const paymentCondition = !!sess.payment_method || effectiveAmount === 0
-          if (now >= endTime && paymentCondition) {
-            await ds.updateSession(sess.id, { status: 'completed' })
-            sess.status = 'completed'
-            const client = c.find(cl => cl.id === sess.client_id)
-            if (client && client.phase === 'prospect') {
-              await ds.updateClient(client.id, { phase: phaseKey })
-              client.phase = phaseKey
-            }
-          }
-        }
-      }
-      // Global Alliance Audit (Curative)
-      for (const client of c) {
-        if (client.phase !== 'prospect') {
-          const clientSess = s.filter(sess => sess.client_id === client.id)
-          const validSessions = clientSess.filter(sess => isAllianceValidated(sess, rates, client))
-          if (validSessions.length === 0) {
-            await ds.updateClient(client.id, { phase: 'prospect' })
-            client.phase = 'prospect'
-          }
-        }
-      }
+      // Note : L'auto-complétion des séances passées et l'audit d'alliance thérapeutique
+      // sont désormais gérés de manière optimisée par l'interface locale ou lors des actions
+      // de sauvegarde (Webhooks recommandés), évitant de bloquer le démarrage de l'app.
       setRawClients(c)
       setRawSessions(s)
       setRawReports(r)
       setRawContacts(ct)
       setRawTherapyCycles(tc)
+      setRawInvoices(inv)
       setSettings(st)
       setRawProfessionals(p)
     } catch (err) {
@@ -138,6 +113,19 @@ export function DataProvider({ user, children }) {
   const contacts = useMemo(() => rawContacts.map(adaptContact), [rawContacts])
   const professionals = useMemo(() => rawProfessionals.map(adaptProfessional), [rawProfessionals])
   const therapyCycles = useMemo(() => rawTherapyCycles.map(adaptTherapyCycle), [rawTherapyCycles])
+  const invoices = useMemo(() => rawInvoices.map(adaptInvoice), [rawInvoices])
+
+  // Invoice helpers — memoized lookup maps
+  const invoiceBySessionId = useMemo(() => {
+    const map = {}
+    invoices.forEach(inv => {
+      (inv.sessionIds || []).forEach(sid => { map[sid] = inv })
+    })
+    return map
+  }, [invoices])
+
+  const getInvoiceForSession = useCallback((sessionId) => invoiceBySessionId[sessionId] || null, [invoiceBySessionId])
+  const getInvoicesByClient = useCallback((clientId) => invoices.filter(i => i.clientId === clientId), [invoices])
 
   // Phase icons & colors — single source of truth
   const defaultPhaseIcons = { prospect: UserPlus, debut: Sprout, analyse: Search, integration: Target, bilan_final: Award }
@@ -166,13 +154,14 @@ export function DataProvider({ user, children }) {
   }, [])
 
   const value = {
-    clients, sessions, reports, contacts, settings, loading, professionals, therapyCycles,
+    clients, sessions, reports, contacts, settings, loading, professionals, therapyCycles, invoices,
     sessionRates, recruitmentSources, therapyPhases, defaultTherapyConfig,
     phaseIcons, phaseColors, defaultPhaseKey, getPhaseColor, getPhaseIcon, isProspect,
     prospectStages,
     getClientName, getClientInitials, getPhaseLabel, getStatusLabel,
     getComputedStatus, getProspectStageInfo, getClientType, clientTypeLabels,
     formatDate, formatTime, formatRelativeDate, formatDashboardDate, getTodaySessions,
+    getInvoiceForSession, getInvoicesByClient,
     refreshData: loadData,
     updateClient: async (id, updates) => {
       try {
@@ -385,6 +374,67 @@ export function DataProvider({ user, children }) {
       } catch (err) {
         console.error('updateTherapyCycle error:', err)
         showToast('Erreur lors de la mise à jour du cycle.', 'error')
+      }
+    },
+    // ── Invoice CRUD ──
+    createInvoice: async ({ clientId, sessionIds, invoiceDate }) => {
+      try {
+        const result = await invService.createInvoice({ userId: user.id, clientId, sessionIds, invoiceDate })
+        if (result) await loadData()
+        return result
+      } catch (err) {
+        console.error('createInvoice error:', err)
+        showToast('Erreur lors de la création de la facture.', 'error')
+      }
+    },
+    updateInvoice: async (id, updates) => {
+      try {
+        const result = await invService.updateInvoice(id, updates)
+        if (result) await loadData()
+        return result
+      } catch (err) {
+        console.error('updateInvoice error:', err)
+        showToast('Erreur lors de la mise à jour de la facture.', 'error')
+      }
+    },
+    emitInvoice: async (id) => {
+      try {
+        const result = await invService.emitInvoice(id)
+        if (result) await loadData()
+        return result
+      } catch (err) {
+        console.error('emitInvoice error:', err)
+        showToast('Erreur lors de l\'émission de la facture.', 'error')
+      }
+    },
+    unemitInvoice: async (id) => {
+      try {
+        const result = await invService.unemitInvoice(id)
+        if (result) await loadData()
+        return result
+      } catch (err) {
+        console.error('unemitInvoice error:', err)
+        showToast('Erreur lors de la modification de la facture.', 'error')
+      }
+    },
+    deleteInvoice: async (id) => {
+      try {
+        const result = await invService.deleteInvoice(id)
+        if (result) await loadData()
+        return result
+      } catch (err) {
+        console.error('deleteInvoice error:', err)
+        showToast('Erreur lors de la suppression de la facture.', 'error')
+      }
+    },
+    setInvoiceSessions: async (invoiceId, sessionIds) => {
+      try {
+        const result = await invService.setInvoiceSessions(invoiceId, sessionIds)
+        if (result) await loadData()
+        return result
+      } catch (err) {
+        console.error('setInvoiceSessions error:', err)
+        showToast('Erreur lors de la mise à jour des séances facturées.', 'error')
       }
     }
   }

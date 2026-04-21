@@ -52,14 +52,14 @@ export default function HelpPage() {
       ]
     },
     {
-      icon: Euro, color: '#92400E', bg: '#FFFBEB',
+      icon: Euro, color: '#D97706', bg: '#FFFBEB',
       title: 'Suivi financier global',
       desc: 'Vue consolidée de votre activité financière. Chiffre d\'affaires, projections mensuelles, alertes de paiement et suivi de facturation.',
       tip: 'Les trois types d\'alertes vous aident à ne rien oublier : factures à émettre (bleu), séances à confirmer (jaune) et paiements en attente (rouge).',
       to: '/finances',
       alerts: [
         { color: 'var(--primary-500)', bg: '#EBF8FF', text: 'Factures à émettre' },
-        { color: '#92400E', bg: '#FFFBEB', text: 'Séances à confirmer' },
+        { color: '#D97706', bg: '#FFFBEB', text: 'Séances à confirmer' },
         { color: '#C53030', bg: '#FFF5F5', text: 'Paiements en attente' }
       ]
     },
@@ -241,8 +241,8 @@ export default function HelpPage() {
                       background: '#FFFBEB', borderRadius: 'var(--radius-sm)',
                       border: '1px solid #F6E05E40'
                     }}>
-                      <Lightbulb size={16} style={{ color: '#92400E', flexShrink: 0, marginTop: 1 }} />
-                      <p style={{ fontSize: '0.786rem', color: '#92400E', lineHeight: 1.5, margin: 0, fontWeight: 500 }}>
+                      <Lightbulb size={16} style={{ color: '#D97706', flexShrink: 0, marginTop: 1 }} />
+                      <p style={{ fontSize: '0.786rem', color: '#D97706', lineHeight: 1.5, margin: 0, fontWeight: 500 }}>
                         <strong>Astuce :</strong> {g.tip}
                       </p>
                     </div>

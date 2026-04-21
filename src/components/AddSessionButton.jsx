@@ -11,6 +11,7 @@ export default function AddSessionButton({ onClick, label = 'Séance' }) {
   return (
     <button
       className="btn"
+      type="button"
       style={{ background: 'var(--primary-100)', color: 'var(--primary-700)', fontWeight: 600, border: '1px solid var(--primary-200)' }}
       onClick={onClick}
     >

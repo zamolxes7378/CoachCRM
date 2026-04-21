@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
-import { FileText, ArrowRight } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
+import ReportIcon from '../components/ReportIcon'
 import { useData } from '../context/DataContext'
 
 export default function ReportsPage() {
@@ -16,7 +17,7 @@ export default function ReportsPage() {
         {reports.map(report => (
           <div className="report-item" key={report.id} onClick={() => navigate(`/reports/${report.id}`)}>
             <div className="report-icon">
-              <FileText />
+              <ReportIcon size={20} />
             </div>
             <div className="report-info">
               <div className="report-title">{report.clientName} · Séance #{report.sessionNumber}</div>

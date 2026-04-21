@@ -146,7 +146,7 @@ Les props suivantes de `SessionCard` doivent **toujours** avoir un fallback inte
 
 | Icône | Description | Couleur de référence | Fichiers |
 |-------|-------------|---------------------|----------|
-| **Facture (document + €)** | SVG document avec symbole euro | `#1A365D` (bleu profond) | `DashboardPage.jsx`, `FinancesPage.jsx`, `ClientDetailPage.jsx` |
+| **Facture (document + €)** | SVG document avec symbole euro | `#1A365D` (bleu profond) | `DashboardPage.jsx`, `FinancesPage.jsx`, `ClientFinancialPanel.jsx` |
 | **FamilyIcon** | SVG famille (3 cercles + 2 chemins) | `currentColor` | `ClientTypeBadge.jsx` |
 
 ### Règle d'harmonisation
@@ -187,7 +187,7 @@ Cette règle s'applique à **tous** les endroits affichant le statut d'une séan
 |----------|----------------------|
 | **Colonne Statut** de tableau (`FinancesPage`) | Texte "À confirmer" (badge ambre) |
 | **Export CSV** | Texte "À confirmer" |
-| **Vue compacte par séance** (`ClientDetailPage` suivi financier) | `ConfirmBadge` seul (pas de texte status) |
+| **Vue compacte par séance** (`ClientFinancialPanel` suivi financier) | `ConfirmBadge` seul (pas de texte status) |
 | **Carte de séance** (`SessionCard`) | `ConfirmBadge` seul |
 
 Dans les vues compactes où `ConfirmBadge` est présent, les sessions `isToConfirm` doivent être traitées comme des sessions complétées pour l'affichage du label (juste `S{num} · {date}`) — le badge gère le statut visuel.
@@ -202,3 +202,30 @@ Dans les vues compactes où `ConfirmBadge` est présent, les sessions `isToConfi
 > ```
 > Le `|| !session.paymentMethod` est critique pour rattraper les cas où `isConfirmed === true` à cause du status DB.
 
+## 15. Authentification et Déconnexion
+
+> [!IMPORTANT]
+> **Configuration Supabase Auth** :
+> Le client Supabase utilise `storageKey: 'coachcrm-auth-token'` dans `src/lib/supabase.js`. Toute modification de cette clé doit être reflétée dans la fonction `handleLogout` de `App.jsx`.
+
+- **Déconnexion (handleLogout)** — Séquence obligatoire pour éviter les race conditions :
+    1. **Reset immédiat de l'état React** : `setUser(null)` avant tout appel asynchrone.
+    2. **Nettoyage localStorage** : Supprimer `coachcrm-auth-token` et `coachcrm_onboarding_done` **avant** `signOut`.
+    3. **Scope `global`** : Utiliser `supabase.auth.signOut({ scope: 'global' })` pour révoquer aussi la session côté serveur Supabase (pas seulement locale).
+    4. **Bloc `finally`** : Le `window.location.href = '/'` doit être dans un `finally` pour garantir le rechargement même en cas d'erreur réseau.
+
+> [!CAUTION]
+> **Anti-pattern : `signOut({ scope: 'local' })` + redirect immédiat** :
+> Ne jamais utiliser `scope: 'local'` seul pour la déconnexion. La session serveur reste active et peut se re-synchroniser au rechargement de la page, annulant la déconnexion.
+
+## 16. Modularisation et Découpage des Pages Complexes
+
+> [!IMPORTANT]
+> **Règle de Modularité (Pattern Orchestrateur)** :
+> Toute page dépassant ~800 lignes ou cumulant plusieurs responsabilités métier (ex: Dashboard, Fiche Client) doit être scindée en un "Composant Orchestrateur" et plusieurs "Panneaux" (`Panels`).
+
+### Règles d'extraction
+1. **Couplage d'états** : Si un groupe d'états (`useState`, `useRef`) ne sert qu'à une zone spécifique de la page (ex: édition de tarif, de notes), il doit être encapsulé dans le sous-composant correspondant (`ClientStatsPanel`, `ClientNotesPreview`).
+2. **Passage de props** : L'orchestrateur passe les fonctions globales (`updateClient`, `formatDate`) et la donnée centrale aux panneaux. Les panneaux gèrent leurs interactions locales de manière autonome.
+3. **Hiérarchie visuelle** : Les panneaux extraits (`ClientHeaderPanel`, `ClientTimelinePanel`, etc.) doivent être rangés dans des sous-dossiers pertinents (ex: `src/components/client/`).
+4. **Maintenance** : Ce découpage réduit la complexité cyclomatique, prévient les re-rendus excessifs de toute la page, et rend le composant racine purement déclaratif. L'orchestrateur devient un routeur visuel.
