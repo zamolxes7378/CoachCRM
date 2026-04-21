@@ -10,7 +10,7 @@ INSERT INTO users (id, name, email, role) VALUES
 
 -- 2. Insert clients (all names are synthetic / fictional)
 INSERT INTO clients (id, user_id, type, partner_a, partner_b, phase, source, status, start_date, sessions_count, total_sessions, next_session, last_session, emotional_maturity, emotional_maturity_history, notes, exercises) VALUES
-  ('00000000-0000-0000-0000-000000000101', '00000000-0000-0000-0000-000000000001', 'couple',
+  ('00000000-0000-0000-0000-000000000101', '00000000-0000-0000-0000-000000000001', 'client',
     '{"firstName":"Sophie","lastName":"Exemple","email":"sophie.exemple@example.invalid","phone":"06 00 00 01 01"}',
     '{"firstName":"Thomas","lastName":"Exemple","email":"thomas.exemple@example.invalid","phone":"06 00 00 01 02"}',
     'analyse', 'website', 'active', '2025-11-15', 12, 20,
@@ -18,7 +18,7 @@ INSERT INTO clients (id, user_id, type, partner_a, partner_b, phase, source, sta
     'Couple marié depuis 8 ans. Problème de communication principal.',
     '[{"id":"e1","title":"Journal des émotions quotidien","status":"completed","dueDate":"2026-03-10"},{"id":"e2","title":"Exercice d''écoute active (15 min/jour)","status":"in-progress","dueDate":"2026-03-20"},{"id":"e3","title":"Lettre de gratitude au partenaire","status":"pending","dueDate":"2026-03-25"}]'),
 
-  ('00000000-0000-0000-0000-000000000102', '00000000-0000-0000-0000-000000000001', 'couple',
+  ('00000000-0000-0000-0000-000000000102', '00000000-0000-0000-0000-000000000001', 'client',
     '{"firstName":"Claire","lastName":"Exemple","email":"claire.exemple@example.invalid","phone":"06 00 00 02 01"}',
     '{"firstName":"Lucas","lastName":"Exemple","email":"lucas.exemple@example.invalid","phone":"06 00 00 02 02"}',
     'debut', 'phone', 'active', '2026-02-01', 3, 20,
@@ -26,7 +26,7 @@ INSERT INTO clients (id, user_id, type, partner_a, partner_b, phase, source, sta
     'En couple depuis 3 ans, pas mariés. Premiers signes de crise.',
     '[{"id":"e4","title":"Identifier 3 besoins fondamentaux","status":"completed","dueDate":"2026-03-05"}]'),
 
-  ('00000000-0000-0000-0000-000000000103', '00000000-0000-0000-0000-000000000001', 'couple',
+  ('00000000-0000-0000-0000-000000000103', '00000000-0000-0000-0000-000000000001', 'client',
     '{"firstName":"Isabelle","lastName":"Exemple","email":"isabelle.exemple@example.invalid","phone":"06 00 00 03 01"}',
     '{"firstName":"Marc","lastName":"Exemple","email":"marc.exemple@example.invalid","phone":"06 00 00 03 02"}',
     'integration', 'referral', 'active', '2025-06-10', 15, 20,
@@ -34,7 +34,7 @@ INSERT INTO clients (id, user_id, type, partner_a, partner_b, phase, source, sta
     'Très bonne progression. Phase d''intégration en cours.',
     '[{"id":"e5","title":"Rituel de connexion quotidien","status":"in-progress","dueDate":"2026-03-30"},{"id":"e6","title":"Pratique CNV en situation de conflit","status":"in-progress","dueDate":"2026-04-05"}]'),
 
-  ('00000000-0000-0000-0000-000000000104', '00000000-0000-0000-0000-000000000001', 'couple',
+  ('00000000-0000-0000-0000-000000000104', '00000000-0000-0000-0000-000000000001', 'client',
     '{"firstName":"Julie","lastName":"Exemple","email":"julie.exemple@example.invalid","phone":"06 00 00 04 01"}',
     '{"firstName":"Pierre","lastName":"Exemple","email":"pierre.exemple@example.invalid","phone":"06 00 00 04 02"}',
     'analyse', 'phone', 'active', '2025-09-20', 8, 20,
@@ -42,7 +42,7 @@ INSERT INTO clients (id, user_id, type, partner_a, partner_b, phase, source, sta
     'Enjeux de parentalité et répartition des tâches.',
     '[{"id":"e7","title":"Planning parental équilibré","status":"pending","dueDate":"2026-03-18"}]'),
 
-  ('00000000-0000-0000-0000-000000000105', '00000000-0000-0000-0000-000000000001', 'couple',
+  ('00000000-0000-0000-0000-000000000105', '00000000-0000-0000-0000-000000000001', 'client',
     '{"firstName":"Émilie","lastName":"Exemple","email":"emilie.exemple@example.invalid","phone":"06 00 00 05 01"}',
     '{"firstName":"Nicolas","lastName":"Exemple","email":"nicolas.exemple@example.invalid","phone":"06 00 00 05 02"}',
     'debut', 'website', 'inactive', '2026-03-01', 2, 20,
