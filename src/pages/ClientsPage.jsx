@@ -589,15 +589,15 @@ export default function ClientsPage() {
             </div>
             <div className="grid-2">
               <div className="input-group">
-                <label>Prénom</label>
-                <input className="input" placeholder="Prénom" value={idx === 0 ? newFirstName : newFirstNameB} onChange={idx === 0 ? e => { setNewFirstName(e.target.value); setDuplicateDismissed(false) } : e => setNewFirstNameB(e.target.value)} />
+                <label htmlFor={`new-client-${idx}-firstname`}>Prénom</label>
+                <input id={`new-client-${idx}-firstname`} className="input" placeholder="Prénom" value={idx === 0 ? newFirstName : newFirstNameB} onChange={idx === 0 ? e => { setNewFirstName(e.target.value); setDuplicateDismissed(false) } : e => setNewFirstNameB(e.target.value)} />
               </div>
               <div className="input-group">
-                <label className="label-required">Nom</label>
+                <label htmlFor={`new-client-${idx}-lastname`} className="label-required">Nom</label>
                 {idx === 0 ? (
-                  <input className={`input${!newLastName.trim() ? ' input-required' : ''}`} placeholder="Nom" value={newLastName} onChange={e => { setNewLastName(e.target.value); setDuplicateDismissed(false) }} />
+                  <input id={`new-client-${idx}-lastname`} className={`input${!newLastName.trim() ? ' input-required' : ''}`} placeholder="Nom" value={newLastName} onChange={e => { setNewLastName(e.target.value); setDuplicateDismissed(false) }} />
                 ) : (
-                  <input className={`input${!newLastNameB.trim() ? ' input-required' : ''}`} placeholder="Nom" value={newLastNameB} onChange={e => setNewLastNameB(e.target.value)} />
+                  <input id={`new-client-${idx}-lastname`} className={`input${!newLastNameB.trim() ? ' input-required' : ''}`} placeholder="Nom" value={newLastNameB} onChange={e => setNewLastNameB(e.target.value)} />
                 )}
               </div>
             </div>
@@ -613,38 +613,38 @@ export default function ClientsPage() {
             )}
             <div className="grid-2">
               <div className="input-group">
-                <label>Email</label>
-                <input className="input" type="email" placeholder="email@exemple.com" />
+                <label htmlFor={`new-client-${idx}-email`}>Email</label>
+                <input id={`new-client-${idx}-email`} className="input" type="email" placeholder="email@exemple.com" />
               </div>
               <div className="input-group">
-                <label>Téléphone</label>
-                <input className="input" type="tel" placeholder="06 12 34 56 78" />
+                <label htmlFor={`new-client-${idx}-phone`}>Téléphone</label>
+                <input id={`new-client-${idx}-phone`} className="input" type="tel" placeholder="06 12 34 56 78" />
               </div>
             </div>
             <div className="grid-2">
               <div className="input-group">
-                <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <label htmlFor={`new-client-${idx}-birthdate`} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   Date de naissance
                   <span style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)', fontWeight: 400, fontStyle: 'italic' }}>optionnel</span>
                 </label>
-                <input className="input" type="date" style={{ colorScheme: 'light' }} />
+                <input id={`new-client-${idx}-birthdate`} className="input" type="date" style={{ colorScheme: 'light' }} />
               </div>
               <div className="input-group">
-                <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <label htmlFor={`new-client-${idx}-birthyear`} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   ou Année
                   <span style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)', fontWeight: 400, fontStyle: 'italic' }}>optionnel</span>
                 </label>
-                <input className="input" type="number" min="1920" max={currentYear} placeholder={`ex. ${currentYear - 35}`}
+                <input id={`new-client-${idx}-birthyear`} className="input" type="number" min="1920" max={currentYear} placeholder={`ex. ${currentYear - 35}`}
                   onBlur={e => { if (e.target.value && parseInt(e.target.value) > currentYear) e.target.value = currentYear }}
                 />
               </div>
             </div>
             <div className="input-group" style={{ marginTop: 'var(--space-xs)' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <label htmlFor={`new-client-${idx}-billing`} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 Adresse de facturation
                 <span style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)', fontWeight: 400, fontStyle: 'italic' }}>optionnel</span>
               </label>
-              <textarea className="input" rows={2} placeholder="Adresse complète pour la facturation…" value={idx === 0 ? billingAddress : billingAddressB} onChange={idx === 0 ? e => setBillingAddress(e.target.value) : e => setBillingAddressB(e.target.value)} style={{ resize: 'vertical' }} />
+              <textarea id={`new-client-${idx}-billing`} className="input" rows={2} placeholder="Adresse complète pour la facturation…" value={idx === 0 ? billingAddress : billingAddressB} onChange={idx === 0 ? e => setBillingAddress(e.target.value) : e => setBillingAddressB(e.target.value)} style={{ resize: 'vertical' }} />
             </div>
           </div>
         )
@@ -932,8 +932,8 @@ export default function ClientsPage() {
                           </div>
                         </div>
                         <div className="input-group">
-                          <label>Source du prospect</label>
-                          <select className="input" style={{ cursor: 'pointer' }} value={newSource} onChange={e => setNewSource(e.target.value)}>
+                          <label htmlFor="new-client-source">Source du prospect</label>
+                          <select id="new-client-source" className="input" style={{ cursor: 'pointer' }} value={newSource} onChange={e => setNewSource(e.target.value)}>
                             <option value="">Sélectionner...</option>
                             {recruitmentSources.map(s => (
                               <option key={s.key} value={s.key}>{s.label}</option>
@@ -975,8 +975,8 @@ export default function ClientsPage() {
 
 
                       <div className="input-group" style={{ marginTop: 'var(--space-md)' }}>
-                        <label>Notes (optionnel)</label>
-                        <textarea className="input" rows={3} placeholder="Contexte initial, motif de consultation..." value={newNotes} onChange={e => setNewNotes(e.target.value)} style={{ resize: 'vertical' }} />
+                        <label htmlFor="new-client-notes">Notes (optionnel)</label>
+                        <textarea id="new-client-notes" className="input" rows={3} placeholder="Contexte initial, motif de consultation..." value={newNotes} onChange={e => setNewNotes(e.target.value)} style={{ resize: 'vertical' }} />
                       </div>
                     </div>
                   )}
