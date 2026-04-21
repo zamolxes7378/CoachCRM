@@ -169,7 +169,18 @@ npm run preview
 
 ---
 
-## 9. Contacts / Comptes
+## 9. Checklist de déploiement (Track B — sécurité frontend)
+
+Avant de déployer la branche `audit/track-B-frontend-security` en production :
+
+- [ ] **Allowlist — contrainte d'ordre** : le module `src/lib/allowlist.js` requiert la table `allowed_emails` créée par les migrations Track C. Choisir l'une des deux options :
+  - **(a) Appliquer les migrations Track C d'abord** (Supabase Dashboard → SQL Editor) avant tout déploiement Track B ; OU
+  - **(b) Définir `VITE_ALLOWED_EMAILS=anne-chantal.meyer@gmail.com,claudia@kotech.ai`** dans les variables d'environnement Vercel **avant** le déploiement, pour garantir l'accès des deux comptes pilotes en mode de repli.
+  - ⚠ Si aucune des deux conditions n'est remplie, tous les utilisateurs pilotes seront bloqués à la connexion dès la mise en production.
+
+---
+
+## 10. Contacts / Comptes
 
 | Service | Compte | Accès |
 |---------|--------|-------|
