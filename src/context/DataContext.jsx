@@ -2,6 +2,9 @@ import { createContext, useContext, useState, useEffect, useCallback, useMemo, u
 import { useToast } from './ToastContext'
 import * as ds from '../services/dataService'
 import * as invService from '../services/invoiceService'
+import { supabase } from '../lib/supabase.js'
+import { reportError } from '../lib/errorReporter'
+import { emitAuditLog } from '../lib/auditLog'
 import { checkAllianceTransition, checkAllianceAfterBatchDelete, isAllianceValidated } from '../services/allianceService'
 import { adaptClient, adaptSession, adaptReport, adaptProfessional, adaptTherapyCycle, adaptContact, adaptInvoice, unadaptClient, unadaptSession, unadaptProfessional, unadaptTherapyCycle, unadaptContact } from '../data/adapters'
 import { applyUpdate, applyDelete, applyDeleteMany, applyInsert } from '../data/listUpdaters'
@@ -81,7 +84,7 @@ export function DataProvider({ user, children }) {
       setSettings(st)
       setRawProfessionals(p)
     } catch (err) {
-      console.error('DataProvider load error:', err)
+      reportError(err, { operation: 'loadData', entity: 'provider' })
       showToast('Erreur de chargement des données. Vérifiez votre connexion.', 'error')
     } finally {
       setLoading(false)
@@ -185,7 +188,7 @@ export function DataProvider({ user, children }) {
         if (row) setRawClients(prev => applyUpdate(prev, id, row))
         return row
       } catch (err) {
-        console.error('updateClient error:', err)
+        reportError(err, { operation: 'updateClient', entity: 'client', entity_id: id })
         showToast('Erreur lors de la mise à jour du client.', 'error')
         return null
       }
@@ -204,17 +207,20 @@ export function DataProvider({ user, children }) {
         }
         return row
       } catch (err) {
-        console.error('createClient error:', err)
+        reportError(err, { operation: 'createClient', entity: 'client' })
         showToast('Erreur lors de la création du client.', 'error')
       }
     },
     deleteClient: async (id) => {
       try {
         const ok = await ds.deleteClient(id)
-        if (ok) setRawClients(prev => applyDelete(prev, id))
+        if (ok) {
+          setRawClients(prev => applyDelete(prev, id))
+          await emitAuditLog({ entity: 'client', entity_id: id, action: 'delete_client' })
+        }
         return ok
       } catch (err) {
-        console.error('deleteClient error:', err)
+        reportError(err, { operation: 'deleteClient', entity: 'client', entity_id: id })
         showToast('Erreur lors de la suppression du client.', 'error')
         return null
       }
@@ -246,7 +252,7 @@ export function DataProvider({ user, children }) {
         }
         return row
       } catch (err) {
-        console.error('updateSession error:', err)
+        reportError(err, { operation: 'updateSession', entity: 'session', entity_id: id })
         showToast('Erreur lors de la mise à jour de la séance.', 'error')
         return null
       }
@@ -269,7 +275,7 @@ export function DataProvider({ user, children }) {
         }
         return row
       } catch (err) {
-        console.error('createSession error:', err)
+        reportError(err, { operation: 'createSession', entity: 'session' })
         showToast('Erreur lors de la création de la séance.', 'error')
         return null
       }
@@ -281,6 +287,7 @@ export function DataProvider({ user, children }) {
         const ok = await ds.deleteSession(id)
         if (ok) {
           setRawSessions(prev => applyDelete(prev, id))
+          await emitAuditLog({ entity: 'session', entity_id: id, action: 'delete_session' })
           await checkAllianceAfterBatchDelete([id], sessionsSnapshot, rawClients, sessionRates)
           // Re-fetch clients that may have had their phase changed
           const affectedClientIds = [...new Set(
@@ -291,7 +298,7 @@ export function DataProvider({ user, children }) {
         }
         return ok
       } catch (err) {
-        console.error('deleteSession error:', err)
+        reportError(err, { operation: 'deleteSession', entity: 'session', entity_id: id })
         showToast('Erreur lors de la suppression.', 'error')
         return null
       }
@@ -314,7 +321,7 @@ export function DataProvider({ user, children }) {
         }
         return ok
       } catch (err) {
-        console.error('deleteSessions error:', err)
+        reportError(err, { operation: 'deleteSessions', entity: 'session' })
         showToast('Erreur lors de la suppression groupée.', 'error')
         return null
       }
@@ -327,7 +334,7 @@ export function DataProvider({ user, children }) {
         if (row) setRawContacts(prev => applyInsert(prev, row))
         return row
       } catch (err) {
-        console.error('createContact error:', err)
+        reportError(err, { operation: 'createContact', entity: 'contact' })
         showToast('Erreur lors de la création du contact.', 'error')
       }
     },
@@ -337,7 +344,7 @@ export function DataProvider({ user, children }) {
         if (row) setRawContacts(prev => applyUpdate(prev, id, row))
         return row
       } catch (err) {
-        console.error('updateContact error:', err)
+        reportError(err, { operation: 'updateContact', entity: 'contact', entity_id: id })
         showToast('Erreur lors de la mise à jour du contact.', 'error')
       }
     },
@@ -347,7 +354,7 @@ export function DataProvider({ user, children }) {
         if (ok) setRawContacts(prev => applyDelete(prev, id))
         return ok
       } catch (err) {
-        console.error('deleteContact error:', err)
+        reportError(err, { operation: 'deleteContact', entity: 'contact', entity_id: id })
         showToast('Erreur lors de la suppression du contact.', 'error')
       }
     },
@@ -359,7 +366,7 @@ export function DataProvider({ user, children }) {
         if (result) { setSettings(result); showToast('Paramètres sauvegardés.', 'success') }
         return result
       } catch (err) {
-        console.error('upsertSettings error:', err)
+        reportError(err, { operation: 'upsertSettings', entity: 'settings' })
         showToast('Erreur lors de la sauvegarde des paramètres.', 'error')
         return null
       }
@@ -375,7 +382,7 @@ export function DataProvider({ user, children }) {
         }
         return row
       } catch (err) {
-        console.error('createProfessional error:', err)
+        reportError(err, { operation: 'createProfessional', entity: 'professional' })
         showToast('Erreur lors de la création du professionnel.', 'error')
         return null
       }
@@ -386,7 +393,7 @@ export function DataProvider({ user, children }) {
         if (row) setRawProfessionals(prev => applyUpdate(prev, id, row))
         return row
       } catch (err) {
-        console.error('updateProfessional error:', err)
+        reportError(err, { operation: 'updateProfessional', entity: 'professional', entity_id: id })
         showToast('Erreur lors de la mise à jour du professionnel.', 'error')
         return null
       }
@@ -397,7 +404,7 @@ export function DataProvider({ user, children }) {
         if (ok) setRawProfessionals(prev => applyDelete(prev, id))
         return ok
       } catch (err) {
-        console.error('deleteProfessional error:', err)
+        reportError(err, { operation: 'deleteProfessional', entity: 'professional', entity_id: id })
         showToast('Erreur lors de la suppression du professionnel.', 'error')
         return null
       }
@@ -411,7 +418,7 @@ export function DataProvider({ user, children }) {
         }
         return ok
       } catch (err) {
-        console.error('deleteProfessionals error:', err)
+        reportError(err, { operation: 'deleteProfessionals', entity: 'professional' })
         showToast('Erreur lors de la suppression groupée.', 'error')
         return null
       }
@@ -424,7 +431,7 @@ export function DataProvider({ user, children }) {
         if (row) setRawTherapyCycles(prev => applyInsert(prev, row))
         return row
       } catch (err) {
-        console.error('createTherapyCycle error:', err)
+        reportError(err, { operation: 'createTherapyCycle', entity: 'therapy_cycle' })
         showToast('Erreur lors de la création du cycle.', 'error')
         return null
       }
@@ -435,7 +442,7 @@ export function DataProvider({ user, children }) {
         if (ok) setRawTherapyCycles(prev => applyDelete(prev, id))
         return ok
       } catch (err) {
-        console.error('deleteTherapyCycle error:', err)
+        reportError(err, { operation: 'deleteTherapyCycle', entity: 'therapy_cycle', entity_id: id })
         showToast('Erreur lors de la suppression du cycle.', 'error')
         return null
       }
@@ -446,7 +453,7 @@ export function DataProvider({ user, children }) {
         if (row) setRawTherapyCycles(prev => applyUpdate(prev, id, row))
         return row
       } catch (err) {
-        console.error('updateTherapyCycle error:', err)
+        reportError(err, { operation: 'updateTherapyCycle', entity: 'therapy_cycle', entity_id: id })
         showToast('Erreur lors de la mise à jour du cycle.', 'error')
         return null
       }
@@ -459,7 +466,7 @@ export function DataProvider({ user, children }) {
         if (row) setRawInvoices(prev => applyInsert(prev, row))
         return row
       } catch (err) {
-        console.error('createInvoice error:', err)
+        reportError(err, { operation: 'createInvoice', entity: 'invoice' })
         showToast('Erreur lors de la création de la facture.', 'error')
         return null
       }
@@ -475,7 +482,7 @@ export function DataProvider({ user, children }) {
         }
         return row
       } catch (err) {
-        console.error('updateInvoice error:', err)
+        reportError(err, { operation: 'updateInvoice', entity: 'invoice', entity_id: id })
         showToast('Erreur lors de la mise à jour de la facture.', 'error')
         return null
       }
@@ -490,7 +497,7 @@ export function DataProvider({ user, children }) {
         }
         return row
       } catch (err) {
-        console.error('emitInvoice error:', err)
+        reportError(err, { operation: 'emitInvoice', entity: 'invoice', entity_id: id })
         showToast('Erreur lors de l\'émission de la facture.', 'error')
         return null
       }
@@ -505,7 +512,7 @@ export function DataProvider({ user, children }) {
         }
         return row
       } catch (err) {
-        console.error('unemitInvoice error:', err)
+        reportError(err, { operation: 'unemitInvoice', entity: 'invoice', entity_id: id })
         showToast('Erreur lors de la modification de la facture.', 'error')
         return null
       }
@@ -516,7 +523,7 @@ export function DataProvider({ user, children }) {
         if (ok) setRawInvoices(prev => applyDelete(prev, id))
         return ok
       } catch (err) {
-        console.error('deleteInvoice error:', err)
+        reportError(err, { operation: 'deleteInvoice', entity: 'invoice', entity_id: id })
         showToast('Erreur lors de la suppression de la facture.', 'error')
         return null
       }
@@ -534,11 +541,38 @@ export function DataProvider({ user, children }) {
         }
         return ok
       } catch (err) {
-        console.error('setInvoiceSessions error:', err)
+        reportError(err, { operation: 'setInvoiceSessions', entity: 'invoice', entity_id: invoiceId })
         showToast('Erreur lors de la mise à jour des séances facturées.', 'error')
         return null
       }
-    }
+    },
+
+    // ── Reports ──
+    deleteReport: async (id) => {
+      try {
+        const { error } = await supabase.from('reports').delete().eq('id', id)
+        if (error) throw new Error(`deleteReport failed: ${error.message}`)
+        setRawReports(prev => applyDelete(prev, id))
+        await emitAuditLog({ entity: 'report', entity_id: id, action: 'delete_report' })
+        return true
+      } catch (err) {
+        reportError(err, { operation: 'deleteReport', entity: 'report', entity_id: id })
+        showToast('Erreur lors de la suppression du compte-rendu.', 'error')
+        return null
+      }
+    },
+
+    // ── Export ──
+    exportClientDossier: async (client, sessions, reports, formatDateFn, getPhaseLabelFn) => {
+      try {
+        const { exportClientDossierExcel } = await import('../services/exportService')
+        await exportClientDossierExcel(client, sessions, reports, formatDateFn, getPhaseLabelFn)
+        await emitAuditLog({ entity: 'client', entity_id: client.id, action: 'export_dossier' })
+      } catch (err) {
+        reportError(err, { operation: 'exportClientDossier', entity: 'client', entity_id: client?.id })
+        showToast('Erreur lors de l\'export du dossier.', 'error')
+      }
+    },
   }
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>
