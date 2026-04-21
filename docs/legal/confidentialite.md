@@ -66,3 +66,7 @@ Supabase stocke les données en **région eu-west-2 (Londres)**. Le Royaume-Uni 
 ## 8. Sécurité
 
 Les données sont protégées par chiffrement en transit (TLS 1.2+) et au repos. L'accès à la base de données est contrôlé par des politiques Row Level Security (RLS) Supabase. [TODO: compléter avec les mesures techniques effectives après les Tracks C et D]
+
+## 9. Traitement par intelligence artificielle
+
+CoachCRM peut utiliser des modèles d'intelligence artificielle pour aider à la rédaction de comptes-rendus. Tout contenu généré par IA est clairement identifié et doit être validé par le thérapeute avant utilisation. Conformément au Règlement européen sur l'IA (Art. 50), aucune décision automatique n'est prise sur les patients.
