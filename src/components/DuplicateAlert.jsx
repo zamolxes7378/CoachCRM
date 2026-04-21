@@ -109,6 +109,7 @@ export default function DuplicateAlert({ matches, onView, onLink, onDismiss, typ
                   <button
                     onClick={(e) => { e.stopPropagation(); setExpandedId(isExpanded ? null : item.id) }}
                     title={isExpanded ? 'Masquer l\'aperçu' : 'Voir l\'aperçu'}
+                    aria-label={isExpanded ? 'Masquer l\'aperçu' : 'Voir l\'aperçu'}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 2,
                       padding: '3px 6px', borderRadius: 'var(--radius-sm)',
@@ -128,6 +129,7 @@ export default function DuplicateAlert({ matches, onView, onLink, onDismiss, typ
                     <button
                       onClick={(e) => { e.stopPropagation(); onLink(item) }}
                       title="Lier au dossier existant"
+                      aria-label="Lier au dossier existant"
                       style={{
                         display: 'flex', alignItems: 'center', gap: 2,
                         padding: '3px 6px', borderRadius: 'var(--radius-sm)',

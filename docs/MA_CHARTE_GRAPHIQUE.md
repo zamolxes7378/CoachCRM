@@ -60,13 +60,13 @@ COULEURS PRINCIPALES
 │
 └── Sémantiques  [valeurs mises à jour Track I — audit a11y 2026-04-21]
     ├── Success:  #2F855A  (vert — ratio 4.63:1 sur blanc, passe AA)  [était #38A169 = 3.07:1]
-    ├── Warning:  #D69E2E  (doré — réserver aux ≥18pt ou avec fond coloré; ratio 2.35:1 sur blanc)
+    ├── Warning:  #975A16  (ambre foncé — ratio 5.5:1 sur blanc, passe AA)  [était #D69E2E = 2.35:1]
     ├── Error:    #C53030  (rouge doux)
     └── Info:     #2B6CB0  (bleu — ratio 5.20:1 sur blanc, passe AA)  [était #3182CE = 4.01:1]
 
 Tokens texte (--text-secondary / --text-tertiary) :
   --text-secondary: #486581  (primary-600 — ratio 5.44:1 sur blanc)  [était #627D98 = 4.12:1]
-  --text-tertiary:  #627D98  (primary-500 — ratio 4.12:1, acceptable ≥18pt)  [était #9FB3C8 = 2.15:1]
+  --text-tertiary:  #4A617A  (entre primary-500 et primary-600 — ratio 6.1:1 sur blanc, passe AA)  [était #627D98 = 4.12:1]
 ```
 
 ### Mode Sombre (option)

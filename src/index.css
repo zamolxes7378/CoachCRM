@@ -35,7 +35,7 @@
   /* Sémantiques */
   --success: #2F855A;
   --success-bg: #F0FFF4;
-  --warning: #D69E2E;
+  --warning: #975A16;
   --warning-bg: #FFFFF0;
   --error: #C53030;
   --error-bg: #FFF5F5;
@@ -45,7 +45,7 @@
   /* Texte */
   --text-primary: #243B53;
   --text-secondary: #486581;
-  --text-tertiary: #627D98;
+  --text-tertiary: #4A617A;
   --text-inverse: #FFFFFF;
 
   /* Bordures */
