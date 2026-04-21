@@ -16,7 +16,7 @@ export async function getInvoices(userId) {
     `)
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
-    if (error) console.error('getInvoices error:', error.message)
+    if (error) throw new Error(`getInvoices failed: ${error.message}`)
     return data || []
 }
 
@@ -32,7 +32,7 @@ export async function getInvoicesByClient(clientId) {
     `)
         .eq('client_id', clientId)
         .order('created_at', { ascending: false })
-    if (error) console.error('getInvoicesByClient error:', error.message)
+    if (error) throw new Error(`getInvoicesByClient failed: ${error.message}`)
     return data || []
 }
 
@@ -51,7 +51,7 @@ export async function createInvoice({ userId, clientId, sessionIds, invoiceDate 
         })
         .select()
         .single()
-    if (invError) { console.error('createInvoice error:', invError.message); return null }
+    if (invError) throw new Error(`createInvoice failed: ${invError.message}`)
 
     // 2. Link sessions
     if (sessionIds?.length) {
@@ -59,7 +59,7 @@ export async function createInvoice({ userId, clientId, sessionIds, invoiceDate 
         const { error: linkError } = await supabase
             .from('invoice_sessions')
             .insert(links)
-        if (linkError) console.error('createInvoice link error:', linkError.message)
+        if (linkError) throw new Error(`createInvoice session link failed: ${linkError.message}`)
     }
 
     return { ...invoice, invoice_sessions: (sessionIds || []).map(sid => ({ session_id: sid })) }
@@ -75,7 +75,7 @@ export async function updateInvoice(invoiceId, updates) {
         .eq('id', invoiceId)
         .select()
         .single()
-    if (error) console.error('updateInvoice error:', error.message)
+    if (error) throw new Error(`updateInvoice failed: ${error.message}`)
     return data
 }
 
@@ -100,8 +100,8 @@ export async function addSessionToInvoice(invoiceId, sessionId) {
     const { error } = await supabase
         .from('invoice_sessions')
         .insert({ invoice_id: invoiceId, session_id: sessionId })
-    if (error) console.error('addSessionToInvoice error:', error.message)
-    return !error
+    if (error) throw new Error(`addSessionToInvoice failed: ${error.message}`)
+    return true
 }
 
 /**
@@ -113,8 +113,8 @@ export async function removeSessionFromInvoice(invoiceId, sessionId) {
         .delete()
         .eq('invoice_id', invoiceId)
         .eq('session_id', sessionId)
-    if (error) console.error('removeSessionFromInvoice error:', error.message)
-    return !error
+    if (error) throw new Error(`removeSessionFromInvoice failed: ${error.message}`)
+    return true
 }
 
 /**
@@ -126,7 +126,7 @@ export async function setInvoiceSessions(invoiceId, sessionIds) {
         .from('invoice_sessions')
         .delete()
         .eq('invoice_id', invoiceId)
-    if (delError) { console.error('setInvoiceSessions delete error:', delError.message); return false }
+    if (delError) throw new Error(`setInvoiceSessions delete failed: ${delError.message}`)
 
     // Insert new links
     if (sessionIds.length) {
@@ -134,7 +134,7 @@ export async function setInvoiceSessions(invoiceId, sessionIds) {
         const { error: insError } = await supabase
             .from('invoice_sessions')
             .insert(links)
-        if (insError) { console.error('setInvoiceSessions insert error:', insError.message); return false }
+        if (insError) throw new Error(`setInvoiceSessions insert failed: ${insError.message}`)
     }
     return true
 }
@@ -147,6 +147,6 @@ export async function deleteInvoice(invoiceId) {
         .from('invoices')
         .delete()
         .eq('id', invoiceId)
-    if (error) console.error('deleteInvoice error:', error.message)
-    return !error
+    if (error) throw new Error(`deleteInvoice failed: ${error.message}`)
+    return true
 }
