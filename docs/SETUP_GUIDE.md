@@ -139,7 +139,7 @@ Les mêmes variables `.env` doivent être configurées dans Vercel :
 → Dashboard Vercel → projet CoachCRM → Settings → Environment Variables
 
 - `VITE_SUPABASE_URL` — *(URL du projet Supabase, depuis Settings → API)*
-- `VITE_SUPABASE_ANON_KEY` — *(clé anon publique, depuis Settings → API)*
+- `VITE_SUPABASE_PUBLISHABLE_KEY` — *(publishable key, depuis Settings → API Keys)*
 
 ---
 
