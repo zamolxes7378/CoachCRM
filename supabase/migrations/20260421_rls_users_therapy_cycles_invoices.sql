@@ -28,7 +28,14 @@
 -- Ensure it is on (safe to repeat):
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 
--- Drop any previously authored variants so this is idempotent:
+-- Drop any previously authored variants so this is idempotent.
+-- Live names verified 2026-04-21 — these three were created via
+-- Supabase Studio and have no VCS counterpart. They must go so
+-- the new named set below becomes the sole source of truth.
+DROP POLICY IF EXISTS "Users can read own profile"   ON users;
+DROP POLICY IF EXISTS "Users can insert own profile" ON users;
+DROP POLICY IF EXISTS "Users can update own profile" ON users;
+-- New-set drops (idempotent on re-run):
 DROP POLICY IF EXISTS "users_select_own"        ON users;
 DROP POLICY IF EXISTS "users_select_admin_list" ON users;
 DROP POLICY IF EXISTS "users_insert_own"        ON users;
@@ -77,6 +84,9 @@ CREATE POLICY "users_delete_deny"
 -- ==== therapy_cycles ========================================
 ALTER TABLE therapy_cycles ENABLE ROW LEVEL SECURITY;
 
+-- Live Studio-authored policy (verified 2026-04-21) — drop first:
+DROP POLICY IF EXISTS "Users can manage their own therapy cycles" ON therapy_cycles;
+-- New-set drops (idempotent on re-run):
 DROP POLICY IF EXISTS "therapy_cycles_select" ON therapy_cycles;
 DROP POLICY IF EXISTS "therapy_cycles_insert" ON therapy_cycles;
 DROP POLICY IF EXISTS "therapy_cycles_update" ON therapy_cycles;
@@ -106,6 +116,9 @@ CREATE POLICY "therapy_cycles_delete"
 -- ==== invoices ==============================================
 ALTER TABLE invoices ENABLE ROW LEVEL SECURITY;
 
+-- Live Studio-authored policy (verified 2026-04-21) — drop first:
+DROP POLICY IF EXISTS "Users manage own invoices" ON invoices;
+-- New-set drops (idempotent on re-run):
 DROP POLICY IF EXISTS "invoices_select" ON invoices;
 DROP POLICY IF EXISTS "invoices_insert" ON invoices;
 DROP POLICY IF EXISTS "invoices_update" ON invoices;
@@ -137,6 +150,9 @@ CREATE POLICY "invoices_delete"
 -- via the parent invoices row.
 ALTER TABLE invoice_sessions ENABLE ROW LEVEL SECURITY;
 
+-- Live Studio-authored policy (verified 2026-04-21) — drop first:
+DROP POLICY IF EXISTS "Users manage own invoice_sessions" ON invoice_sessions;
+-- New-set drops (idempotent on re-run):
 DROP POLICY IF EXISTS "invoice_sessions_select" ON invoice_sessions;
 DROP POLICY IF EXISTS "invoice_sessions_insert" ON invoice_sessions;
 DROP POLICY IF EXISTS "invoice_sessions_delete" ON invoice_sessions;
