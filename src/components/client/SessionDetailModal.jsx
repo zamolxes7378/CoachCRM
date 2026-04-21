@@ -160,9 +160,10 @@ export default function SessionDetailModal({
 
           {/* Date + Cancel */}
           <div style={{ marginBottom: 'var(--space-md)' }}>
-            <label style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-tertiary)', display: 'block', marginBottom: 4 }}>Date et heure</label>
+            <label htmlFor="session-detail-date" style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-tertiary)', display: 'block', marginBottom: 4 }}>Date et heure</label>
             <div style={{ display: 'flex', gap: 'var(--space-sm)', alignItems: 'center' }}>
               <input
+                id="session-detail-date"
                 type="datetime-local"
                 className="input"
                 value={session.date.slice(0, 16)}
@@ -290,10 +291,11 @@ export default function SessionDetailModal({
               marginBottom: 'var(--space-md)',
               border: '1px solid #FED7D7'
             }}>
-              <label style={{ fontSize: '0.643rem', fontWeight: 600, color: 'var(--error)', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+              <label htmlFor="session-detail-cancel-reason" style={{ fontSize: '0.643rem', fontWeight: 600, color: 'var(--error)', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
                 <XCircle size={12} /> Raison de l'annulation
               </label>
               <textarea
+                id="session-detail-cancel-reason"
                 value={session.cancellationReason || ''}
                 onChange={e => {
                   session.cancellationReason = e.target.value
@@ -316,11 +318,12 @@ export default function SessionDetailModal({
           {session.status !== 'cancelled' && (
             <div style={{ marginBottom: 'var(--space-lg)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-xs)' }}>
-                <label style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <label htmlFor="session-detail-summary" style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 4 }}>
                   <ReportIcon size={14} /> {isPast ? 'Compte-rendu' : 'Note de préparation'}
                 </label>
               </div>
               <textarea
+                id="session-detail-summary"
                 value={summary || ''}
                 onChange={e => handleSaveCR(session.id, e.target.value)}
                 onKeyDown={e => e.stopPropagation()}
@@ -415,9 +418,10 @@ export default function SessionDetailModal({
 
             {/* Montant de la séance (editable) */}
             <div style={{ marginBottom: 'var(--space-md)' }}>
-              <label style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-tertiary)', display: 'block', marginBottom: 6 }}>Montant de la séance</label>
+              <label htmlFor="session-detail-amount" style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-tertiary)', display: 'block', marginBottom: 6 }}>Montant de la séance</label>
               <div style={{ position: 'relative', width: 120 }}>
                 <input
+                  id="session-detail-amount"
                   type="number" min="0" step="5"
                   className="input"
                   value={rate ?? ''}
@@ -535,10 +539,11 @@ export default function SessionDetailModal({
                 if (pAmount === 0) return null
                 return (
                   <div style={{ marginBottom: 'var(--space-md)' }}>
-                    <label style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-tertiary)', display: 'block', marginBottom: 6 }}>Montant du paiement <span style={{ fontWeight: 400, fontStyle: 'italic' }}>(calculé)</span></label>
+                    <label htmlFor="session-detail-payment-amount" style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-tertiary)', display: 'block', marginBottom: 6 }}>Montant du paiement <span style={{ fontWeight: 400, fontStyle: 'italic' }}>(calculé)</span></label>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)', marginBottom: 'var(--space-xs)' }}>
                       <div style={{ flex: '0 0 calc(33.33% - 6px)', position: 'relative' }}>
                         <input
+                          id="session-detail-payment-amount"
                           type="number"
                           className="input"
                           value={pAmount || ''}
