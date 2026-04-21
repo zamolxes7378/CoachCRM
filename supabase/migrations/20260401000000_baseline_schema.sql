@@ -114,13 +114,13 @@ CREATE INDEX IF NOT EXISTS idx_invoice_sessions_session_id ON invoice_sessions (
 -- Confirmed: adapters.js:46,47 (read: c.deleted_at / write: out.deleted_at)
 --            ClientsPage.jsx:519, ClientDetailPage.jsx:479
 --            audit/04_database_schema.md §clients column drift
--- [Unverified — sourced from audit/live_schema/tables.md snapshot]
+-- [Live-verified 2026-04-21 via Supabase Management API]
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
 
 -- billing_address: per-client billing address override
 -- Confirmed: adapters.js:43 (read: c.billing_address) + adapters.js:163 (write)
 --            audit/04_database_schema.md §clients column drift
--- [Unverified — sourced from audit/live_schema/tables.md snapshot]
+-- [Live-verified 2026-04-21 via Supabase Management API]
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS billing_address TEXT;
 
 -- client_links: JSONB sponsorship/referral links (dual source of truth — see C-6)
@@ -128,53 +128,53 @@ ALTER TABLE clients ADD COLUMN IF NOT EXISTS billing_address TEXT;
 --            adapters.js:164 (write: out.client_links)
 --            sponsorshipService.js (entire sponsorship feature)
 --            audit/04_database_schema.md §C-6
--- [Unverified — sourced from audit/live_schema/tables.md snapshot]
-ALTER TABLE clients ADD COLUMN IF NOT EXISTS client_links JSONB DEFAULT '[]';
+-- [Live-verified 2026-04-21 via Supabase Management API]
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS client_links JSONB;
 
 -- external_referrer: free-form JSONB {firstName, lastName} for external referrers
 -- Confirmed: adapters.js:45 (read: c.external_referrer || c.externalReferrer)
 --            adapters.js:165 (write: out.external_referrer)
 --            audit/04_database_schema.md §clients column drift
--- [Unverified — sourced from audit/live_schema/tables.md snapshot]
+-- [Live-verified 2026-04-21 via Supabase Management API]
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS external_referrer JSONB;
 
 -- session_rate: per-client rate override (overrides global sessionRates)
 -- Confirmed: adapters.js:48 (read: c.session_rate), adapters.js:167 (write)
 --            ClientDetailPage.jsx:47; allianceService.js:20 (client.session_rate)
--- [Unverified — sourced from audit/live_schema/tables.md snapshot]
+-- [Live-verified 2026-04-21 via Supabase Management API]
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS session_rate NUMERIC;
 
 -- session_frequency: desired sessions per time period (integer)
 -- Confirmed: adapters.js:49 (read: c.session_frequency), adapters.js:168 (write)
 --            audit/04_database_schema.md §clients column drift
--- [Unverified — sourced from audit/live_schema/tables.md snapshot]
+-- [Live-verified 2026-04-21 via Supabase Management API]
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS session_frequency INTEGER;
 
 -- ai_synthesis: JSON-encoded AI synthesis text (stored as text, parsed client-side)
 -- Confirmed: adapters.js:50-52 (read: JSON.parse if string starts with { or [)
 --            adapters.js:169-172 (write: JSON.stringify if object)
 --            audit/04_database_schema.md §clients column drift (no JSON constraint)
--- [Unverified — sourced from audit/live_schema/tables.md snapshot]
+-- [Live-verified 2026-04-21 via Supabase Management API]
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS ai_synthesis TEXT;
 
 -- note_dynamique: therapist note on relational dynamics
 -- Confirmed: adapters.js:53 (read: c.note_dynamique), adapters.js:173 (write)
--- [Unverified — sourced from audit/live_schema/tables.md snapshot]
+-- [Live-verified 2026-04-21 via Supabase Management API]
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS note_dynamique TEXT;
 
 -- note_axes: therapist note on work axes
 -- Confirmed: adapters.js:54 (read: c.note_axes), adapters.js:174 (write)
--- [Unverified — sourced from audit/live_schema/tables.md snapshot]
+-- [Live-verified 2026-04-21 via Supabase Management API]
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS note_axes TEXT;
 
 -- note_vigilance: therapist note on vigilance points
 -- Confirmed: adapters.js:55 (read: c.note_vigilance), adapters.js:175 (write)
--- [Unverified — sourced from audit/live_schema/tables.md snapshot]
+-- [Live-verified 2026-04-21 via Supabase Management API]
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS note_vigilance TEXT;
 
 -- note_objectifs: therapist note on objectives
 -- Confirmed: adapters.js:56 (read: c.note_objectifs), adapters.js:176 (write)
--- [Unverified — sourced from audit/live_schema/tables.md snapshot]
+-- [Live-verified 2026-04-21 via Supabase Management API]
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS note_objectifs TEXT;
 
 -- (Ghost columns axes_travail / points_vigilance / objectifs /
@@ -184,20 +184,20 @@ ALTER TABLE clients ADD COLUMN IF NOT EXISTS note_objectifs TEXT;
 
 -- ---------------------------------------------------------------------------
 -- sessions — 5 drifted columns
--- [Unverified — sourced from audit/live_schema/tables.md snapshot]
+-- [Live-verified 2026-04-21 via Supabase Management API]
 -- ---------------------------------------------------------------------------
 
 -- cancellation_reason: reason text when status='cancelled'
 -- Confirmed: adapters.js:85 (read: s.cancellation_reason)
 --            adapters.js:200 (write: out.cancellation_reason)
 --            audit/04_database_schema.md §sessions column drift
--- [Unverified — sourced from audit/live_schema/tables.md snapshot]
+-- [Live-verified 2026-04-21 via Supabase Management API]
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS cancellation_reason TEXT;
 
 -- payment_date: date payment was received (separate from session date)
 -- Confirmed: adapters.js:84 (read: s.payment_date), adapters.js:199 (write)
 --            audit/04_database_schema.md §sessions column drift
--- [Unverified — sourced from audit/live_schema/tables.md snapshot]
+-- [Live-verified 2026-04-21 via Supabase Management API]
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS payment_date DATE;
 
 -- invoice_date: date of invoice associated with this session
@@ -205,25 +205,25 @@ ALTER TABLE sessions ADD COLUMN IF NOT EXISTS payment_date DATE;
 --            docs/MON_ARCHITECTURE_DONNEES.md:143
 --            audit/04_database_schema.md §sessions column drift (listed as 5th column)
 -- NOTE: tables.md §sessions lists only 4 columns; adapters.js reveals a 5th (invoice_date)
--- [Unverified — sourced from audit/live_schema/tables.md snapshot]
+-- [Live-verified 2026-04-21 via Supabase Management API]
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS invoice_date DATE;
 
 -- invoice_covered_session_ids: JSONB array of session UUIDs this invoice covers
 -- Confirmed: adapters.js:89 (read: s.invoice_covered_session_ids), adapters.js:204 (write)
 --            audit/04_database_schema.md §sessions column drift
--- [Unverified — sourced from audit/live_schema/tables.md snapshot]
+-- [Live-verified 2026-04-21 via Supabase Management API]
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS invoice_covered_session_ids JSONB;
 
 -- covered_session_ids: JSONB array (alternate / secondary coverage tracking)
 -- Confirmed: adapters.js:90 (read: s.covered_session_ids), adapters.js:205 (write)
 --            audit/04_database_schema.md §sessions column drift
--- [Unverified — sourced from audit/live_schema/tables.md snapshot]
+-- [Live-verified 2026-04-21 via Supabase Management API]
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS covered_session_ids JSONB;
 
 
 -- ---------------------------------------------------------------------------
 -- reports — 1 drifted column
--- [Unverified — sourced from audit/live_schema/tables.md snapshot]
+-- [Live-verified 2026-04-21 via Supabase Management API]
 -- ---------------------------------------------------------------------------
 
 -- client_name: snapshot of client display name at report creation time
@@ -231,13 +231,13 @@ ALTER TABLE sessions ADD COLUMN IF NOT EXISTS covered_session_ids JSONB;
 --            docs/MON_ARCHITECTURE_DONNEES.md:159
 --            audit/04_database_schema.md §reports column drift
 --            audit/live_schema/tables.md §reports
--- [Unverified — sourced from audit/live_schema/tables.md snapshot]
+-- [Live-verified 2026-04-21 via Supabase Management API]
 ALTER TABLE reports ADD COLUMN IF NOT EXISTS client_name TEXT;
 
 
 -- ---------------------------------------------------------------------------
 -- settings — 2 drifted columns
--- [Unverified — sourced from audit/live_schema/tables.md snapshot]
+-- [Live-verified 2026-04-21 via Supabase Management API]
 -- ---------------------------------------------------------------------------
 
 -- therapy_phases: JSONB array of phase objects configured by the therapist
@@ -245,7 +245,7 @@ ALTER TABLE reports ADD COLUMN IF NOT EXISTS client_name TEXT;
 --            SettingsPage.jsx:35 (upsertSettings({ therapy_phases: phases }))
 --            audit/04_database_schema.md §settings column drift
 --            audit/live_schema/tables.md §settings
--- [Unverified — sourced from audit/live_schema/tables.md snapshot]
+-- [Live-verified 2026-04-21 via Supabase Management API]
 ALTER TABLE settings ADD COLUMN IF NOT EXISTS therapy_phases JSONB;
 
 -- default_therapy_config: JSONB with per-user therapy config (e.g. {totalSessions: 20})
@@ -253,21 +253,21 @@ ALTER TABLE settings ADD COLUMN IF NOT EXISTS therapy_phases JSONB;
 --            SettingsPage.jsx:40 (upsertSettings({ default_therapy_config: { totalSessions: total } }))
 --            audit/04_database_schema.md §settings column drift (listed as 2nd column)
 --            audit/live_schema/tables.md §settings
--- [Unverified — sourced from audit/live_schema/tables.md snapshot]
+-- [Live-verified 2026-04-21 via Supabase Management API]
 ALTER TABLE settings ADD COLUMN IF NOT EXISTS default_therapy_config JSONB;
 
 
 -- ---------------------------------------------------------------------------
 -- professionals — 1 drifted column (docs-only evidence)
--- [Unverified — sourced from audit/live_schema/tables.md snapshot]
+-- [Live-verified 2026-04-21 via Supabase Management API]
 -- ---------------------------------------------------------------------------
 
 -- referrals: JSONB array of referral records (per docs/MON_ARCHITECTURE_DONNEES.md)
 -- Confirmed: docs/MON_ARCHITECTURE_DONNEES.md:243 only
 -- NOT confirmed by adapters.js (adaptProfessional does not map this field)
 -- NOT confirmed by dataService.js or any service
--- Track M: verify whether this column actually exists in the live DB; if not, omit.
--- [Unverified — sourced from audit/live_schema/tables.md snapshot]
+-- Live-verified 2026-04-21 — column exists but has no adapter read/write path (orphan).
+-- [Live-verified 2026-04-21 via Supabase Management API]
 ALTER TABLE professionals ADD COLUMN IF NOT EXISTS referrals JSONB;
 
 
