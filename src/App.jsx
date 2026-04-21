@@ -1,5 +1,5 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { supabase } from './lib/supabase'
 import { upsertUser } from './services/dataService'
 import { DataProvider } from './context/DataContext'
@@ -9,7 +9,7 @@ import Layout from './components/layout/Layout'
 import LoginPage from './pages/LoginPage'
 import OnboardingWizard from './components/OnboardingWizard'
 
-// Code splitting pour les pages
+// Code splitting pour les pages authentifiées
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
 const ClientsPage = lazy(() => import('./pages/ClientsPage'))
 const ClientDetailPage = lazy(() => import('./pages/ClientDetailPage'))
@@ -20,6 +20,16 @@ const DeletedClientsPage = lazy(() => import('./pages/DeletedClientsPage'))
 const ReseauProPage = lazy(() => import('./pages/ReseauProPage'))
 const SettingsPage = lazy(() => import('./pages/SettingsPage'))
 const HelpPage = lazy(() => import('./pages/HelpPage'))
+
+// Pages publiques (accessibles sans authentification)
+const MentionsLegalesPage = lazy(() => import('./pages/public/MentionsLegalesPage'))
+const ConfidentialitePage = lazy(() => import('./pages/public/ConfidentialitePage'))
+const CguPage = lazy(() => import('./pages/public/CguPage'))
+const CookiesPage = lazy(() => import('./pages/public/CookiesPage'))
+const AccessibilitePage = lazy(() => import('./pages/public/AccessibilitePage'))
+
+// Routes publiques — rendues sans authentification
+const PUBLIC_ROUTES = ['/mentions-legales', '/confidentialite', '/cgu', '/cookies', '/accessibilite']
 
 /**
  * GlobalErrorBoundary — Capture les erreurs de rendu React pour éviter la page blanche.
@@ -181,6 +191,48 @@ export default function App() {
     }
   }
 
+  const suspenseFallback = (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '50vh' }}>
+      <div className="spinner" />
+    </div>
+  )
+
+  return (
+    <GlobalErrorBoundary>
+      <BrowserRouter>
+        <AppContent
+          loading={loading}
+          user={user}
+          authError={authError}
+          showOnboarding={showOnboarding}
+          setShowOnboarding={setShowOnboarding}
+          handleLogout={handleLogout}
+          suspenseFallback={suspenseFallback}
+        />
+      </BrowserRouter>
+    </GlobalErrorBoundary>
+  )
+}
+
+function AppContent({ loading, user, authError, showOnboarding, setShowOnboarding, handleLogout, suspenseFallback }) {
+  const location = useLocation()
+  const isPublicRoute = PUBLIC_ROUTES.includes(location.pathname)
+
+  // Pages publiques — toujours accessibles, même sans authentification
+  if (isPublicRoute) {
+    return (
+      <Suspense fallback={suspenseFallback}>
+        <Routes>
+          <Route path="/mentions-legales" element={<MentionsLegalesPage />} />
+          <Route path="/confidentialite" element={<ConfidentialitePage />} />
+          <Route path="/cgu" element={<CguPage />} />
+          <Route path="/cookies" element={<CookiesPage />} />
+          <Route path="/accessibilite" element={<AccessibilitePage />} />
+        </Routes>
+      </Suspense>
+    )
+  }
+
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg-main)' }}>
@@ -202,36 +254,28 @@ export default function App() {
   }
 
   return (
-    <GlobalErrorBoundary>
-      <ToastProvider>
-        <ConfirmProvider>
-          <DataProvider user={user}>
-            <BrowserRouter>
-              <Layout user={user} onLogout={handleLogout}>
-                <Suspense fallback={
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '50vh' }}>
-                    <div className="spinner" />
-                  </div>
-                }>
-                  <Routes>
-                    <Route path="/" element={<DashboardPage user={user} />} />
-                    <Route path="/clients" element={<ClientsPage />} />
-                    <Route path="/clients/:id" element={<ClientDetailPage />} />
-                    <Route path="/sessions" element={<SessionsPage />} />
-                    <Route path="/finances" element={<FinancesPage />} />
-                    <Route path="/settings" element={<SettingsPage />} />
-                    <Route path="/help" element={<HelpPage />} />
-                    <Route path="/admin" element={user.role === 'admin' ? <AdminPage /> : <Navigate to="/" />} />
-                    <Route path="/admin/deleted-clients" element={user.role === 'admin' ? <DeletedClientsPage /> : <Navigate to="/" />} />
-                    <Route path="/admin/reseau-pro" element={user.role === 'admin' ? <ReseauProPage /> : <Navigate to="/" />} />
-                    <Route path="*" element={<Navigate to="/" />} />
-                  </Routes>
-                </Suspense>
-              </Layout>
-            </BrowserRouter>
-          </DataProvider>
-        </ConfirmProvider>
-      </ToastProvider>
-    </GlobalErrorBoundary>
+    <ToastProvider>
+      <ConfirmProvider>
+        <DataProvider user={user}>
+          <Layout user={user} onLogout={handleLogout}>
+            <Suspense fallback={suspenseFallback}>
+              <Routes>
+                <Route path="/" element={<DashboardPage user={user} />} />
+                <Route path="/clients" element={<ClientsPage />} />
+                <Route path="/clients/:id" element={<ClientDetailPage />} />
+                <Route path="/sessions" element={<SessionsPage />} />
+                <Route path="/finances" element={<FinancesPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/help" element={<HelpPage />} />
+                <Route path="/admin" element={user.role === 'admin' ? <AdminPage /> : <Navigate to="/" />} />
+                <Route path="/admin/deleted-clients" element={user.role === 'admin' ? <DeletedClientsPage /> : <Navigate to="/" />} />
+                <Route path="/admin/reseau-pro" element={user.role === 'admin' ? <ReseauProPage /> : <Navigate to="/" />} />
+                <Route path="*" element={<Navigate to="/" />} />
+              </Routes>
+            </Suspense>
+          </Layout>
+        </DataProvider>
+      </ConfirmProvider>
+    </ToastProvider>
   )
 }
