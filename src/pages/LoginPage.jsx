@@ -232,8 +232,11 @@ export default function LoginPage({ error }) {
 
           {/* Email signup form */}
           <div style={{ marginBottom: 16 }}>
+            <label htmlFor="login-email" className="sr-only">Adresse email professionnelle</label>
             <input
+              id="login-email"
               type="email"
+              autoComplete="email"
               placeholder="Votre adresse email professionnelle"
               style={{
                 width: '100%', padding: '12px 16px', borderRadius: 10,
@@ -303,7 +306,7 @@ export default function LoginPage({ error }) {
 
           {/* Footer */}
           <p style={{ marginTop: 20, fontSize: '0.643rem', color: 'rgba(255,255,255,0.25)', lineHeight: 1.5 }}>
-            En vous connectant, vous acceptez nos <span style={{ color: 'rgba(218,165,32,0.6)', cursor: 'pointer' }}>conditions d'utilisation</span> et notre <span style={{ color: 'rgba(218,165,32,0.6)', cursor: 'pointer' }}>politique de confidentialité</span>.
+            En vous connectant, vous acceptez nos <a href="/cgu" style={{ color: 'rgba(218,165,32,0.6)' }}>conditions d'utilisation</a> et notre <a href="/confidentialite" style={{ color: 'rgba(218,165,32,0.6)' }}>politique de confidentialité</a>.
           </p>
 
 
