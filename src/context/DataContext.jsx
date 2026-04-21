@@ -249,19 +249,34 @@ export function DataProvider({ user, children }) {
       }
     },
     createContact: async (contact) => {
-      const result = await ds.createContact(unadaptContact({ ...contact, userId: user.id }))
-      if (result) await loadData()
-      return result
+      try {
+        const result = await ds.createContact(unadaptContact({ ...contact, userId: user.id }))
+        if (result) await loadData()
+        return result
+      } catch (err) {
+        console.error('createContact error:', err)
+        showToast('Erreur lors de la création du contact.', 'error')
+      }
     },
     updateContact: async (id, updates) => {
-      const result = await ds.updateContact(id, unadaptContact(updates))
-      if (result) await loadData()
-      return result
+      try {
+        const result = await ds.updateContact(id, unadaptContact(updates))
+        if (result) await loadData()
+        return result
+      } catch (err) {
+        console.error('updateContact error:', err)
+        showToast('Erreur lors de la mise à jour du contact.', 'error')
+      }
     },
     deleteContact: async (id) => {
-      const result = await ds.deleteContact(id)
-      if (result) await loadData()
-      return result
+      try {
+        const result = await ds.deleteContact(id)
+        if (result) await loadData()
+        return result
+      } catch (err) {
+        console.error('deleteContact error:', err)
+        showToast('Erreur lors de la suppression du contact.', 'error')
+      }
     },
     deleteSession: async (id) => {
       try {
