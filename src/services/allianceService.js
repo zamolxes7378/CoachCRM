@@ -16,8 +16,8 @@ export function isAllianceValidated(session, sessionRates, client) {
   const isCompleted = new Date() >= endTime
   if (!isCompleted) return false
 
-  // Use session amount, then client rate, then global rate (individual vs couple/family)
-  const typeKey = client.type === 'individual' ? 'individual' : (client.type === 'couple' || client.type === 'family') ? 'couple' : 'client'
+  // Use session amount, then client rate, then global rate (individual vs client/family)
+  const typeKey = client.type === 'individual' ? 'individual' : (client.type === 'client' || client.type === 'family') ? client.type : 'client'
   const effectiveAmount = session.payment_amount ?? client.session_rate ?? sessionRates[typeKey] ?? null
   // Alliance = séance completed ET (payée OU offerte)
   const isConfirmed = session.status === 'completed' && (!!session.payment_method || effectiveAmount === 0)
@@ -63,7 +63,7 @@ export async function checkAllianceTransition(result, updates, rawClients, rawSe
   if (client.phase === 'prospect') {
     const effectiveStatus = result.status || updates.status
     const effectivePM = result.payment_method || updates.paymentMethod || updates.payment_method
-    const typeKey = client.type === 'individual' ? 'individual' : (client.type === 'couple' || client.type === 'family') ? 'couple' : 'client'
+    const typeKey = client.type === 'individual' ? 'individual' : (client.type === 'client' || client.type === 'family') ? client.type : 'client'
     const effectiveAmount = result.payment_amount ?? sessionRates[typeKey] ?? null
     const isFreeOrPaid = effectivePM || effectiveAmount === 0
 

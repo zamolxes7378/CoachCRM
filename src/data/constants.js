@@ -29,8 +29,7 @@ export const recruitmentSources = [
 ]
 
 export const sessionRates = {
-  client: 75,   // legacy key — kept for backward compat; prefer 'couple'
-  couple: 75,
+  client: 75,   // legacy key for couple-type clients (DB type='client')
   individual: 60,
   family: 75
 }

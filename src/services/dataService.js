@@ -80,13 +80,15 @@ export async function deleteClient(clientId) {
 // Sessions
 // ============================================
 export async function getSessions(userId) {
+  // Join clients!inner so sessions belonging to soft-deleted clients are excluded server-side.
   const { data, error } = await supabase
     .from('sessions')
-    .select('*')
+    .select('*, clients!inner(deleted_at)')
     .eq('user_id', userId)
+    .is('clients.deleted_at', null)
     .order('date', { ascending: false })
   if (error) throw new Error(`getSessions failed: ${error.message}`)
-  return data || []
+  return (data || []).map(({ clients: _c, ...s }) => s)
 }
 
 export async function getSessionsByClient(clientId) {
@@ -141,15 +143,15 @@ export async function deleteSessions(sessionIds) {
 // Reports
 // ============================================
 export async function getReports(userId) {
-  // Filter by client_id scoped to the user's own clients (RLS on reports enforces this via
-  // client_id IN (SELECT id FROM clients WHERE user_id = auth.uid())).
-  // The previous sessions!inner(user_id) join was redundant and expensive.
+  // Join clients!inner so reports for soft-deleted clients are excluded server-side.
+  // RLS on reports also enforces client_id IN (SELECT id FROM clients WHERE user_id = auth.uid()).
   const { data, error } = await supabase
     .from('reports')
-    .select('id, client_id, session_id, date, content, tags, client_name, session_number, narrative, themes, emotions_a, emotions_b, patterns, progress, vigilance, exercises, pedagogical_content, created_at')
+    .select('id, client_id, session_id, date, content, tags, client_name, session_number, narrative, themes, emotions_a, emotions_b, patterns, progress, vigilance, exercises, pedagogical_content, created_at, clients!inner(deleted_at)')
+    .is('clients.deleted_at', null)
     .order('date', { ascending: false })
   if (error) throw new Error(`getReports failed: ${error.message}`)
-  return data || []
+  return (data || []).map(({ clients: _c, ...r }) => r)
 }
 
 export async function createReport(report) {

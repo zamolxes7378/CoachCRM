@@ -18,6 +18,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@rolldown/binding-linux-x64-gnu": "^1.0.0-rc.16",
     "@supabase/supabase-js": "^2.99.3",
     "exceljs": "^4.4.0",
     "file-saver": "^2.0.5",
