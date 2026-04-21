@@ -1,7 +1,12 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import * as Sentry from '@sentry/react'
 import './index.css'
 import App from './App'
+
+if (import.meta.env.PROD && import.meta.env.VITE_SENTRY_DSN) {
+  Sentry.init({ dsn: import.meta.env.VITE_SENTRY_DSN, tracesSampleRate: 0.1 })
+}
 
 // Global: strip leading zeros from all numeric inputs (007 → 7, 00 → 0)
 // Allows: 0, 0.5, etc.

@@ -19,6 +19,7 @@
   "description": "",
   "dependencies": {
     "@rolldown/binding-linux-x64-gnu": "^1.0.0-rc.16",
+    "@sentry/react": "^8.0.0",
     "@supabase/supabase-js": "^2.99.3",
     "exceljs": "^4.4.0",
     "file-saver": "^2.0.5",
@@ -29,6 +30,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.22.0",
+    "@sentry/vite-plugin": "^2.0.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@vitejs/plugin-react": "^6.0.1",
