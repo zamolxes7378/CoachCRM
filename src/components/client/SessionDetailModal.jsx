@@ -21,12 +21,12 @@ export default function SessionDetailModal({
   therapy,        // { phasesData, defaultPhaseKey, phaseIcons, phaseColors, sessionNumbers }
   utils           // { updateSession, formatDate, getClientName }
 }) {
-  if (!session) return null
   const confirm = useConfirm()
   const { getInvoiceForSession, createInvoice, updateInvoice: updateInv, emitInvoice, unemitInvoice, deleteInvoice, setInvoiceSessions, sessions: allSessions } = useData()
   const panelRef = useRef(null)
-  useFocusTrap(panelRef, true)
-  useEscapeKey(() => setExpandedSessionId(null), true)
+  useFocusTrap(panelRef, !!session)
+  useEscapeKey(() => setExpandedSessionId(null), !!session)
+  if (!session) return null
   // Destructure for convenience
   const { sessionUpdates, recordingSessionId, recordingStep, editingCoveredSessions, editingInvoiceSessions } = sessionModal
   const { setSessionUpdates, setExpandedSessionId, setRateOverrides, setEditingCoveredSessions, setEditingInvoiceSessions, getRate, handleStartRecording, handleSaveCR } = sessionActions
