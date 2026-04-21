@@ -1,5 +1,9 @@
 node_modules/
 .env
+.env*.local
 dist/
 .vercel
-.env*.local
+
+# Never commit live seed or data-migration scripts with real credentials
+supabase/seed.sql
+supabase/transfer_*.sql
