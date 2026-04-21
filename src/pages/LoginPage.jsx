@@ -274,7 +274,7 @@ export default function LoginPage({ error }) {
           }}>
             {[
               { icon: CheckCircle, text: 'Gratuit jusqu\'à 5 clients, sans engagement' },
-              { icon: Shield, text: 'Données hébergées en France, conformes RGPD' },
+              { icon: Shield, text: 'Hébergement Supabase · région UE (eu-west-2, Londres — GDPR-adéquat)' },
               { icon: Sparkles, text: 'IA intégrée, aucune configuration requise' }
             ].map((item, i) => {
               const TrustIcon = item.icon

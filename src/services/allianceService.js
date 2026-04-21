@@ -4,6 +4,7 @@
 // Gère les transitions automatiques prospect ↔ client
 // basées sur la complétion des séances et le choix du paiement.
 
+import { supabase } from '../lib/supabase.js'
 import * as ds from './dataService'
 
 /**
@@ -15,8 +16,8 @@ export function isAllianceValidated(session, sessionRates, client) {
   const isCompleted = new Date() >= endTime
   if (!isCompleted) return false
 
-  // Use session amount, then client rate, then global rate (client or individual)
-  const typeKey = client.type === 'individual' ? 'individual' : 'client'
+  // Use session amount, then client rate, then global rate (individual vs couple/family)
+  const typeKey = client.type === 'individual' ? 'individual' : (client.type === 'couple' || client.type === 'family') ? 'couple' : 'client'
   const effectiveAmount = session.payment_amount ?? client.session_rate ?? sessionRates[typeKey] ?? null
   // Alliance = séance completed ET (payée OU offerte)
   const isConfirmed = session.status === 'completed' && (!!session.payment_method || effectiveAmount === 0)
@@ -62,7 +63,7 @@ export async function checkAllianceTransition(result, updates, rawClients, rawSe
   if (client.phase === 'prospect') {
     const effectiveStatus = result.status || updates.status
     const effectivePM = result.payment_method || updates.paymentMethod || updates.payment_method
-    const typeKey = client.type === 'individual' ? 'individual' : 'client'
+    const typeKey = client.type === 'individual' ? 'individual' : (client.type === 'couple' || client.type === 'family') ? 'couple' : 'client'
     const effectiveAmount = result.payment_amount ?? sessionRates[typeKey] ?? null
     const isFreeOrPaid = effectivePM || effectiveAmount === 0
 
@@ -112,6 +113,7 @@ export async function checkAllianceAfterBatchDelete(deletedSessionIds, rawSessio
   const remainingSessions = rawSessionsBeforeDelete.filter(s => !deletedSet.has(s.id))
 
   // 3. For each affected client, check if alliance is still valid
+  const prospectIds = []
   for (const clientId of affectedClientIds) {
     const client = rawClients.find(c => c.id === clientId)
     if (!client || client.phase === 'prospect') continue // Already prospect, skip
@@ -121,7 +123,15 @@ export async function checkAllianceAfterBatchDelete(deletedSessionIds, rawSessio
     ).length
 
     if (validCount === 0) {
-      await ds.updateClient(clientId, { phase: 'prospect' })
+      prospectIds.push(clientId)
     }
+  }
+
+  // Bulk update instead of N individual round-trips
+  if (prospectIds.length > 0) {
+    await supabase
+      .from('clients')
+      .update({ phase: 'prospect' })
+      .in('id', prospectIds)
   }
 }

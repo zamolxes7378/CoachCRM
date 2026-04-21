@@ -1,7 +1,8 @@
-import ExcelJS from 'exceljs'
-import { saveAs } from 'file-saver'
-
 export async function exportClientDossierExcel(client, sessions, reports, formatDate, getPhaseLabel) {
+  const [{ default: ExcelJS }, { saveAs }] = await Promise.all([
+    import('exceljs'),
+    import('file-saver')
+  ])
   const workbook = new ExcelJS.Workbook()
   workbook.creator = 'CoachCRM'
   workbook.created = new Date()

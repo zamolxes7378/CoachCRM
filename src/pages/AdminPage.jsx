@@ -10,11 +10,11 @@ export default function AdminPage() {
   useEffect(() => {
     async function fetchUsers() {
       try {
-        console.log('[AdminPage] Fetching users...')
+        console.log('[AdminPage] Fetching users via RPC...')
+        // S-04: use the server-side gated RPC (Track C: 20260421_admin_rpc.sql)
+        // instead of a raw SELECT on users.
         const { data, error: supabaseError } = await supabase
-          .from('users')
-          .select('id, name, email, role, photo_url, created_at')
-          .order('created_at', { ascending: false })
+          .rpc('get_admin_user_list')
 
         if (supabaseError) {
           console.error('[AdminPage] Supabase error:', supabaseError)
@@ -129,7 +129,7 @@ export default function AdminPage() {
             {admins.map(a => (
               <tr key={a.id}>
                 <td style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
-                  {a.photo_url && <img src={a.photo_url} alt="" style={{ width: 28, height: 28, borderRadius: '50%' }} />}
+                  {a.photo_url && <img src={a.photo_url} alt="" loading="lazy" referrerPolicy="no-referrer" style={{ width: 28, height: 28, borderRadius: '50%' }} />}
                   {a.name || 'Sans nom'}
                 </td>
                 <td className="caption" style={{ color: 'var(--text-secondary)' }}>{a.email}</td>

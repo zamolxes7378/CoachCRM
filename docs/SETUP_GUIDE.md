@@ -56,14 +56,30 @@ npm install
 
 ## 3. Variables d'environnement (`.env`)
 
-Créer un fichier `.env` à la racine du projet (il est dans `.gitignore`, jamais commité) :
+Copier `.env.example` vers `.env` à la racine du projet (`.env` est dans `.gitignore` et ne doit jamais être commité) :
 
-```env
-VITE_SUPABASE_URL=https://ncjdvohafipisjcslrkk.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jamR2b2hhZmlwaXNqY3NscmtrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxOTM3NjMsImV4cCI6MjA4OTc2OTc2M30.GCg7Foa4HR-NOXDthpRWMYAGxWTuUWfnLUoPDC5qZ9w
+```bash
+cp .env.example .env
 ```
 
-> ⚠️ La `ANON_KEY` est une clé **publique** (côté client). Elle n'est pas secrète — la sécurité est assurée par les RLS policies sur Supabase.
+Remplir les valeurs réelles dans `.env` :
+
+```env
+VITE_SUPABASE_URL=https://<your-project-id>.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_<your-publishable-key>
+```
+
+Les valeurs se trouvent dans le dashboard Supabase :
+→ **Settings → API Keys** — onglet "API Keys" (nouveau modèle publishable/secret).
+CoachCRM utilise les clés `sb_publishable_*` côté client. Les anciennes clés
+`anon` / `service_role` (JWT) ont été désactivées — si vous voyez
+`VITE_SUPABASE_ANON_KEY` quelque part, la valeur est obsolète et doit être
+remplacée.
+
+> ⚠️ Ne jamais commiter de valeurs réelles dans ce fichier ou dans la documentation.
+> La clé publishable est côté client (public par conception) mais son exposition
+> dans le code source est évitable et complique la rotation. Toujours la lire
+> depuis les variables d'environnement.
 
 ---
 
@@ -73,17 +89,17 @@ VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 |-----------|--------|
 | Organisation | CoachCRM |
 | Plan | Free |
-| Projet | claudia@kotech.ai's Project |
-| Project ID | `ncjdvohafipisjcslrkk` |
+| Projet | *(voir dashboard Supabase — Settings → General)* |
+| Project ID | *(voir dashboard Supabase — Settings → General)* |
 | Région | `eu-west-2` (London) |
-| URL API | `https://ncjdvohafipisjcslrkk.supabase.co` |
-| BDD Host | `db.ncjdvohafipisjcslrkk.supabase.co` |
+| URL API | *(voir `VITE_SUPABASE_URL` dans `.env`)* |
+| BDD Host | `db.<project-id>.supabase.co` |
 | PostgreSQL | v17 |
 
 ### Accès au dashboard Supabase
 
-- URL : https://supabase.com/dashboard/project/ncjdvohafipisjcslrkk
-- Compte : `claudia@kotech.ai` (connexion Google)
+- URL : https://supabase.com/dashboard — sélectionner le projet CoachCRM
+- Compte : *(gestionnaire du compte Supabase de l'organisation)*
 
 ### Tables principales
 
@@ -107,8 +123,8 @@ VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 | Paramètre | Valeur |
 |-----------|--------|
 | Projet | `coachcrm` |
-| Compte | `claudia-7920s-projects` |
-| Dashboard | https://vercel.com/claudia-7920s-projects/coachcrm |
+| Compte | *(gestionnaire du compte Vercel de l'organisation)* |
+| Dashboard | https://vercel.com — sélectionner le projet CoachCRM |
 
 ### Déploiement
 
@@ -120,10 +136,10 @@ VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 ### Variables d'environnement Vercel
 
 Les mêmes variables `.env` doivent être configurées dans Vercel :
-→ https://vercel.com/claudia-7920s-projects/coachcrm/settings/environment-variables
+→ Dashboard Vercel → projet CoachCRM → Settings → Environment Variables
 
-- `VITE_SUPABASE_URL` = `https://ncjdvohafipisjcslrkk.supabase.co`
-- `VITE_SUPABASE_ANON_KEY` = *(même valeur que dans `.env` local)*
+- `VITE_SUPABASE_URL` — *(URL du projet Supabase, depuis Settings → API)*
+- `VITE_SUPABASE_ANON_KEY` — *(clé anon publique, depuis Settings → API)*
 
 ---
 
@@ -174,5 +190,5 @@ npm run preview
 | Service | Compte | Accès |
 |---------|--------|-------|
 | GitHub | zamolxes7378 | SSH (sebastian.pavel@gmail.com) |
-| Supabase | claudia@kotech.ai | Google OAuth |
-| Vercel | claudia-7920s-projects | Google OAuth |
+| Supabase | *(gestionnaire du compte org)* | Google OAuth |
+| Vercel | *(gestionnaire du compte org)* | Google OAuth |

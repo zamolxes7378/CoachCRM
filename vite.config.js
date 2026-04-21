@@ -10,8 +10,12 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks(id) {
-          if (id.includes('node_modules')) return 'vendor'
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'supabase-vendor': ['@supabase/supabase-js'],
+          'ui-vendor': ['lucide-react'],
+          // exceljs intentionally omitted — Vite will create a split chunk
+          // for the dynamic import in exportService.js
         }
       }
     }
