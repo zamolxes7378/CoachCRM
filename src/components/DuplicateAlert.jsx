@@ -43,7 +43,7 @@ export default function DuplicateAlert({ matches, onView, onLink, onDismiss, typ
           {matches.length === 1 ? 'Doublon potentiel détecté' : `${matches.length} doublons potentiels`}
         </span>
         {onDismiss && (
-          <button onClick={onDismiss} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 0 }}>
+          <button onClick={onDismiss} aria-label="Ignorer les doublons" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 0 }}>
             <X size={12} />
           </button>
         )}

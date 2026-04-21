@@ -1,6 +1,8 @@
-import React from 'react'
+import React, { useRef } from 'react'
 import { X, ChevronRight, Clock, Phone, MessageSquare, Mail, MessageCircle, Globe, Share2 } from 'lucide-react'
 import ClientTypeBadge from '../ClientTypeBadge'
+import { useFocusTrap } from '../../hooks/useFocusTrap'
+import { useEscapeKey } from '../../hooks/useEscapeKey'
 
 /**
  * ActionDetailPanel — slide-in right panel for viewing items related to an urgency card.
@@ -11,6 +13,9 @@ export default function ActionDetailPanel({ urgency, items, onClose, onItemClick
     if (!urgency) return null
 
     const Icon = urgency.icon
+    const panelRef = useRef(null)
+    useFocusTrap(panelRef, true)
+    useEscapeKey(onClose, true)
 
     const getContactIcon = (type) => {
         switch (type?.toLowerCase()) {
@@ -33,14 +38,21 @@ export default function ActionDetailPanel({ urgency, items, onClose, onItemClick
                 zIndex: 999, animation: 'fadeIn 0.2s'
             }} />
             {/* Panel */}
-            <div style={{
-                position: 'fixed', top: 0, right: 0, bottom: 0,
-                width: '40%', minWidth: 380, maxWidth: 520,
-                background: 'white', zIndex: 1000,
-                boxShadow: '-8px 0 32px rgba(0,0,0,0.12)',
-                display: 'flex', flexDirection: 'column',
-                animation: 'slideInRight 0.25s ease-out'
-            }}>
+            <div
+                ref={panelRef}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="action-detail-title"
+                tabIndex={-1}
+                style={{
+                    position: 'fixed', top: 0, right: 0, bottom: 0,
+                    width: '40%', minWidth: 380, maxWidth: 520,
+                    background: 'white', zIndex: 1000,
+                    boxShadow: '-8px 0 32px rgba(0,0,0,0.12)',
+                    display: 'flex', flexDirection: 'column',
+                    animation: 'slideInRight 0.25s ease-out'
+                }}
+            >
                 {/* Header */}
                 <div style={{
                     padding: 'var(--space-md) var(--space-lg)',
@@ -57,7 +69,7 @@ export default function ActionDetailPanel({ urgency, items, onClose, onItemClick
                             <Icon size={18} style={{ color: urgency.color }} />
                         </div>
                         <div>
-                            <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
+                            <h3 id="action-detail-title" style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
                                 {urgency.label}
                             </h3>
                             <span style={{ fontSize: '0.714rem', color: 'var(--text-tertiary)' }}>
@@ -65,7 +77,7 @@ export default function ActionDetailPanel({ urgency, items, onClose, onItemClick
                             </span>
                         </div>
                     </div>
-                    <button onClick={onClose} style={{
+                    <button onClick={onClose} aria-label="Fermer" style={{
                         width: 32, height: 32, borderRadius: '50%', border: 'none',
                         background: 'white', cursor: 'pointer',
                         display: 'flex', alignItems: 'center', justifyContent: 'center'

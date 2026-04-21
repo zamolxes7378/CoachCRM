@@ -14,15 +14,16 @@ export default function Layout({ children, user, onLogout }) {
 
   return (
     <div className="app-layout">
+      <a href="#main-content" className="skip-link">Aller au contenu principal</a>
       <Sidebar
         user={user}
         onLogout={onLogout}
         isOpen={sidebarOpen}
         onToggle={() => setSidebarOpen(!sidebarOpen)}
       />
-      <main className="app-main">
+      <main className="app-main" id="main-content" tabIndex={-1}>
         <header className="app-header">
-          <button className="mobile-toggle" onClick={() => setSidebarOpen(!sidebarOpen)}>
+          <button className="mobile-toggle" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Ouvrir le menu">
             <Menu size={24} />
           </button>
           <div className="greeting">

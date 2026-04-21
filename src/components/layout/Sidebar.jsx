@@ -24,7 +24,7 @@ export default function Sidebar({ user, onLogout, isOpen, onToggle }) {
       <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
         <div className="sidebar-brand">
           <Heart size={24} />
-          <h1>Coach<span>CRM</span></h1>
+          <span className="h1">Coach<span>CRM</span></span>
         </div>
 
         <nav className="sidebar-nav">
@@ -127,6 +127,7 @@ export default function Sidebar({ user, onLogout, isOpen, onToggle }) {
               onClick={onLogout}
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-sidebar-muted)', padding: 4 }}
               title="Déconnexion"
+              aria-label="Déconnexion"
             >
               <LogOut size={18} />
             </button>

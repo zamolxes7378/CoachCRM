@@ -1,5 +1,7 @@
-import React from 'react'
+import React, { useRef } from 'react'
 import { BookOpen, Heart, Crosshair, AlertCircle, Target, CheckCircle, FileText, Sparkles, Mic, X } from 'lucide-react'
+import { useFocusTrap } from '../../hooks/useFocusTrap'
+import { useEscapeKey } from '../../hooks/useEscapeKey'
 
 const CATEGORIES = [
   { key: 'dynamique', icon: Heart, color: '#E53E3E', bg: '#FFF5F5', label: 'Dynamique relationnelle', placeholder: 'Qualité de la communication, patterns d\'attachement, dynamique de pouvoir…' },
@@ -9,20 +11,30 @@ const CATEGORIES = [
 ]
 
 export default function NotesModal({ clientName, noteCategories, setNoteCategories, globalNote, setGlobalNote, onClose }) {
+  const panelRef = useRef(null)
+  useFocusTrap(panelRef, true)
+  useEscapeKey(onClose, true)
   return (
     <>
       <div onClick={onClose} style={{
         position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)',
         zIndex: 999, animation: 'fadeIn 0.2s'
       }} />
-      <div style={{
-        position: 'fixed', top: 0, right: 0, bottom: 0,
-        width: '50%', minWidth: 420, maxWidth: 640,
-        background: 'white', zIndex: 1000,
-        boxShadow: '-8px 0 32px rgba(0,0,0,0.12)',
-        display: 'flex', flexDirection: 'column',
-        animation: 'slideIn 0.25s ease-out'
-      }}>
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="notes-modal-title"
+        tabIndex={-1}
+        style={{
+          position: 'fixed', top: 0, right: 0, bottom: 0,
+          width: '50%', minWidth: 420, maxWidth: 640,
+          background: 'white', zIndex: 1000,
+          boxShadow: '-8px 0 32px rgba(0,0,0,0.12)',
+          display: 'flex', flexDirection: 'column',
+          animation: 'slideIn 0.25s ease-out'
+        }}
+      >
         {/* Header */}
         <div style={{
           padding: 'var(--space-md) var(--space-lg)',
@@ -34,11 +46,11 @@ export default function NotesModal({ clientName, noteCategories, setNoteCategori
               <BookOpen size={18} style={{ color: 'var(--primary-500)' }} />
             </div>
             <div>
-              <div style={{ fontSize: '0.857rem', fontWeight: 700, color: 'var(--text-primary)' }}>Mes notes du dossier</div>
+              <div id="notes-modal-title" style={{ fontSize: '0.857rem', fontWeight: 700, color: 'var(--text-primary)' }}>Mes notes du dossier</div>
               <span style={{ fontSize: '0.714rem', color: 'var(--text-tertiary)' }}>{clientName}</span>
             </div>
           </div>
-          <button onClick={onClose} style={{
+          <button onClick={onClose} aria-label="Fermer" style={{
             width: 32, height: 32, borderRadius: '50%', border: 'none',
             background: 'var(--bg-main)', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center'
@@ -54,16 +66,18 @@ export default function NotesModal({ clientName, noteCategories, setNoteCategori
           {CATEGORIES.map(cat => {
             const CatIcon = cat.icon
             const hasContent = noteCategories[cat.key]?.trim()
+            const textareaId = `notes-cat-${cat.key}`
             return (
               <div key={cat.key} style={{ marginBottom: 'var(--space-md)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                <label htmlFor={textareaId} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, cursor: 'pointer' }}>
                   <div style={{ width: 24, height: 24, borderRadius: 6, background: cat.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <CatIcon size={13} style={{ color: cat.color }} />
                   </div>
                   <span style={{ fontSize: '0.786rem', fontWeight: 600, color: cat.color }}>{cat.label}</span>
                   {hasContent && <CheckCircle size={12} style={{ color: 'var(--success)', marginLeft: 'auto' }} />}
-                </div>
+                </label>
                 <textarea
+                  id={textareaId}
                   value={noteCategories[cat.key]}
                   onChange={e => setNoteCategories(prev => ({ ...prev, [cat.key]: e.target.value }))}
                   onKeyDown={e => e.stopPropagation()}
@@ -86,10 +100,10 @@ export default function NotesModal({ clientName, noteCategories, setNoteCategori
           {/* Separator */}
           <div style={{ borderTop: '1px solid var(--border-light)', margin: 'var(--space-md) 0', paddingTop: 'var(--space-md)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <label htmlFor="notes-global" style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
                 <FileText size={14} style={{ color: 'var(--text-secondary)' }} />
                 <span style={{ fontSize: '0.786rem', fontWeight: 600, color: 'var(--text-primary)' }}>Notes libres</span>
-              </div>
+              </label>
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
                 <button
                   onClick={() => {
@@ -142,12 +156,14 @@ export default function NotesModal({ clientName, noteCategories, setNoteCategori
                     transition: 'all 0.2s'
                   }}
                   title="Dicter une note"
+                  aria-label="Dicter une note"
                 >
                   <Mic size={14} />
                 </button>
               </div>
             </div>
             <textarea
+              id="notes-global"
               value={globalNote}
               onChange={e => setGlobalNote(e.target.value)}
               onKeyDown={e => e.stopPropagation()}

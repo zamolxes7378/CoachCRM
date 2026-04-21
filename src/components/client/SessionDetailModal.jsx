@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useRef } from 'react'
 import { useConfirm } from '../../context/ConfirmContext'
 import { useData } from '../../context/DataContext'
 import {
@@ -7,6 +7,8 @@ import {
   Sprout, Calendar, Clock, HelpCircle
 } from 'lucide-react'
 import ReportIcon from '../ReportIcon'
+import { useFocusTrap } from '../../hooks/useFocusTrap'
+import { useEscapeKey } from '../../hooks/useEscapeKey'
 
 /**
  * Session Detail Modal — sliding panel for viewing/editing a single session.
@@ -19,9 +21,12 @@ export default function SessionDetailModal({
   therapy,        // { phasesData, defaultPhaseKey, phaseIcons, phaseColors, sessionNumbers }
   utils           // { updateSession, formatDate, getClientName }
 }) {
-  if (!session) return null
   const confirm = useConfirm()
   const { getInvoiceForSession, createInvoice, updateInvoice: updateInv, emitInvoice, unemitInvoice, deleteInvoice, setInvoiceSessions, sessions: allSessions } = useData()
+  const panelRef = useRef(null)
+  useFocusTrap(panelRef, !!session)
+  useEscapeKey(() => setExpandedSessionId(null), !!session)
+  if (!session) return null
   // Destructure for convenience
   const { sessionUpdates, recordingSessionId, recordingStep, editingCoveredSessions, editingInvoiceSessions } = sessionModal
   const { setSessionUpdates, setExpandedSessionId, setRateOverrides, setEditingCoveredSessions, setEditingInvoiceSessions, getRate, handleStartRecording, handleSaveCR } = sessionActions
@@ -45,14 +50,21 @@ export default function SessionDetailModal({
         zIndex: 999, animation: 'fadeIn 0.2s'
       }} />
       {/* Panel */}
-      <div style={{
-        position: 'fixed', top: 0, right: 0, bottom: 0,
-        width: '50%', minWidth: 420, maxWidth: 640,
-        background: 'white', zIndex: 1000,
-        boxShadow: '-8px 0 32px rgba(0,0,0,0.12)',
-        display: 'flex', flexDirection: 'column',
-        animation: 'slideIn 0.25s ease-out'
-      }}>
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="session-detail-title"
+        tabIndex={-1}
+        style={{
+          position: 'fixed', top: 0, right: 0, bottom: 0,
+          width: '50%', minWidth: 420, maxWidth: 640,
+          background: 'white', zIndex: 1000,
+          boxShadow: '-8px 0 32px rgba(0,0,0,0.12)',
+          display: 'flex', flexDirection: 'column',
+          animation: 'slideIn 0.25s ease-out'
+        }}
+      >
         {/* Header */}
         <div style={{
           padding: 'var(--space-md) var(--space-lg)',
@@ -69,11 +81,11 @@ export default function SessionDetailModal({
             </div>
             <div>
               <div style={{ fontSize: '0.857rem', fontWeight: 700, color: session.status === 'cancelled' ? 'var(--error)' : 'var(--text-primary)', marginBottom: 2 }}>{getClientName(client)}</div>
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: session.status === 'cancelled' ? 'var(--error)' : undefined }}>Séance {sessionNum}</h3>
+              <h3 id="session-detail-title" style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: session.status === 'cancelled' ? 'var(--error)' : undefined }}>Séance {sessionNum}</h3>
               {session.theme && <span style={{ fontSize: '0.714rem', color: 'var(--text-tertiary)' }}>{session.theme}</span>}
             </div>
           </div>
-          <button onClick={() => setExpandedSessionId(null)} style={{
+          <button onClick={() => setExpandedSessionId(null)} aria-label="Fermer" style={{
             width: 32, height: 32, borderRadius: '50%', border: 'none',
             background: 'var(--bg-main)', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center'

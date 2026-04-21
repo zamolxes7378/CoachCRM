@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { Euro, TrendingUp, TrendingDown, Minus, Users, User, UserPlus, Calendar, FileText, Hourglass, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Download, BarChart3, ArrowUpRight, ArrowDownRight, XCircle, X, PieChart, Sprout, UserCheck, Zap } from 'lucide-react'
 import ClientTypeBadge from '../components/ClientTypeBadge'
 import PaymentBadge from '../components/PaymentBadge'
@@ -8,6 +8,8 @@ import InvoiceBadge from '../components/InvoiceBadge'
 import { useData } from '../context/DataContext'
 import ClientDetailPage from './ClientDetailPage'
 import { countClientsBySource, exportSponsorshipCSV } from '../services/sponsorshipService'
+import { useFocusTrap } from '../hooks/useFocusTrap'
+import { useEscapeKey } from '../hooks/useEscapeKey'
 import { getClientName } from '../data/helpers'
 
 const AbsenceDash = () => (
@@ -86,6 +88,12 @@ export default function FinancesPage() {
   const [viewPeriod, setViewPeriod] = useState('month') // month, quarter, semester, year
   const [topModal, setTopModal] = useState(null) // 'ca' | 'referrals' | null
   const [expandedAlert, setExpandedAlert] = useState(null) // 'unpaid' | 'deferred' | 'invoices' | null
+  const topModalRef = useRef(null)
+  const clientDetailModalRef = useRef(null)
+  useFocusTrap(topModalRef, !!topModal)
+  useEscapeKey(() => setTopModal(null), !!topModal)
+  useFocusTrap(clientDetailModalRef, !!modalClientId)
+  useEscapeKey(() => setModalClientId(null), !!modalClientId)
   const [exportFrom, setExportFrom] = useState(`${now.getFullYear()}-01-01`)
   const [exportTo, setExportTo] = useState(`${now.getFullYear()}-12-31`)
 
@@ -794,14 +802,19 @@ export default function FinancesPage() {
           onClick={() => setTopModal(null)}
         >
           <div
+            ref={topModalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="top-modal-title"
+            tabIndex={-1}
             onClick={e => e.stopPropagation()}
             style={{ background: 'white', borderRadius: 'var(--radius-lg)', padding: 'var(--space-lg)', width: 520, maxHeight: '80vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 60px rgba(0,0,0,0.25)' }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-md)' }}>
-              <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+              <span id="top-modal-title" style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                 {topModal === 'ca' ? `🏆 Classement CA — ${selectedYear}` : `🤝 Classement Parrains — ${selectedYear}`}
               </span>
-              <button onClick={() => setTopModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
+              <button onClick={() => setTopModal(null)} aria-label="Fermer" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
                 <X size={18} />
               </button>
             </div>
@@ -886,7 +899,6 @@ export default function FinancesPage() {
       {modalClientId && (
         <div className="modal-overlay"
           onClick={(e) => { if (e.target === e.currentTarget) setModalClientId(null) }}
-          onKeyDown={(e) => { if (e.key === 'Escape') setModalClientId(null) }}
           style={{
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
             background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
@@ -894,16 +906,24 @@ export default function FinancesPage() {
             animation: 'fadeIn 0.2s ease'
           }}
         >
-          <div style={{
-            width: '90vw', maxWidth: 1100, height: '90vh',
-            background: '#ffffff', borderRadius: 'var(--radius-lg)',
-            boxShadow: '0 25px 50px rgba(0,0,0,0.25)',
-            overflow: 'auto', padding: 'var(--space-lg)',
-            position: 'relative',
-            animation: 'slideUp 0.25s ease'
-          }}>
+          <div
+            ref={clientDetailModalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Détail client"
+            tabIndex={-1}
+            style={{
+              width: '90vw', maxWidth: 1100, height: '90vh',
+              background: '#ffffff', borderRadius: 'var(--radius-lg)',
+              boxShadow: '0 25px 50px rgba(0,0,0,0.25)',
+              overflow: 'auto', padding: 'var(--space-lg)',
+              position: 'relative',
+              animation: 'slideUp 0.25s ease'
+            }}
+          >
             <button
               onClick={() => setModalClientId(null)}
+              aria-label="Fermer"
               style={{
                 position: 'sticky', top: 0, float: 'right',
                 background: 'white', border: '1px solid var(--border-light)',

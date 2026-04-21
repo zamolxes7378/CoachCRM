@@ -1,5 +1,7 @@
-import { createContext, useContext, useState, useCallback } from 'react'
+import { createContext, useContext, useState, useCallback, useRef } from 'react'
 import { Heart, AlertTriangle, X } from 'lucide-react'
+import { useFocusTrap } from '../hooks/useFocusTrap'
+import { useEscapeKey } from '../hooks/useEscapeKey'
 
 const ConfirmContext = createContext(null)
 
@@ -9,6 +11,7 @@ export function useConfirm() {
 
 export function ConfirmProvider({ children }) {
   const [state, setState] = useState(null)
+  const dialogRef = useRef(null)
 
   const confirm = useCallback((message, { title, variant = 'confirm', options = null } = {}) => {
     return new Promise((resolve) => {
@@ -21,14 +24,23 @@ export function ConfirmProvider({ children }) {
     setState(null)
   }
 
+  useFocusTrap(dialogRef, !!state)
+  useEscapeKey(() => handleClose(false), !!state)
+
   return (
     <ConfirmContext.Provider value={confirm}>
       {children}
       {state && (
         <div className="modal-overlay" style={{ zIndex: 9999 }} onClick={() => handleClose(false)}>
           <div
+            ref={dialogRef}
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="confirm-dialog-title"
+            aria-describedby="confirm-dialog-message"
             className="confirm-dialog"
             onClick={e => e.stopPropagation()}
+            tabIndex={-1}
           >
             {/* Header with logo */}
             <div className="confirm-dialog-header">
@@ -36,22 +48,22 @@ export function ConfirmProvider({ children }) {
                 <Heart size={18} />
                 <span>Coach<strong>CRM</strong></span>
               </div>
-              <button className="confirm-dialog-close" onClick={() => handleClose(false)}>
+              <button className="confirm-dialog-close" onClick={() => handleClose(false)} aria-label="Fermer">
                 <X size={16} />
               </button>
             </div>
 
             {/* Icon */}
             <div className="confirm-dialog-body">
-              <div className={`confirm-dialog-icon ${state.variant === 'danger' ? 'danger' : ''}`}>
+              <div className={`confirm-dialog-icon ${state.variant === 'danger' ? 'danger' : ''}`} aria-hidden="true">
                 <AlertTriangle size={24} />
               </div>
 
               {/* Title */}
-              {state.title && <h3 className="confirm-dialog-title">{state.title}</h3>}
+              {state.title && <h3 id="confirm-dialog-title" className="confirm-dialog-title">{state.title}</h3>}
 
               {/* Message */}
-              <p className="confirm-dialog-message" style={{ whiteSpace: 'pre-line' }}>{state.message}</p>
+              <p id="confirm-dialog-message" className="confirm-dialog-message" style={{ whiteSpace: 'pre-line' }}>{state.message}</p>
             </div>
 
             {/* Buttons */}

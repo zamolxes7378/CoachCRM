@@ -256,6 +256,7 @@ function SessionCard({
             <button
               onClick={e => { e.stopPropagation(); onDelete(session.id) }}
               title="Supprimer définitivement cette séance"
+              aria-label="Supprimer définitivement cette séance"
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',
                 padding: 2, display: 'flex', alignItems: 'center',

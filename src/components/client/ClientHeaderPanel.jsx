@@ -181,6 +181,7 @@ export default function ClientHeaderPanel({
                     transition: 'opacity 0.2s', display: 'flex', alignItems: 'center'
                   }}
                   title="Retirer ce lien"
+                  aria-label="Retirer ce lien"
                 >
                   <X size={12} />
                 </button>

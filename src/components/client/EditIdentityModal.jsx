@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useRef } from 'react'
 import {
   X, User, Users, Sprout, Baby, Trash2, Plus, Edit3, Save, Check,
   ChevronDown, ChevronUp, Star, Link2, Award, Briefcase, UserPlus
@@ -6,6 +6,8 @@ import {
 import { useConfirm } from '../../context/ConfirmContext'
 import DeleteConfirmModal from './DeleteConfirmModal'
 import ReferrerSection from './ReferrerSection'
+import { useFocusTrap } from '../../hooks/useFocusTrap'
+import { useEscapeKey } from '../../hooks/useEscapeKey'
 
 /**
  * Edit Identity Modal — sliding panel for editing client identity, type, source, links.
@@ -49,6 +51,7 @@ export default function EditIdentityModal({
     return false
   }
   const confirm = useConfirm()
+  const panelRef = useRef(null)
   const handleClose = async () => {
     if (hasChanges()) {
       if (!await confirm('Des modifications non enregistrées seront perdues. Voulez-vous vraiment quitter ?')) return
@@ -62,22 +65,32 @@ export default function EditIdentityModal({
     setEditBillingAddress(client?.billingAddress || '')
     setShowEditModal(false); setShowDeleteConfirm(false)
   }
+  useFocusTrap(panelRef, true)
+  useEscapeKey(handleClose, true)
   return (
         <div className="modal-overlay" onClick={handleClose}>
-          <div onClick={e => e.stopPropagation()} style={{
-            position: 'fixed', top: 0, right: 0, bottom: 0,
-            width: '100%', maxWidth: 520,
-            background: 'var(--bg-card)',
-            borderRadius: 'var(--radius-xl) 0 0 var(--radius-xl)',
-            boxShadow: '-8px 0 32px rgba(0,0,0,0.15)',
-            display: 'flex', flexDirection: 'column',
-            animation: 'slideInRight 0.3s ease-out'
-          }}>
+          <div
+            ref={panelRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="edit-identity-title"
+            tabIndex={-1}
+            onClick={e => e.stopPropagation()}
+            style={{
+              position: 'fixed', top: 0, right: 0, bottom: 0,
+              width: '100%', maxWidth: 520,
+              background: 'var(--bg-card)',
+              borderRadius: 'var(--radius-xl) 0 0 var(--radius-xl)',
+              boxShadow: '-8px 0 32px rgba(0,0,0,0.15)',
+              display: 'flex', flexDirection: 'column',
+              animation: 'slideInRight 0.3s ease-out'
+            }}
+          >
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', padding: '20px 28px', borderBottom: '1px solid var(--border-light)', flexShrink: 0 }}>
               <div className="client-avatar" style={{ width: 40, height: 40, fontSize: '0.857rem', background: status === 'inactive' ? 'var(--primary-200)' : client.phase === 'prospect' ? '#E8D8FE' : 'var(--accent-main)', color: status === 'inactive' ? 'white' : client.phase === 'prospect' ? '#6B46C1' : 'white', flexShrink: 0 }}>{getClientInitials(client)}</div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>{getClientName(client)}</div>
+                <div id="edit-identity-title" style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>{getClientName(client)}</div>
                 <div style={{ fontSize: '0.786rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 5, fontWeight: 500 }}>
                   {getClientType(client) === 'individual' && <><User size={14} /> Individuel</>}
                   {getClientType(client) === 'client' && <><Users size={14} /> Client</>}
@@ -93,7 +106,7 @@ export default function EditIdentityModal({
                   )}
                 </div>
               </div>
-              <button onClick={handleClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 4 }}>
+              <button onClick={handleClose} aria-label="Fermer" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 4 }}>
                 <X size={20} />
               </button>
             </div>
@@ -197,48 +210,48 @@ export default function EditIdentityModal({
                 </div>
                 <div className="grid-2">
                   <div className="input-group">
-                    <label>Prénom</label>
-                    <input className="input" placeholder="Prénom" value={editPartnerA.firstName || ''} onChange={e => setEditPartnerA({ ...editPartnerA, firstName: e.target.value })} />
+                    <label htmlFor="edit-a-firstname">Prénom</label>
+                    <input id="edit-a-firstname" className="input" placeholder="Prénom" autoComplete="given-name" value={editPartnerA.firstName || ''} onChange={e => setEditPartnerA({ ...editPartnerA, firstName: e.target.value })} />
                   </div>
                   <div className="input-group">
-                    <label>Nom <span style={{ color: 'var(--error)' }}>*</span></label>
-                    <input className="input" placeholder="Nom" value={editPartnerA.lastName || ''} onChange={e => setEditPartnerA({ ...editPartnerA, lastName: e.target.value })}
+                    <label htmlFor="edit-a-lastname">Nom <span style={{ color: 'var(--error)' }}>*</span></label>
+                    <input id="edit-a-lastname" className="input" placeholder="Nom" autoComplete="family-name" value={editPartnerA.lastName || ''} onChange={e => setEditPartnerA({ ...editPartnerA, lastName: e.target.value })}
                       style={!(editPartnerA.lastName || '').trim() ? { borderColor: 'var(--error)', borderWidth: 1 } : {}} />
                   </div>
                 </div>
                 <div className="grid-2">
                   <div className="input-group">
-                    <label>Email</label>
-                    <input className="input" type="email" placeholder="email@exemple.com" value={editPartnerA.email || ''} onChange={e => setEditPartnerA({ ...editPartnerA, email: e.target.value })} />
+                    <label htmlFor="edit-a-email">Email</label>
+                    <input id="edit-a-email" className="input" type="email" placeholder="email@exemple.com" autoComplete="email" value={editPartnerA.email || ''} onChange={e => setEditPartnerA({ ...editPartnerA, email: e.target.value })} />
                   </div>
                   <div className="input-group">
-                    <label>Téléphone</label>
-                    <input className="input" type="tel" placeholder="06 12 34 56 78" value={editPartnerA.phone || ''} onChange={e => setEditPartnerA({ ...editPartnerA, phone: e.target.value })} />
+                    <label htmlFor="edit-a-phone">Téléphone</label>
+                    <input id="edit-a-phone" className="input" type="tel" placeholder="06 12 34 56 78" autoComplete="tel" value={editPartnerA.phone || ''} onChange={e => setEditPartnerA({ ...editPartnerA, phone: e.target.value })} />
                   </div>
                 </div>
                 <div className="grid-2">
                   <div className="input-group">
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <label htmlFor="edit-a-birthdate" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                       Date de naissance
                       <span style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)', fontWeight: 400, fontStyle: 'italic' }}>optionnel</span>
                     </label>
-                    <input className="input" type="date" style={{ colorScheme: 'light' }} value={editPartnerA.birthDate || ''} onChange={e => setEditPartnerA({ ...editPartnerA, birthDate: e.target.value })} />
+                    <input id="edit-a-birthdate" className="input" type="date" style={{ colorScheme: 'light' }} autoComplete="bday" value={editPartnerA.birthDate || ''} onChange={e => setEditPartnerA({ ...editPartnerA, birthDate: e.target.value })} />
                   </div>
                   <div className="input-group">
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <label htmlFor="edit-a-birthyear" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                       ou Année
                       <span style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)', fontWeight: 400, fontStyle: 'italic' }}>optionnel</span>
                     </label>
-                    <input className="input" type="number" min="1920" max={new Date().getFullYear()} placeholder={`ex. ${new Date().getFullYear() - 35}`}
-                      value={editPartnerA.birthYear || ''} onChange={e => setEditPartnerA({ ...editPartnerA, birthYear: e.target.value })} />
+                    <input id="edit-a-birthyear" className="input" type="number" min="1920" max={new Date().getFullYear()} placeholder={`ex. ${new Date().getFullYear() - 35}`}
+                      autoComplete="bday-year" value={editPartnerA.birthYear || ''} onChange={e => setEditPartnerA({ ...editPartnerA, birthYear: e.target.value })} />
                   </div>
                 </div>
                 <div className="input-group" style={{ marginTop: 'var(--space-xs)' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <label htmlFor="edit-billing-address" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     Adresse de facturation
                     <span style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)', fontWeight: 400, fontStyle: 'italic' }}>optionnel</span>
                   </label>
-                  <textarea className="input" rows={2} placeholder="Adresse complète pour la facturation…" value={editBillingAddress} onChange={e => setEditBillingAddress(e.target.value)} style={{ resize: 'vertical' }} />
+                  <textarea id="edit-billing-address" className="input" rows={2} placeholder="Adresse complète pour la facturation…" autoComplete="street-address" value={editBillingAddress} onChange={e => setEditBillingAddress(e.target.value)} style={{ resize: 'vertical' }} />
                 </div>
               </div>
 
@@ -278,48 +291,48 @@ export default function EditIdentityModal({
                   </div>
                   <div className="grid-2">
                     <div className="input-group">
-                      <label>Prénom</label>
-                      <input className="input" placeholder="Prénom" value={editPartnerB.firstName || ''} onChange={e => setEditPartnerB({ ...editPartnerB, firstName: e.target.value })} />
+                      <label htmlFor="edit-b-firstname">Prénom</label>
+                      <input id="edit-b-firstname" className="input" placeholder="Prénom" autoComplete="given-name" value={editPartnerB.firstName || ''} onChange={e => setEditPartnerB({ ...editPartnerB, firstName: e.target.value })} />
                     </div>
                     <div className="input-group">
-                      <label>Nom <span style={{ color: 'var(--error)' }}>*</span></label>
-                      <input className="input" placeholder="Nom" value={editPartnerB.lastName || ''} onChange={e => setEditPartnerB({ ...editPartnerB, lastName: e.target.value })}
+                      <label htmlFor="edit-b-lastname">Nom <span style={{ color: 'var(--error)' }}>*</span></label>
+                      <input id="edit-b-lastname" className="input" placeholder="Nom" autoComplete="family-name" value={editPartnerB.lastName || ''} onChange={e => setEditPartnerB({ ...editPartnerB, lastName: e.target.value })}
                         style={!(editPartnerB.lastName || '').trim() ? { borderColor: 'var(--error)', borderWidth: 1 } : {}} />
                     </div>
                   </div>
                   <div className="grid-2">
                     <div className="input-group">
-                      <label>Email</label>
-                      <input className="input" type="email" placeholder="email@exemple.com" value={editPartnerB.email || ''} onChange={e => setEditPartnerB({ ...editPartnerB, email: e.target.value })} />
+                      <label htmlFor="edit-b-email">Email</label>
+                      <input id="edit-b-email" className="input" type="email" placeholder="email@exemple.com" autoComplete="email" value={editPartnerB.email || ''} onChange={e => setEditPartnerB({ ...editPartnerB, email: e.target.value })} />
                     </div>
                     <div className="input-group">
-                      <label>Téléphone</label>
-                      <input className="input" type="tel" placeholder="06 12 34 56 78" value={editPartnerB.phone || ''} onChange={e => setEditPartnerB({ ...editPartnerB, phone: e.target.value })} />
+                      <label htmlFor="edit-b-phone">Téléphone</label>
+                      <input id="edit-b-phone" className="input" type="tel" placeholder="06 12 34 56 78" autoComplete="tel" value={editPartnerB.phone || ''} onChange={e => setEditPartnerB({ ...editPartnerB, phone: e.target.value })} />
                     </div>
                   </div>
                   <div className="grid-2">
                     <div className="input-group">
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <label htmlFor="edit-b-birthdate" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                         Date de naissance
                         <span style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)', fontWeight: 400, fontStyle: 'italic' }}>optionnel</span>
                       </label>
-                      <input className="input" type="date" style={{ colorScheme: 'light' }} value={editPartnerB.birthDate || ''} onChange={e => setEditPartnerB({ ...editPartnerB, birthDate: e.target.value })} />
+                      <input id="edit-b-birthdate" className="input" type="date" style={{ colorScheme: 'light' }} autoComplete="bday" value={editPartnerB.birthDate || ''} onChange={e => setEditPartnerB({ ...editPartnerB, birthDate: e.target.value })} />
                     </div>
                     <div className="input-group">
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <label htmlFor="edit-b-birthyear" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                         ou Année
                         <span style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)', fontWeight: 400, fontStyle: 'italic' }}>optionnel</span>
                       </label>
-                      <input className="input" type="number" min="1920" max={new Date().getFullYear()} placeholder={`ex. ${new Date().getFullYear() - 35}`}
-                        value={editPartnerB.birthYear || ''} onChange={e => setEditPartnerB({ ...editPartnerB, birthYear: e.target.value })} />
+                      <input id="edit-b-birthyear" className="input" type="number" min="1920" max={new Date().getFullYear()} placeholder={`ex. ${new Date().getFullYear() - 35}`}
+                        autoComplete="bday-year" value={editPartnerB.birthYear || ''} onChange={e => setEditPartnerB({ ...editPartnerB, birthYear: e.target.value })} />
                     </div>
                   </div>
                   <div className="input-group" style={{ marginTop: 'var(--space-xs)' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <label htmlFor="edit-b-billing-address" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                       Adresse de facturation
                       <span style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)', fontWeight: 400, fontStyle: 'italic' }}>optionnel</span>
                     </label>
-                    <textarea className="input" rows={2} placeholder="Adresse complète pour la facturation…" value={editBillingAddress} onChange={e => setEditBillingAddress(e.target.value)} style={{ resize: 'vertical' }} />
+                    <textarea id="edit-b-billing-address" className="input" rows={2} placeholder="Adresse complète pour la facturation…" autoComplete="street-address" value={editBillingAddress} onChange={e => setEditBillingAddress(e.target.value)} style={{ resize: 'vertical' }} />
                   </div>
                 </div>
               )}
