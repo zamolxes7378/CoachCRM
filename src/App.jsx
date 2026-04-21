@@ -2,6 +2,7 @@ import React, { useState, useEffect, Suspense, lazy } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { supabase } from './lib/supabase'
 import { upsertUser } from './services/dataService'
+import { isEmailAllowed } from './lib/allowlist'
 import { DataProvider } from './context/DataContext'
 import { ToastProvider } from './context/ToastContext'
 import { ConfirmProvider } from './context/ConfirmContext'
@@ -55,17 +56,61 @@ class GlobalErrorBoundary extends React.Component {
   }
 }
 
+/** Inline screen shown to Google-authenticated users not yet on the allowlist. */
+function PendingInviteScreen({ email, onSignOut }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      height: '100vh', background: 'var(--bg-main)'
+    }}>
+      <div style={{
+        textAlign: 'center', padding: '40px 32px', maxWidth: 440,
+        background: 'white', borderRadius: 16,
+        boxShadow: '0 4px 24px rgba(0,0,0,0.08)'
+      }}>
+        <div style={{ fontSize: '2.5rem', marginBottom: 16 }}>⏳</div>
+        <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--primary-700)', marginBottom: 8 }}>
+          En attente d'invitation
+        </h2>
+        <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 8 }}>
+          Votre compte <strong>{email}</strong> n'est pas encore autorisé.
+        </p>
+        <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 24 }}>
+          Contactez un administrateur pour demander l'accès.
+        </p>
+        <button
+          className="btn btn-secondary"
+          onClick={onSignOut}
+          style={{ width: '100%' }}
+        >
+          Se déconnecter
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function App() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [authError, setAuthError] = useState(null)
+  const [pendingEmail, setPendingEmail] = useState(null)
 
   // Sync Google user info to our users table
   async function syncUser(authUser) {
     if (!authUser) return null
     try {
       const meta = authUser.user_metadata || {}
+
+      // S-02 — Allowlist gate: verify email before any DB row creation.
+      const allowed = await isEmailAllowed(authUser.email)
+      if (!allowed) {
+        // TODO: wire pending_invites when Track C lands the table
+        console.info('[Auth] Non-allowlisted sign-in attempt:', authUser.email)
+        setPendingEmail(authUser.email)
+        return null
+      }
 
       // 1. Check if user already exists in DB
       const { data: existing, error: fetchError } = await supabase
@@ -145,6 +190,7 @@ export default function App() {
           if (mounted) {
             setUser(null)
             setShowOnboarding(false)
+            setPendingEmail(null)
           }
         }
       } catch (err) {
@@ -190,6 +236,15 @@ export default function App() {
         </div>
         <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
       </div>
+    )
+  }
+
+  if (pendingEmail) {
+    return (
+      <PendingInviteScreen
+        email={pendingEmail}
+        onSignOut={handleLogout}
+      />
     )
   }
 
