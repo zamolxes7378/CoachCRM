@@ -20,7 +20,7 @@ export default function OnboardingWizard({ user, onComplete }) {
     setAnimating(true)
     setTimeout(() => {
       setStep(next)
-      setTimeout(() => setAnimating(false), 50)
+      requestAnimationFrame(() => setAnimating(false))
     }, 220)
   }
 

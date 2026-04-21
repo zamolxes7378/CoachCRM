@@ -9,6 +9,7 @@ import { ConfirmProvider } from './context/ConfirmContext'
 import Layout from './components/layout/Layout'
 import LoginPage from './pages/LoginPage'
 import OnboardingWizard from './components/OnboardingWizard'
+import ErrorBoundary from './components/ErrorBoundary'
 
 // Code splitting pour les pages authentifiées
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
@@ -31,40 +32,6 @@ const AccessibilitePage = lazy(() => import('./pages/public/AccessibilitePage'))
 
 // Routes publiques — rendues sans authentification
 const PUBLIC_ROUTES = ['/mentions-legales', '/confidentialite', '/cgu', '/cookies', '/accessibilite']
-
-/**
- * GlobalErrorBoundary — Capture les erreurs de rendu React pour éviter la page blanche.
- */
-class GlobalErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false, error: null, errorInfo: null };
-  }
-  static getDerivedStateFromError(error) { return { hasError: true, error }; }
-  componentDidCatch(error, errorInfo) {
-    console.error('[Fatal Error]', error, errorInfo);
-    this.setState({ errorInfo });
-  }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div style={{ padding: '40px', textAlign: 'center', color: 'var(--primary-700)', minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '20px' }}>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 700 }}>Une erreur est survenue</h2>
-          <p>L'application a rencontré un blocage inattendu.</p>
-          <pre style={{ textAlign: 'left', margin: '0 auto', maxWidth: 600, fontSize: '0.75rem', background: '#f8f8f8', padding: 16, borderRadius: 8, overflow: 'auto', maxHeight: 300, color: '#C53030' }}>
-            {this.state.error?.toString()}
-            {'\n\n'}
-            {this.state.errorInfo?.componentStack}
-          </pre>
-          <button className="btn btn-primary" onClick={() => window.location.href = '/'} style={{ alignSelf: 'center' }}>
-            Recharger l'application
-          </button>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
 
 /** Inline screen shown to Google-authenticated users not yet on the allowlist. */
 function PendingInviteScreen({ email, onSignOut }) {
@@ -244,7 +211,7 @@ export default function App() {
   )
 
   return (
-    <GlobalErrorBoundary>
+    <ErrorBoundary>
       <BrowserRouter>
         <AppContent
           loading={loading}
@@ -256,7 +223,7 @@ export default function App() {
           suspenseFallback={suspenseFallback}
         />
       </BrowserRouter>
-    </GlobalErrorBoundary>
+    </ErrorBoundary>
   )
 }
 
@@ -314,6 +281,7 @@ function AppContent({ loading, user, authError, showOnboarding, setShowOnboardin
         <DataProvider user={user}>
           <Layout user={user} onLogout={handleLogout}>
             <Suspense fallback={suspenseFallback}>
+              <ErrorBoundary>
               <Routes>
                 <Route path="/" element={<DashboardPage user={user} />} />
                 <Route path="/clients" element={<ClientsPage />} />
@@ -327,6 +295,7 @@ function AppContent({ loading, user, authError, showOnboarding, setShowOnboardin
                 <Route path="/admin/reseau-pro" element={user.role === 'admin' ? <ReseauProPage /> : <Navigate to="/" />} />
                 <Route path="*" element={<Navigate to="/" />} />
               </Routes>
+              </ErrorBoundary>
             </Suspense>
           </Layout>
         </DataProvider>

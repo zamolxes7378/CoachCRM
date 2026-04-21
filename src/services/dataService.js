@@ -8,7 +8,7 @@ export async function getCurrentUser(email) {
     .from('users')
     .select('*')
     .eq('email', email)
-    .single()
+    .maybeSingle()
   if (error) throw new Error(`getCurrentUser failed: ${error.message}`)
   return data
 }
@@ -268,8 +268,8 @@ export async function getSettings(userId) {
     .from('settings')
     .select('*')
     .eq('user_id', userId)
-    .single()
-  if (error && error.code !== 'PGRST116') throw new Error(`getSettings failed: ${error.message}`)
+    .maybeSingle()
+  if (error) throw new Error(`getSettings failed: ${error.message}`)
   return data
 }
 
