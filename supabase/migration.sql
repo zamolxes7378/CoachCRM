@@ -16,7 +16,7 @@ CREATE TABLE users (
 CREATE TABLE clients (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  type TEXT DEFAULT 'couple' CHECK (type IN ('couple', 'individual')),
+  type TEXT DEFAULT 'couple' CHECK (type IN ('client', 'individual', 'family', 'couple')),
   partner_a JSONB NOT NULL,
   partner_b JSONB,
   phase TEXT DEFAULT 'debut',

@@ -10,12 +10,20 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'supabase-vendor': ['@supabase/supabase-js'],
-          'ui-vendor': ['lucide-react'],
-          // exceljs intentionally omitted — Vite will create a split chunk
-          // for the dynamic import in exportService.js
+        // Vite 8 / rolldown requires manualChunks to be a function, not an object
+        manualChunks(id) {
+          if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/') || id.includes('node_modules/react-router-dom/')) {
+            return 'react-vendor'
+          }
+          if (id.includes('node_modules/@supabase/')) {
+            return 'supabase-vendor'
+          }
+          if (id.includes('node_modules/lucide-react/')) {
+            return 'ui-vendor'
+          }
+          // exceljs and file-saver are intentionally omitted — they are
+          // dynamic-imported inside exportService.js so Vite creates a
+          // separate split chunk that is NOT loaded on first paint.
         }
       }
     }
