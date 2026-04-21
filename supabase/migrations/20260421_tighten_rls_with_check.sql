@@ -3,48 +3,66 @@
 --
 -- Adds explicit WITH CHECK clauses to every existing FOR ALL
 -- policy on: clients, sessions, contacts, reports, settings,
--- professionals, client_links, professional_referrals.
+-- professionals.
+--
+-- Note: client_links and professional_referrals tables are
+-- declared in supabase/migration.sql but DO NOT EXIST in the
+-- live DB (verified 2026-04-21 via live_db_verification pack).
+-- They are skipped here — DROP POLICY on a nonexistent table
+-- errors in Postgres. If those tables are ever created later,
+-- they should get their own tightening migration.
 --
 -- Approach: DROP + CREATE (idempotent on re-run).
 --
 -- Findings closed: G-07, H-4 (partial)
 -- ============================================================
 
+-- Each table below has TWO live permissive policies that behave
+-- identically (one with explicit WITH CHECK, one where Postgres
+-- auto-fills from USING). Drop both and recreate a single
+-- consolidated policy.
+-- Live names confirmed 2026-04-21 via pg_policies introspection.
+
 -- ---- clients -----------------------------------------------
-DROP POLICY IF EXISTS "Users can view own clients" ON clients;
-CREATE POLICY "Users can view own clients"
+DROP POLICY IF EXISTS "Users can manage own clients" ON clients;
+DROP POLICY IF EXISTS "Users can view own clients"   ON clients;
+CREATE POLICY "Users can manage own clients"
   ON clients
   FOR ALL
   USING (user_id = auth.uid())
   WITH CHECK (user_id = auth.uid());
 
 -- ---- sessions ----------------------------------------------
-DROP POLICY IF EXISTS "Users can view own sessions" ON sessions;
-CREATE POLICY "Users can view own sessions"
+DROP POLICY IF EXISTS "Users can manage own sessions" ON sessions;
+DROP POLICY IF EXISTS "Users can view own sessions"   ON sessions;
+CREATE POLICY "Users can manage own sessions"
   ON sessions
   FOR ALL
   USING (user_id = auth.uid())
   WITH CHECK (user_id = auth.uid());
 
 -- ---- contacts ----------------------------------------------
-DROP POLICY IF EXISTS "Users can view own contacts" ON contacts;
-CREATE POLICY "Users can view own contacts"
+DROP POLICY IF EXISTS "Users can manage own contacts" ON contacts;
+DROP POLICY IF EXISTS "Users can view own contacts"   ON contacts;
+CREATE POLICY "Users can manage own contacts"
   ON contacts
   FOR ALL
   USING (user_id = auth.uid())
   WITH CHECK (user_id = auth.uid());
 
 -- ---- settings ----------------------------------------------
-DROP POLICY IF EXISTS "Users can view own settings" ON settings;
-CREATE POLICY "Users can view own settings"
+DROP POLICY IF EXISTS "Users can manage own settings" ON settings;
+DROP POLICY IF EXISTS "Users can view own settings"   ON settings;
+CREATE POLICY "Users can manage own settings"
   ON settings
   FOR ALL
   USING (user_id = auth.uid())
   WITH CHECK (user_id = auth.uid());
 
 -- ---- professionals -----------------------------------------
-DROP POLICY IF EXISTS "Users can view own professionals" ON professionals;
-CREATE POLICY "Users can view own professionals"
+DROP POLICY IF EXISTS "Users can manage own professionals" ON professionals;
+DROP POLICY IF EXISTS "Users can view own professionals"   ON professionals;
+CREATE POLICY "Users can manage own professionals"
   ON professionals
   FOR ALL
   USING (user_id = auth.uid())
@@ -55,7 +73,8 @@ CREATE POLICY "Users can view own professionals"
 -- policies so that INSERT forgery (H-4) is blocked: the WITH
 -- CHECK on INSERT/UPDATE validates BOTH client_id AND session_id
 -- belong to the caller.
-DROP POLICY IF EXISTS "Users can view own reports" ON reports;
+DROP POLICY IF EXISTS "Users can manage own reports" ON reports;
+DROP POLICY IF EXISTS "Users can view own reports"   ON reports;
 
 CREATE POLICY "reports_select"
   ON reports
@@ -90,30 +109,5 @@ CREATE POLICY "reports_delete"
     client_id IN (SELECT id FROM clients WHERE user_id = auth.uid())
   );
 
--- ---- client_links ------------------------------------------
--- Table is currently dead (app uses clients.client_links JSONB),
--- but we harden it anyway so it is safe if ever activated.
-DROP POLICY IF EXISTS "Users can view own client_links" ON client_links;
-CREATE POLICY "Users can view own client_links"
-  ON client_links
-  FOR ALL
-  USING (
-    client_id IN (SELECT id FROM clients WHERE user_id = auth.uid())
-  )
-  WITH CHECK (
-    client_id IN (SELECT id FROM clients WHERE user_id = auth.uid())
-  );
-
--- ---- professional_referrals --------------------------------
--- Also dead (data lives in clients.client_links JSONB), but
--- hardened for the same reason.
-DROP POLICY IF EXISTS "Users can view own professional_referrals" ON professional_referrals;
-CREATE POLICY "Users can view own professional_referrals"
-  ON professional_referrals
-  FOR ALL
-  USING (
-    professional_id IN (SELECT id FROM professionals WHERE user_id = auth.uid())
-  )
-  WITH CHECK (
-    professional_id IN (SELECT id FROM professionals WHERE user_id = auth.uid())
-  );
+-- NOTE: client_links and professional_referrals tables are not in
+-- the live DB (verified 2026-04-21). Skipping — see header comment.
