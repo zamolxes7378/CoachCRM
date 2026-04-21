@@ -29,8 +29,9 @@ export async function upsertUser({ id, name, email, role = 'therapist', photo_ur
 export async function getClients(userId) {
   const { data, error } = await supabase
     .from('clients')
-    .select('*')
+    .select('id, user_id, type, phase, status, source, start_date, created_at, updated_at, deleted_at, session_rate, session_frequency, billing_address, note_dynamique, note_axes, note_vigilance, note_objectifs, client_links, external_referrer, referred_by, prospect_stage, partner_a, partner_b')
     .eq('user_id', userId)
+    .is('deleted_at', null)
     .order('created_at', { ascending: false })
   if (error) console.error('getClients error:', error.message)
   return data || []
@@ -68,11 +69,8 @@ export async function updateClient(clientId, updates) {
 }
 
 export async function deleteClient(clientId) {
-  // Delete related data first (sessions, reports, contacts)
-  await supabase.from('reports').delete().eq('client_id', clientId)
-  await supabase.from('sessions').delete().eq('client_id', clientId)
-  await supabase.from('contacts').delete().eq('client_id', clientId)
-  // Delete the client
+  // ON DELETE CASCADE declared on reports.client_id, sessions.client_id, contacts.client_id
+  // in migration.sql — deleting the client row cascades to all children automatically.
   const { error } = await supabase.from('clients').delete().eq('id', clientId)
   if (error) console.error('deleteClient error:', error.message)
   return !error
@@ -143,10 +141,12 @@ export async function deleteSessions(sessionIds) {
 // Reports
 // ============================================
 export async function getReports(userId) {
+  // Filter by client_id scoped to the user's own clients (RLS on reports enforces this via
+  // client_id IN (SELECT id FROM clients WHERE user_id = auth.uid())).
+  // The previous sessions!inner(user_id) join was redundant and expensive.
   const { data, error } = await supabase
     .from('reports')
-    .select('*, sessions!inner(user_id)')
-    .eq('sessions.user_id', userId)
+    .select('id, client_id, session_id, date, content, tags, client_name, session_number, narrative, themes, emotions_a, emotions_b, patterns, progress, vigilance, exercises, pedagogical_content, created_at')
     .order('date', { ascending: false })
   if (error) console.error('getReports error:', error.message)
   return data || []
