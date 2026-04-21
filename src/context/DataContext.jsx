@@ -185,6 +185,7 @@ export function DataProvider({ user, children }) {
       } catch (err) {
         console.error('updateClient error:', err)
         showToast('Erreur lors de la mise à jour du client.', 'error')
+        return null
       }
     },
     createClient: async (client) => {
@@ -213,6 +214,7 @@ export function DataProvider({ user, children }) {
       } catch (err) {
         console.error('deleteClient error:', err)
         showToast('Erreur lors de la suppression du client.', 'error')
+        return null
       }
     },
 
@@ -244,6 +246,7 @@ export function DataProvider({ user, children }) {
       } catch (err) {
         console.error('updateSession error:', err)
         showToast('Erreur lors de la mise à jour de la séance.', 'error')
+        return null
       }
     },
     createSession: async (session) => {
@@ -287,6 +290,7 @@ export function DataProvider({ user, children }) {
       } catch (err) {
         console.error('deleteSession error:', err)
         showToast('Erreur lors de la suppression.', 'error')
+        return null
       }
     },
     deleteSessions: async (ids) => {
@@ -309,6 +313,7 @@ export function DataProvider({ user, children }) {
       } catch (err) {
         console.error('deleteSessions error:', err)
         showToast('Erreur lors de la suppression groupée.', 'error')
+        return null
       }
     },
 
@@ -353,6 +358,7 @@ export function DataProvider({ user, children }) {
       } catch (err) {
         console.error('upsertSettings error:', err)
         showToast('Erreur lors de la sauvegarde des paramètres.', 'error')
+        return null
       }
     },
 
@@ -368,6 +374,7 @@ export function DataProvider({ user, children }) {
       } catch (err) {
         console.error('createProfessional error:', err)
         showToast('Erreur lors de la création du professionnel.', 'error')
+        return null
       }
     },
     updateProfessional: async (id, updates) => {
@@ -378,6 +385,7 @@ export function DataProvider({ user, children }) {
       } catch (err) {
         console.error('updateProfessional error:', err)
         showToast('Erreur lors de la mise à jour du professionnel.', 'error')
+        return null
       }
     },
     deleteProfessional: async (id) => {
@@ -388,6 +396,7 @@ export function DataProvider({ user, children }) {
       } catch (err) {
         console.error('deleteProfessional error:', err)
         showToast('Erreur lors de la suppression du professionnel.', 'error')
+        return null
       }
     },
     deleteProfessionals: async (ids) => {
@@ -401,6 +410,7 @@ export function DataProvider({ user, children }) {
       } catch (err) {
         console.error('deleteProfessionals error:', err)
         showToast('Erreur lors de la suppression groupée.', 'error')
+        return null
       }
     },
 
@@ -413,6 +423,7 @@ export function DataProvider({ user, children }) {
       } catch (err) {
         console.error('createTherapyCycle error:', err)
         showToast('Erreur lors de la création du cycle.', 'error')
+        return null
       }
     },
     deleteTherapyCycle: async (id) => {
@@ -423,6 +434,7 @@ export function DataProvider({ user, children }) {
       } catch (err) {
         console.error('deleteTherapyCycle error:', err)
         showToast('Erreur lors de la suppression du cycle.', 'error')
+        return null
       }
     },
     updateTherapyCycle: async (id, updates) => {
@@ -433,6 +445,7 @@ export function DataProvider({ user, children }) {
       } catch (err) {
         console.error('updateTherapyCycle error:', err)
         showToast('Erreur lors de la mise à jour du cycle.', 'error')
+        return null
       }
     },
 
@@ -445,6 +458,7 @@ export function DataProvider({ user, children }) {
       } catch (err) {
         console.error('createInvoice error:', err)
         showToast('Erreur lors de la création de la facture.', 'error')
+        return null
       }
     },
     updateInvoice: async (id, updates) => {
@@ -460,6 +474,7 @@ export function DataProvider({ user, children }) {
       } catch (err) {
         console.error('updateInvoice error:', err)
         showToast('Erreur lors de la mise à jour de la facture.', 'error')
+        return null
       }
     },
     emitInvoice: async (id) => {
@@ -474,6 +489,7 @@ export function DataProvider({ user, children }) {
       } catch (err) {
         console.error('emitInvoice error:', err)
         showToast('Erreur lors de l\'émission de la facture.', 'error')
+        return null
       }
     },
     unemitInvoice: async (id) => {
@@ -488,6 +504,7 @@ export function DataProvider({ user, children }) {
       } catch (err) {
         console.error('unemitInvoice error:', err)
         showToast('Erreur lors de la modification de la facture.', 'error')
+        return null
       }
     },
     deleteInvoice: async (id) => {
@@ -498,6 +515,7 @@ export function DataProvider({ user, children }) {
       } catch (err) {
         console.error('deleteInvoice error:', err)
         showToast('Erreur lors de la suppression de la facture.', 'error')
+        return null
       }
     },
     setInvoiceSessions: async (invoiceId, sessionIds) => {
@@ -515,6 +533,7 @@ export function DataProvider({ user, children }) {
       } catch (err) {
         console.error('setInvoiceSessions error:', err)
         showToast('Erreur lors de la mise à jour des séances facturées.', 'error')
+        return null
       }
     }
   }
