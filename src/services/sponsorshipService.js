@@ -54,21 +54,20 @@ export function createSponsorshipLink(client, referrer) {
   const validation = validateSponsorship(client, referrer)
   if (!validation.valid) return { success: false, error: validation.error }
 
-  // Initialize clientLinks arrays if needed
-  if (!client.clientLinks) client.clientLinks = []
-  if (!referrer.clientLinks) referrer.clientLinks = []
+  // Build new arrays without mutating the originals
+  const clientLinks = client.clientLinks || []
+  const referrerLinks = referrer.clientLinks || []
 
-  // Add link on filleul side
-  if (!client.clientLinks.some(l => l.type === 'parrainage' && l.clientId === referrer.id)) {
-    client.clientLinks.push({ clientId: referrer.id, type: 'parrainage', role: 'filleul' })
-  }
+  const newClientLinks = clientLinks.some(l => l.type === 'parrainage' && l.clientId === referrer.id)
+    ? clientLinks
+    : [...clientLinks, { clientId: referrer.id, type: 'parrainage', role: 'filleul' }]
 
-  // Add link on parrain side
-  if (!referrer.clientLinks.some(l => l.type === 'parrainage' && l.clientId === client.id)) {
-    referrer.clientLinks.push({ clientId: client.id, type: 'parrainage', role: 'parrain' })
-  }
+  const newReferrerLinks = referrerLinks.some(l => l.type === 'parrainage' && l.clientId === client.id)
+    ? referrerLinks
+    : [...referrerLinks, { clientId: client.id, type: 'parrainage', role: 'parrain' }]
 
-  return { success: true }
+  // Return the new link arrays for callers to persist via updateClient
+  return { success: true, clientLinks: newClientLinks, referrerLinks: newReferrerLinks }
 }
 
 /**
@@ -77,34 +76,41 @@ export function createSponsorshipLink(client, referrer) {
  * @param {Object} link - The link object to remove
  * @param {Array} allClients - All clients array for reverse link cleanup
  */
+/**
+ * Remove a sponsorship link and compute new link arrays (immutable).
+ * Returns { clientLinks, otherClientId?, otherClientLinks? } for callers
+ * to persist via updateClient — does NOT mutate any object.
+ */
 export function removeSponsorshipLink(client, link, allClients) {
-  if (!client.clientLinks) return
+  if (!client.clientLinks) return { clientLinks: [] }
 
-  // Remove the link from this client
-  client.clientLinks = client.clientLinks.filter(
+  const newClientLinks = client.clientLinks.filter(
     l => !(l.type === link.type && l.clientId === link.clientId)
   )
 
-  // Remove the reverse link from the other client
+  const result = { clientLinks: newClientLinks }
+
   if (link.type === 'parrainage') {
     const other = allClients.find(c => c.id === link.clientId)
     if (other && other.clientLinks) {
-      other.clientLinks = other.clientLinks.filter(
+      result.otherClientId = other.id
+      result.otherClientLinks = other.clientLinks.filter(
         l => !(l.type === 'parrainage' && l.clientId === client.id)
       )
     }
   }
 
-  // If removing a parrain link (filleul side), also clear source/externalReferrer
+  // If removing a parrain link (filleul side), also clear externalReferrer
   if ((link.type === 'parrainage' && link.role === 'filleul') || link.type === 'parrainage-pro') {
-    // Check if any other parrainage links remain
-    const hasOtherParrainage = client.clientLinks.some(
+    const hasOtherParrainage = newClientLinks.some(
       l => l.type === 'parrainage' || l.type === 'parrainage-pro'
     )
     if (!hasOtherParrainage) {
-      client.externalReferrer = null
+      result.clearExternalReferrer = true
     }
   }
+
+  return result
 }
 
 /**
@@ -113,29 +119,35 @@ export function removeSponsorshipLink(client, link, allClients) {
  * @param {string} newSource - The new source value
  * @param {Array} allClients - All clients for reverse link cleanup
  */
+/**
+ * Compute new link arrays when source changes away from parrainage (immutable).
+ * Returns { clientLinks, clearedOthers: [{id, clientLinks}] } for callers
+ * to persist via updateClient — does NOT mutate any object.
+ */
 export function clearSponsorshipOnSourceChange(client, newSource, allClients) {
-  if (newSource === 'parrainage' || newSource === 'referral') return
+  if (newSource === 'parrainage' || newSource === 'referral') return null
 
-  // Clear external referrer
-  client.externalReferrer = null
+  if (!client.clientLinks) return { clientLinks: [], clearedOthers: [] }
 
-  if (!client.clientLinks) return
-
-  // Remove all parrainage links
   const parrainageLinks = client.clientLinks.filter(l => l.type === 'parrainage')
+  const clearedOthers = []
   parrainageLinks.forEach(link => {
     const other = allClients.find(c => c.id === link.clientId)
     if (other && other.clientLinks) {
-      other.clientLinks = other.clientLinks.filter(
-        l => !(l.type === 'parrainage' && l.clientId === client.id)
-      )
+      clearedOthers.push({
+        id: other.id,
+        clientLinks: other.clientLinks.filter(
+          l => !(l.type === 'parrainage' && l.clientId === client.id)
+        )
+      })
     }
   })
 
-  // Remove all parrainage-pro links
-  client.clientLinks = client.clientLinks.filter(
+  const newClientLinks = client.clientLinks.filter(
     l => l.type !== 'parrainage' && l.type !== 'parrainage-pro'
   )
+
+  return { clientLinks: newClientLinks, clearedOthers }
 }
 
 /**

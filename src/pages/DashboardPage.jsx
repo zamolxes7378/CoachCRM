@@ -22,7 +22,7 @@ import { todayIso } from '../lib/date'
 export default function DashboardPage({ user }) {
   usePageTitle('Accueil')
   const navigate = useNavigate()
-  const { clients, sessions, reports, contacts, phaseIcons, phaseColors, isProspect, getClientName, getClientInitials, getClientType, formatTime, formatDate, formatRelativeDate, formatDashboardDate, getPhaseLabel, getComputedStatus, createSession, deleteSession, deleteSessions, sessionRates, defaultPhaseKey, getPhaseColor, getPhaseIcon, getInvoiceForSession } = useData()
+  const { clients, clientById, sessions, reports, contacts, phaseIcons, phaseColors, isProspect, getClientName, getClientInitials, getClientType, formatTime, formatDate, formatRelativeDate, formatDashboardDate, getPhaseLabel, getComputedStatus, createSession, deleteSession, deleteSessions, sessionRates, defaultPhaseKey, getPhaseColor, getPhaseIcon, getInvoiceForSession } = useData()
   const { urgencies, clientsToReactivate, pendingCRs, pendingPaymentSessions, pendingInvoiceSessions } = useUrgencies()
   const confirm = useConfirm()
   const [visibleCount, setVisibleCount] = useState(10)
@@ -59,9 +59,9 @@ export default function DashboardPage({ user }) {
   const exitSelectMode = () => { setSelectMode(false); setSelectedSessions(new Set()) }
 
 
-  // All sessions with client info
+  // All sessions with client info — O(1) lookup via clientById Map
   const allSessionsWithClient = sessions
-    .map(s => ({ ...s, client: clients.find(c => c.id === s.clientId) }))
+    .map(s => ({ ...s, client: clientById.get(s.clientId) }))
 
   const todayStr = todayIso()
   const pastSessions = allSessionsWithClient.filter(s => (s.date?.split('T')[0] || '') < todayStr).sort((a, b) => (b.date || '').localeCompare(a.date || ''))
@@ -385,7 +385,7 @@ export default function DashboardPage({ user }) {
             const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
             const sessionsThisMonth = sessions.filter(s => s.date?.startsWith(currentMonth) && s.status !== 'cancelled').length
             const completedThisMonth = sessions.filter(s => s.date?.startsWith(currentMonth) && s.status === 'completed')
-            const caThisMonth = completedThisMonth.reduce((sum, s) => sum + (s.paymentAmount ?? (sessionRates[clients.find(c => c.id === s.clientId)?.type || 'client'] ?? sessionRates.client ?? 60)), 0)
+            const caThisMonth = completedThisMonth.reduce((sum, s) => sum + (s.paymentAmount ?? (sessionRates[clientById.get(s.clientId)?.type || 'client'] ?? sessionRates.client ?? 60)), 0)
             const totalCompletedSessions = sessions.filter(s => s.status === 'completed').length
             const conversionRate = activeClients + activeProspects > 0 ? Math.round((activeClients / (activeClients + activeProspects)) * 100) : 0
 
@@ -697,7 +697,7 @@ export default function DashboardPage({ user }) {
             .filter(s => s.status === 'completed' && !s.hasReport)
             .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
             .map(s => {
-              const client = clients.find(c => c.id === s.clientId)
+              const client = clientById.get(s.clientId)
               return {
                 id: s.id,
                 clientId: s.clientId,
@@ -715,7 +715,7 @@ export default function DashboardPage({ user }) {
             .filter(s => s.status === 'completed' && (!s.paymentMethod || (s.paymentMethod !== 'especes' && !s.paymentReceived)))
             .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
             .map(s => {
-              const client = clients.find(c => c.id === s.clientId)
+              const client = clientById.get(s.clientId)
               const amount = s.paymentAmount ?? (sessionRates[client?.type || 'client'] ?? sessionRates.client ?? 60)
               return {
                 id: s.id,
@@ -734,7 +734,7 @@ export default function DashboardPage({ user }) {
             .filter(s => { const inv = getInvoiceForSession(s.id); return inv && !inv.sent })
             .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
             .map(s => {
-              const client = clients.find(c => c.id === s.clientId)
+              const client = clientById.get(s.clientId)
               const amount = s.paymentAmount ?? (sessionRates[client?.type || 'client'] ?? sessionRates.client ?? 60)
               return {
                 id: s.id,

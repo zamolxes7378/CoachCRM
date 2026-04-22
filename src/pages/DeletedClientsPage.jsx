@@ -14,8 +14,7 @@ export default function DeletedClientsPage() {
   const deletedClients = clients.filter(c => c.deleted)
 
   const handleRestore = async (client) => {
-    client.deleted = false
-    client.deletedAt = null
+    // H-04: use DataContext API instead of direct mutation
     if (updateClient) {
       await updateClient(client.id, { deletedAt: null })
     }

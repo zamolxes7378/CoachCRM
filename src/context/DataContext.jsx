@@ -41,6 +41,7 @@ export function DataProvider({ user, children }) {
   const [rawInvoices, setRawInvoices] = useState([])
   const [settings, setSettings] = useState(null)
   const [loading, setLoading] = useState(true)
+  const inflightRef = useRef(false)
 
   // Derived values — merge DB settings over defaults
   const sessionRates = useMemo(() => ({
@@ -60,6 +61,9 @@ export function DataProvider({ user, children }) {
 
   const loadData = useCallback(async () => {
     if (!user?.id) return
+    // H-06: inflight guard — skip if a load is already in progress
+    if (inflightRef.current) return
+    inflightRef.current = true
     setLoading(true)
     try {
       const [c, s, r, st, p, ct, tc, inv] = await Promise.all([
@@ -87,6 +91,7 @@ export function DataProvider({ user, children }) {
       reportError(err, { operation: 'loadData', entity: 'provider' })
       showToast('Erreur de chargement des données. Vérifiez votre connexion.', 'error')
     } finally {
+      inflightRef.current = false
       setLoading(false)
     }
   }, [user?.id])
@@ -101,7 +106,7 @@ export function DataProvider({ user, children }) {
       const endTime = new Date(new Date(s.date).getTime() + (s.duration || 60) * 60000)
       const isCompleted = now >= endTime
 
-      const client = clients?.find(c => c.id === s.clientId)
+      const client = clientById.get(s.clientId)
       const effectiveAmount = s.paymentAmount ?? sessionRates[client?.type] ?? null
       const isToConfirm = s.status === 'scheduled' && isCompleted && !s.paymentMethod && effectiveAmount !== 0
       const isConfirmed = (s.status === 'completed' || (isCompleted && (!!s.paymentMethod || effectiveAmount === 0))) && s.status !== 'cancelled'
@@ -114,12 +119,19 @@ export function DataProvider({ user, children }) {
         status: isConfirmed ? 'completed' : s.status
       }
     })
-  }, [rawSessions, clients, sessionRates])
+  }, [rawSessions, clientById, sessionRates])
   const reports = useMemo(() => rawReports.map(adaptReport), [rawReports])
   const contacts = useMemo(() => rawContacts.map(adaptContact), [rawContacts])
   const professionals = useMemo(() => rawProfessionals.map(adaptProfessional), [rawProfessionals])
   const therapyCycles = useMemo(() => rawTherapyCycles.map(adaptTherapyCycle), [rawTherapyCycles])
   const invoices = useMemo(() => rawInvoices.map(adaptInvoice), [rawInvoices])
+
+  // clientById: Map<id, client> — O(1) lookup, replaces .find() call sites
+  const clientById = useMemo(() => {
+    const m = new Map()
+    clients.forEach(c => m.set(c.id, c))
+    return m
+  }, [clients])
 
   // Invoice helpers — memoized lookup maps
   const invoiceBySessionId = useMemo(() => {
@@ -171,7 +183,7 @@ export function DataProvider({ user, children }) {
   }, [])
 
   const value = {
-    clients, sessions, reports, contacts, settings, loading, professionals, therapyCycles, invoices,
+    clients, clientById, sessions, reports, contacts, settings, loading, professionals, therapyCycles, invoices,
     sessionRates, recruitmentSources, therapyPhases, defaultTherapyConfig,
     phaseIcons, phaseColors, defaultPhaseKey, getPhaseColor, getPhaseIcon, isProspect,
     prospectStages,

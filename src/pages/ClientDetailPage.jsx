@@ -39,10 +39,10 @@ export default function ClientDetailPage({ clientIdProp, sessionIdProp, onClose 
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const from = location.state?.from
-  const { clients, sessions: allSessions, reports: allReports, contacts: allContacts, therapyCycles: allTherapyCycles, recruitmentSources, sessionRates, therapyPhases: therapyPhasesData, phaseIcons, phaseColors, defaultPhaseKey, getPhaseColor, getPhaseIcon, getClientName, getClientInitials, getPhaseLabel, getStatusLabel, getClientType, isProspect, formatDate, formatTime, updateSession, updateClient, createClient, createSession, deleteSession, refreshData, professionals, createProfessional: createPro, updateProfessional: updatePro, createContact, updateContact, deleteContact, createTherapyCycle, updateTherapyCycle, deleteTherapyCycle, getInvoiceForSession, getInvoicesByClient } = useData()
+  const { clients, clientById, sessions: allSessions, reports: allReports, contacts: allContacts, therapyCycles: allTherapyCycles, recruitmentSources, sessionRates, therapyPhases: therapyPhasesData, phaseIcons, phaseColors, defaultPhaseKey, getPhaseColor, getPhaseIcon, getClientName, getClientInitials, getPhaseLabel, getStatusLabel, getClientType, isProspect, formatDate, formatTime, updateSession, updateClient, createClient, createSession, deleteSession, refreshData, professionals, createProfessional: createPro, updateProfessional: updatePro, createContact, updateContact, deleteContact, createTherapyCycle, updateTherapyCycle, deleteTherapyCycle, getInvoiceForSession, getInvoicesByClient } = useData()
   const { showToast } = useToast()
   const confirm = useConfirm()
-  const client = clients.find(c => c.id === id)
+  const client = clientById.get(id)
   // Sanitize: compute non-self-referencing clientLinks without mutation
   const sanitizedClientLinks = useMemo(() => {
     return client?.clientLinks?.filter(l => l.clientId !== client.id) || []
@@ -150,7 +150,8 @@ export default function ClientDetailPage({ clientIdProp, sessionIdProp, onClose 
   }, [sessionIdProp, clientIdProp, searchParams])
 
 
-  const sessions = allSessions.filter(s => s.clientId === id).map(s => {
+  // P-07: memoize derived session arrays to avoid recomputing every render
+  const sessions = useMemo(() => allSessions.filter(s => s.clientId === id).map(s => {
     // Auto-complete: only if past AND payment condition met (paymentMethod set OR paymentAmount = 0)
     if (s.status === 'scheduled') {
       const endTime = new Date(new Date(s.date).getTime() + (s.duration || 60) * 60000)
@@ -159,24 +160,27 @@ export default function ClientDetailPage({ clientIdProp, sessionIdProp, onClose 
       if (endTime <= new Date() && paymentCondition) return { ...s, status: 'completed' }
     }
     return s
-  }).sort((a, b) => (b.date || '').localeCompare(a.date || ''))
-  const reports = allReports.filter(r => r.clientId === id)
+  }).sort((a, b) => (b.date || '').localeCompare(a.date || '')), [allSessions, id, sessionRates.client])
+
+  const reports = useMemo(() => allReports.filter(r => r.clientId === id), [allReports, id])
   const PhaseIcon = client ? getPhaseIcon(client.phase) : HelpCircle
 
-  // Compute session numbers chronologically
-  const sortedSessions = [...sessions].filter(s => s.status !== 'cancelled').sort((a, b) => (a.date || '').localeCompare(b.date || ''))
-  const sessionNumbers = {}
-  // Number sessions per therapy cycle so each new therapy starts from 1
-  const cycleCounters = {}
-  sortedSessions.forEach(s => {
-    const cycle = getSessionCycle(s)
-    const cid = cycle?.id || 'default'
-    cycleCounters[cid] = (cycleCounters[cid] || 0) + 1
-    sessionNumbers[s.id] = cycleCounters[cid]
-  })
+  // Compute session numbers chronologically — memoized (P-07)
+  const { sortedSessions, sessionNumbers } = useMemo(() => {
+    const sorted = [...sessions].filter(s => s.status !== 'cancelled').sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+    const numbers = {}
+    const cycleCounters = {}
+    sorted.forEach(s => {
+      const cycle = getSessionCycle(s)
+      const cid = cycle?.id || 'default'
+      cycleCounters[cid] = (cycleCounters[cid] || 0) + 1
+      numbers[s.id] = cycleCounters[cid]
+    })
+    return { sortedSessions: sorted, sessionNumbers: numbers }
+  }, [sessions, therapyCycles])
 
   // Cycle-aware counts
-  const activeCycleSessions = sessions.filter(s => getSessionCycle(s)?.id === activeCycle.id)
+  const activeCycleSessions = useMemo(() => sessions.filter(s => getSessionCycle(s)?.id === activeCycle.id), [sessions, activeCycle, therapyCycles])
   const [completedCount, reportsCount, pendingReportsCount] = useMemo(() => {
     const completed = activeCycleSessions.filter(s => s.status === 'completed')
     const hasR = activeCycleSessions.filter(s => s.hasReport || sessionUpdates[s.id]?.hasReport)

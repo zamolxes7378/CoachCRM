@@ -22,27 +22,27 @@ const AbsenceDash = () => (
 
 const renderCell = (val) => val === '—' ? <AbsenceDash /> : val
 
-function getDefaultRate(clientId, clients, sessionRates) {
-  const c = clients.find(x => x.id === clientId)
+function getDefaultRate(clientId, clientById, sessionRates) {
+  const c = clientById.get(clientId)
   if (!c) return sessionRates?.client || 75
   return c.sessionRate || (c.type === 'individual' ? sessionRates.individual : sessionRates.client) || 75
 }
 
 export default function FinancesPage() {
   usePageTitle('Pilotage financier')
-  const { clients, sessions: allSessions, recruitmentSources, sessionRates, getInvoiceForSession } = useData()
+  const { clients, clientById, sessions: allSessions, recruitmentSources, sessionRates, getInvoiceForSession } = useData()
 
 
   // Moved outside component if possible, but keeping it inside for now to access useData or passing params
 
   function getClientNameByContext(clientId) {
-    const c = clients.find(x => x.id === clientId)
+    const c = clientById.get(clientId)
     if (!c) return '—'
     return getClientName(c)
   }
 
   function getClientType(clientId) {
-    const c = clients.find(x => x.id === clientId)
+    const c = clientById.get(clientId)
     if (!c) return 'couple'
     const hasChildren = c.children && c.children.length > 0
     if (c.type === 'family' || hasChildren) return 'famille'
@@ -51,7 +51,7 @@ export default function FinancesPage() {
   }
 
   function getClientSource(clientId) {
-    const c = clients.find(x => x.id === clientId)
+    const c = clientById.get(clientId)
     if (!c || !c.source) return '—'
     const sTerm = c.source.toLowerCase().trim()
     const src = recruitmentSources.find(s =>
@@ -102,11 +102,21 @@ export default function FinancesPage() {
   // All sessions
   const sessions = useMemo(() => [...(allSessions || [])], [allSessions])
 
-  // Helper: sessions in a given month/year
-  const sessionsInMonth = (m, y) => sessions.filter(s => {
-    const d = new Date(s.date)
-    return d.getMonth() === m && d.getFullYear() === y
-  }).sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+  // Helper: sessions in a given month/year — memoized to avoid recomputing per-render
+  const sessionsInMonth = useMemo(() => {
+    const cache = new Map()
+    return (m, y) => {
+      const key = `${y}-${m}`
+      if (!cache.has(key)) {
+        cache.set(key, sessions.filter(s => {
+          const d = new Date(s.date)
+          return d.getMonth() === m && d.getFullYear() === y
+        }).sort((a, b) => (a.date || '').localeCompare(b.date || '')))
+      }
+      return cache.get(key)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessions])
 
   // Monthly stats calculator
   const monthlyStats = (m, y) => {
@@ -117,10 +127,10 @@ export default function FinancesPage() {
 
     // CA Réalisé inclut les sessions complétées ET les annulations facturées
     const billable = ms.filter(s => s.status === 'completed' || (s.status === 'cancelled' && s.paymentAmount > 0))
-    const caRealise = billable.reduce((sum, s) => sum + (s.paymentAmount || getDefaultRate(s.clientId, clients, sessionRates)), 0)
-    const caPrev = caRealise + scheduled.reduce((sum, s) => sum + getDefaultRate(s.clientId, clients, sessionRates), 0)
+    const caRealise = billable.reduce((sum, s) => sum + (s.paymentAmount || getDefaultRate(s.clientId, clientById, sessionRates)), 0)
+    const caPrev = caRealise + scheduled.reduce((sum, s) => sum + getDefaultRate(s.clientId, clientById, sessionRates), 0)
     const paid = billable.filter(s => s.paymentReceived && s.paymentMethod)
-    const encaisse = paid.reduce((sum, s) => sum + (s.paymentAmount || getDefaultRate(s.clientId, clients, sessionRates)), 0)
+    const encaisse = paid.reduce((sum, s) => sum + (s.paymentAmount || getDefaultRate(s.clientId, clientById, sessionRates)), 0)
 
     // Nouveaux clients: 1ère séance de ce client est dans ce mois
     const clientIds = [...new Set(ms.map(s => s.clientId))]
@@ -146,6 +156,44 @@ export default function FinancesPage() {
   }
 
   const currentStats = useMemo(() => monthlyStats(selectedMonth, selectedYear), [selectedMonth, selectedYear, sessions])
+
+  // Yearly stats — memoized (P-07: avoid recompute every render)
+  const yearStats = useMemo(() => {
+    const compute = (y) => {
+      const ys = sessions.filter(s => new Date(s.date).getFullYear() === y)
+      const completed = ys.filter(s => s.status === 'completed')
+      const cancelled = ys.filter(s => s.status === 'cancelled')
+      const scheduled = ys.filter(s => s.status === 'scheduled')
+      const billable = ys.filter(s => s.status === 'completed' || (s.status === 'cancelled' && s.paymentAmount > 0))
+      const ca = billable.reduce((sum, s) => sum + (s.paymentAmount || getDefaultRate(s.clientId, clientById, sessionRates)), 0)
+      const caPlanned = ca + scheduled.reduce((sum, s) => sum + getDefaultRate(s.clientId, clientById, sessionRates), 0)
+      const clientIds = [...new Set(ys.filter(s => s.status !== 'cancelled').map(s => s.clientId))]
+      const newClients = clientIds.filter(cid => {
+        const all = sessions.filter(s => s.clientId === cid && s.status !== 'cancelled').sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+        return all.length > 0 && all[0].date && new Date(all[0].date).getFullYear() === y
+      })
+      const paid = billable.filter(s => s.paymentReceived && s.paymentMethod)
+      const encaisse = paid.reduce((sum, s) => sum + (s.paymentAmount || getDefaultRate(s.clientId, clientById, sessionRates)), 0)
+      const txAnnulation = (completed.length + cancelled.length) > 0
+        ? Math.round((cancelled.length / (completed.length + cancelled.length)) * 100) : 0
+      return { ca, caPlanned, completed, cancelled, scheduled, clientIds, newClients, encaisse, txAnnulation, allSessions: ys, billable }
+    }
+    return { sel: compute(selectedYear), prev: compute(selectedYear - 1) }
+  }, [selectedYear, sessions, clients, sessionRates])
+
+  // Monthly breakdown — memoized (P-07)
+  const monthlyBreakdown = useMemo(() => {
+    const compute = (y) => Array.from({ length: 12 }, (_, m) => {
+      const ms = sessionsInMonth(m, y)
+      const billable = ms.filter(s => s.status === 'completed' || (s.status === 'cancelled' && s.paymentAmount > 0))
+      const completed = ms.filter(s => s.status === 'completed')
+      const scheduled = ms.filter(s => s.status === 'scheduled')
+      const ca = billable.reduce((sum, s) => sum + (s.paymentAmount || getDefaultRate(s.clientId, clientById, sessionRates)), 0)
+      const caPlanned = scheduled.reduce((sum, s) => sum + getDefaultRate(s.clientId, clientById, sessionRates), 0)
+      return { month: m, ca, caPlanned, sessions: completed.length }
+    })
+    return { sel: compute(selectedYear), prev: compute(selectedYear - 1) }
+  }, [selectedYear, sessionsInMonth, clients, sessionRates])
 
   // Previous month for comparison
   const prevMonth = selectedMonth === 0 ? 11 : selectedMonth - 1
@@ -225,43 +273,10 @@ export default function FinancesPage() {
       {(() => {
         const currentYear = now.getFullYear()
 
-        // Yearly stats
-        const yearStats = (y) => {
-          const ys = sessions.filter(s => new Date(s.date).getFullYear() === y)
-          const completed = ys.filter(s => s.status === 'completed')
-          const cancelled = ys.filter(s => s.status === 'cancelled')
-          const scheduled = ys.filter(s => s.status === 'scheduled')
-
-          const billable = ys.filter(s => s.status === 'completed' || (s.status === 'cancelled' && s.paymentAmount > 0))
-          const ca = billable.reduce((sum, s) => sum + (s.paymentAmount || getDefaultRate(s.clientId, clients, sessionRates)), 0)
-          const caPlanned = ca + scheduled.reduce((sum, s) => sum + getDefaultRate(s.clientId, clients, sessionRates), 0)
-          const clientIds = [...new Set(ys.filter(s => s.status !== 'cancelled').map(s => s.clientId))]
-          const newClients = clientIds.filter(cid => {
-            const all = sessions.filter(s => s.clientId === cid && s.status !== 'cancelled').sort((a, b) => (a.date || '').localeCompare(b.date || ''))
-            return all.length > 0 && all[0].date && new Date(all[0].date).getFullYear() === y
-          })
-          const paid = billable.filter(s => s.paymentReceived && s.paymentMethod)
-          const encaisse = paid.reduce((sum, s) => sum + (s.paymentAmount || getDefaultRate(s.clientId, clients, sessionRates)), 0)
-          const txAnnulation = (completed.length + cancelled.length) > 0
-            ? Math.round((cancelled.length / (completed.length + cancelled.length)) * 100) : 0
-          return { ca, caPlanned, completed, cancelled, scheduled, clientIds, newClients, encaisse, txAnnulation, allSessions: ys, billable }
-        }
-
-        // Monthly breakdown for a year
-        const monthlyBreakdown = (y) => Array.from({ length: 12 }, (_, m) => {
-          const ms = sessions.filter(s => { const d = new Date(s.date); return d.getMonth() === m && d.getFullYear() === y })
-          const billable = ms.filter(s => s.status === 'completed' || (s.status === 'cancelled' && s.paymentAmount > 0))
-          const completed = ms.filter(s => s.status === 'completed')
-          const scheduled = ms.filter(s => s.status === 'scheduled')
-          const ca = billable.reduce((sum, s) => sum + (s.paymentAmount || getDefaultRate(s.clientId, clients, sessionRates)), 0)
-          const caPlanned = scheduled.reduce((sum, s) => sum + getDefaultRate(s.clientId, clients, sessionRates), 0)
-          return { month: m, ca, caPlanned, sessions: completed.length }
-        })
-
-        const selYearStats = yearStats(selectedYear)
-        const prevYearStats = yearStats(selectedYear - 1)
-        const selMonthly = monthlyBreakdown(selectedYear)
-        const prevMonthly = monthlyBreakdown(selectedYear - 1)
+        const selYearStats = yearStats.sel
+        const prevYearStats = yearStats.prev
+        const selMonthly = monthlyBreakdown.sel
+        const prevMonthly = monthlyBreakdown.prev
         const maxMonthlyCA = Math.max(...selMonthly.map(m => m.ca + m.caPlanned), ...prevMonthly.map(m => m.ca), objectifCA, 1) * 1.15
         const objH = maxMonthlyCA > 0 ? (objectifCA / maxMonthlyCA) * 100 : 0
 
@@ -548,7 +563,7 @@ export default function FinancesPage() {
                       </span>
                     </td>
                     <td style={{ textAlign: 'center', fontWeight: 700, color: isPaid ? 'var(--text-primary)' : (isScheduled && !isToConfirm ? 'var(--text-tertiary)' : 'var(--error)') }}>
-                      {s.paymentAmount === 0 ? <AbsenceDash /> : `${s.paymentAmount ?? getDefaultRate(s.clientId, clients, sessionRates)}€`}
+                      {s.paymentAmount === 0 ? <AbsenceDash /> : `${s.paymentAmount ?? getDefaultRate(s.clientId, clientById, sessionRates)}€`}
                     </td>
                     <td style={{ textAlign: 'center' }}>
                       {s.paymentMethod ? (
@@ -638,7 +653,7 @@ export default function FinancesPage() {
                   getClientNameByContext(s.clientId),
                   getClientType(s.clientId),
                   s.status === 'cancelled' ? 'Annulée' : s.isToConfirm ? 'À confirmer' : s.status === 'scheduled' ? 'Planifiée' : 'Réalisée',
-                  s.paymentAmount || getDefaultRate(s.clientId, clients, sessionRates),
+                  s.paymentAmount || getDefaultRate(s.clientId, clientById, sessionRates),
                   s.paymentMethod ? { cheque: 'Chèque', virement: 'Virement', especes: 'Espèces' }[s.paymentMethod] || '' : '',
                   s.paymentReceived ? 'Oui' : 'Non',
                   (() => { const inv = getInvoiceForSession(s.id); return inv ? (inv.sent ? 'Émise' : 'À émettre') : '' })()
@@ -826,7 +841,7 @@ export default function FinancesPage() {
                 const clientCA = {}
                 sessions.filter(s => s.status === 'completed' && new Date(s.date).getFullYear() === selectedYear).forEach(s => {
                   if (!clientCA[s.clientId]) clientCA[s.clientId] = { name: getClientNameByContext(s.clientId), ca: 0, sessions: 0 }
-                  clientCA[s.clientId].ca += (s.paymentAmount || getDefaultRate(s.clientId, clients, sessionRates))
+                  clientCA[s.clientId].ca += (s.paymentAmount || getDefaultRate(s.clientId, clientById, sessionRates))
                   clientCA[s.clientId].sessions++
                 })
                 const ranked = Object.entries(clientCA).sort((a, b) => b[1].ca - a[1].ca)

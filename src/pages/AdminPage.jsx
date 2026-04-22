@@ -230,21 +230,27 @@ export default function AdminPage() {
   useEffect(() => {
     if (mfaState !== 'ok') return
 
+    // AbortController: cancel in-flight fetch if component unmounts or mfaState changes
+    const controller = new AbortController()
+
     async function fetchUsers() {
       try {
         // S-04: server-side gated RPC
         const { data, error: supabaseError } = await supabase
           .rpc('get_admin_user_list')
 
+        if (controller.signal.aborted) return
         if (supabaseError) throw supabaseError
         setAllUsers(data || [])
       } catch (err) {
+        if (controller.signal.aborted) return
         setError(err.message || 'Erreur lors du chargement des utilisateurs')
       } finally {
-        setLoading(false)
+        if (!controller.signal.aborted) setLoading(false)
       }
     }
     fetchUsers()
+    return () => controller.abort()
   }, [mfaState])
 
   // ── MFA gates ────────────────────────────────────────────────────────────
