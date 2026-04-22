@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import ReportIcon from '../ReportIcon'
 import { useFocusTrap } from '../../hooks/useFocusTrap'
+import DataMinimisationHint from '../DataMinimisationHint'
 import { useEscapeKey } from '../../hooks/useEscapeKey'
 
 /**
@@ -320,6 +321,7 @@ export default function SessionDetailModal({
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-xs)' }}>
                 <label htmlFor="session-detail-summary" style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 4 }}>
                   <ReportIcon size={14} /> {isPast ? 'Compte-rendu' : 'Note de préparation'}
+                  <DataMinimisationHint />
                 </label>
               </div>
               <textarea

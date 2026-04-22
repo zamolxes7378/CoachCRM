@@ -8,6 +8,7 @@ import { useData } from '../context/DataContext'
 import { useConfirm } from '../context/ConfirmContext'
 import { findDuplicateClients } from '../utils/duplicateUtils'
 import DuplicateAlert from '../components/DuplicateAlert'
+import DataMinimisationHint from '../components/DataMinimisationHint'
 import ReferrerSection from '../components/client/ReferrerSection'
 import NewClientButton from '../components/NewClientButton'
 import ViewSwitcher from '../components/layout/ViewSwitcher'
@@ -979,7 +980,7 @@ export default function ClientsPage() {
 
 
                       <div className="input-group" style={{ marginTop: 'var(--space-md)' }}>
-                        <label htmlFor="new-client-notes">Notes (optionnel)</label>
+                        <label htmlFor="new-client-notes">Notes (optionnel) <DataMinimisationHint /></label>
                         <textarea id="new-client-notes" className="input" rows={3} placeholder="Contexte initial, motif de consultation..." value={newNotes} onChange={e => setNewNotes(e.target.value)} style={{ resize: 'vertical' }} />
                       </div>
                     </div>

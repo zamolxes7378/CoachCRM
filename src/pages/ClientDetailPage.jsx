@@ -12,6 +12,7 @@ import { findDuplicateClients, findDuplicatePros } from '../utils/duplicateUtils
 import DuplicateAlert from '../components/DuplicateAlert'
 import DeleteConfirmModal from '../components/client/DeleteConfirmModal'
 import NotesModal from '../components/client/NotesModal'
+import DataMinimisationHint from '../components/DataMinimisationHint'
 import SessionDetailModal from '../components/client/SessionDetailModal'
 import EditIdentityModal from '../components/client/EditIdentityModal'
 import useSessionModalState from '../hooks/useSessionModalState'
@@ -424,6 +425,10 @@ export default function ClientDetailPage({ clientIdProp, sessionIdProp, onClose 
             client={client}
             setShowNotesModal={setShowNotesModal}
           />
+          {/* Minimisation hint — shown near free-text note area (RGPD Art.5(1)(c)) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: -4, marginBottom: 8, paddingLeft: 2 }}>
+            <DataMinimisationHint />
+          </div>
 
           {/* Mini Financial Dashboard */}
           <ClientFinancialPanel
