@@ -8,11 +8,17 @@ export default function LoginPage({ error }) {
 
   const handleGoogleLogin = async () => {
     setLoginError(null)
+    const redirectTo = import.meta.env.VITE_APP_URL || window.location.origin
+    const workspaceDomain = import.meta.env.VITE_GOOGLE_WORKSPACE_DOMAIN
+
+    const oauthOptions = { redirectTo }
+    if (workspaceDomain) {
+      oauthOptions.queryParams = { hd: workspaceDomain }
+    }
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        redirectTo: window.location.origin
-      }
+      options: oauthOptions
     })
     if (error) {
       console.error('Google login error:', error)

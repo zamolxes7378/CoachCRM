@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react'
+import React, { useState, useEffect, useCallback, Suspense, lazy } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { supabase } from './lib/supabase'
 import { upsertUser } from './services/dataService'
@@ -10,6 +10,8 @@ import Layout from './components/layout/Layout'
 import LoginPage from './pages/LoginPage'
 import OnboardingWizard from './components/OnboardingWizard'
 import ErrorBoundary from './components/ErrorBoundary'
+import { useIdleTimeout } from './hooks/useIdleTimeout'
+import IdleWarningModal from './components/IdleWarningModal'
 
 // Code splitting pour les pages authentifiées
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
@@ -205,8 +207,9 @@ export default function App() {
   }
 
   const suspenseFallback = (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '50vh' }}>
-      <div className="spinner" />
+    <div role="status" aria-live="polite" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '50vh' }}>
+      <div className="spinner" aria-hidden="true" />
+      <span className="sr-only">Chargement…</span>
     </div>
   )
 
@@ -227,9 +230,51 @@ export default function App() {
   )
 }
 
+const IDLE_TIMEOUT_MS = 30 * 60_000   // 30 minutes
+const IDLE_WARNING_MS = 2 * 60_000    // warn 2 minutes before logout
+
 function AppContent({ loading, user, authError, showOnboarding, setShowOnboarding, handleLogout, suspenseFallback }) {
   const location = useLocation()
   const isPublicRoute = PUBLIC_ROUTES.includes(location.pathname)
+
+  // Idle timeout state — only active when a user is logged in
+  const [idleWarningVisible, setIdleWarningVisible] = useState(false)
+  const [idleSecondsLeft, setIdleSecondsLeft] = useState(IDLE_WARNING_MS / 1000)
+  const idleCountdownRef = React.useRef(null)
+
+  const handleIdleWarn = useCallback(() => {
+    setIdleSecondsLeft(IDLE_WARNING_MS / 1000)
+    setIdleWarningVisible(true)
+    // Tick down the displayed countdown every second
+    idleCountdownRef.current = setInterval(() => {
+      setIdleSecondsLeft(s => Math.max(0, s - 1))
+    }, 1000)
+  }, [])
+
+  const handleIdleLogout = useCallback(() => {
+    clearInterval(idleCountdownRef.current)
+    setIdleWarningVisible(false)
+    handleLogout()
+  }, [handleLogout])
+
+  const handleStayConnected = useCallback(() => {
+    clearInterval(idleCountdownRef.current)
+    setIdleWarningVisible(false)
+    // The useIdleTimeout hook resets automatically on next user activity;
+    // clicking "Rester connecté" itself counts as activity.
+  }, [])
+
+  // Clean up countdown interval on unmount
+  useEffect(() => () => clearInterval(idleCountdownRef.current), [])
+
+  // Idle timer — only mount when user is authenticated and not on a public route
+  const idleActive = !!user && !isPublicRoute && !loading && !showOnboarding
+  useIdleTimeout(
+    idleActive ? IDLE_TIMEOUT_MS : Infinity,
+    IDLE_WARNING_MS,
+    handleIdleWarn,
+    handleIdleLogout
+  )
 
   // Pages publiques — toujours accessibles, même sans authentification
   if (isPublicRoute) {
@@ -248,9 +293,10 @@ function AppContent({ loading, user, authError, showOnboarding, setShowOnboardin
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg-main)' }}>
+      <div role="status" aria-live="polite" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg-main)' }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ width: 40, height: 40, border: '3px solid var(--primary-200)', borderTopColor: 'var(--primary-600)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
+          <div aria-hidden="true" style={{ width: 40, height: 40, border: '3px solid var(--primary-200)', borderTopColor: 'var(--primary-600)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
+          <span className="sr-only">Chargement…</span>
           <p style={{ color: 'var(--text-secondary)' }}>Connexion en cours...</p>
         </div>
         <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
@@ -298,6 +344,12 @@ function AppContent({ loading, user, authError, showOnboarding, setShowOnboardin
               </ErrorBoundary>
             </Suspense>
           </Layout>
+          <IdleWarningModal
+            visible={idleWarningVisible}
+            secondsLeft={idleSecondsLeft}
+            onStay={handleStayConnected}
+            onLogout={handleIdleLogout}
+          />
         </DataProvider>
       </ConfirmProvider>
     </ToastProvider>
