@@ -10,3 +10,4 @@ supabase/transfer_*.sql
 
 # Sidecar file for scripts/history-purge.sh — contains leaked literals
 scripts/.purge-strings.local
+.gitnexus
