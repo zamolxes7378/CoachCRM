@@ -93,12 +93,6 @@ export function ToastProvider({ children }) {
           )
         })}
       </div>
-      <style>{`
-        @keyframes toastSlideIn {
-          from { opacity: 0; transform: translateY(16px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
     </ToastContext.Provider>
   )
 }

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react'
+import { usePageTitle } from '../hooks/usePageTitle'
 import { todayIso } from '../lib/date'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Plus, Search, Users, User, TrendingUp, X, ArrowDownUp, ArrowUpAZ, Calendar, Globe, Phone, UserCheck, CheckCircle, XCircle, HelpCircle, Link2, Award, LayoutGrid, LayoutList, Star, Baby, Trash2, Briefcase, Sprout, UserPlus, CheckSquare, Square, Archive } from 'lucide-react'
@@ -16,6 +17,7 @@ import ViewSwitcher from '../components/layout/ViewSwitcher'
 const sourceIcons = { website: Globe, phone: Phone, referral: UserCheck }
 
 export default function ClientsPage() {
+  usePageTitle('Mes Clients')
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { clients, sessions, professionals, recruitmentSources, therapyPhases: therapyPhasesData, phaseIcons, phaseColors: centralPhaseColors, defaultPhaseKey, getPhaseColor, getPhaseIcon, isProspect, getClientName, getClientInitials, getPhaseLabel, getStatusLabel, getComputedStatus, getProspectStageInfo, formatDate, getClientType, createClient, updateClient, createProfessional: createPro } = useData()
@@ -388,31 +390,32 @@ export default function ClientsPage() {
         {/* LIST VIEW */}
         <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', border: '1px solid var(--border-light)' }}>
           <table className="table-standard">
+            <caption className="sr-only">{activeTab === 'clients' ? 'Liste des clients' : 'Liste des prospects'}</caption>
             <thead>
               <tr>
-                <th style={{ width: 36 }}>
+                <th scope="col" style={{ width: 36 }}>
                   <button
                     onClick={() => {
                       if (selected.size === filtered.length) setSelected(new Set())
                       else setSelected(new Set(filtered.map(c => c.id)))
                     }}
+                    aria-label={selected.size === filtered.length ? 'Tout désélectionner' : 'Tout sélectionner'}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center', color: selected.size === filtered.length && filtered.length > 0 ? 'var(--error)' : 'var(--text-tertiary)' }}
-                    title={selected.size === filtered.length ? 'Tout désélectionner' : 'Tout sélectionner'}
                   >
                     {selected.size === filtered.length && filtered.length > 0 ? <CheckSquare size={16} /> : <Square size={16} />}
                   </button>
                 </th>
-                <th>Nom</th>
+                <th scope="col">Nom</th>
                 {activeTab === 'clients' ? (<>
-                  <th>Phase</th>
-                  <th>Séances</th>
-                  <th>Dernier RDV</th>
-                  <th>Prochain RDV</th>
-                  <th>Parrain de</th>
+                  <th scope="col">Phase</th>
+                  <th scope="col">Séances</th>
+                  <th scope="col">Dernier RDV</th>
+                  <th scope="col">Prochain RDV</th>
+                  <th scope="col">Parrain de</th>
                 </>) : (<>
-                  <th>Premier contact</th>
-                  <th>Source</th>
-                  <th>Recommandé par</th>
+                  <th scope="col">Premier contact</th>
+                  <th scope="col">Source</th>
+                  <th scope="col">Recommandé par</th>
                 </>)}
               </tr>
             </thead>
@@ -440,7 +443,7 @@ export default function ClientsPage() {
                         {isChecked ? <CheckSquare size={16} /> : <Square size={16} />}
                       </button>
                     </td>
-                    <td style={{ fontWeight: 600 }} onClick={() => navigate(`/clients/${client.id}`)}>
+                    <th scope="row" style={{ fontWeight: 600 }} onClick={() => navigate(`/clients/${client.id}`)}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <div className="client-avatar" style={{ width: 32, height: 32, fontSize: '0.714rem', ...(getComputedStatus(client) === 'inactive' || client.phase === 'completed' ? { background: 'var(--primary-200)', color: 'white' } : client.phase === 'prospect' ? { background: '#E8D8FE', color: '#6B46C1' } : {}) }}>
                           {getClientInitials(client)}
@@ -448,7 +451,7 @@ export default function ClientsPage() {
                         {getClientName(client)}
                         {!client.partnerB && <User size={14} style={{ color: 'var(--text-tertiary)' }} />}
                       </div>
-                    </td>
+                    </th>
                     {activeTab === 'clients' ? (<>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

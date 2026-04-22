@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
+import { usePageTitle } from '../hooks/usePageTitle'
 import { Euro, TrendingUp, TrendingDown, Minus, Users, User, UserPlus, Calendar, FileText, Hourglass, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Download, BarChart3, ArrowUpRight, ArrowDownRight, XCircle, X, PieChart, Sprout, UserCheck, Zap } from 'lucide-react'
 import ClientTypeBadge from '../components/ClientTypeBadge'
 import PaymentBadge from '../components/PaymentBadge'
@@ -28,6 +29,7 @@ function getDefaultRate(clientId, clients, sessionRates) {
 }
 
 export default function FinancesPage() {
+  usePageTitle('Pilotage financier')
   const { clients, sessions: allSessions, recruitmentSources, sessionRates, getInvoiceForSession } = useData()
 
 
@@ -470,10 +472,11 @@ export default function FinancesPage() {
         {/* Table */}
         <div style={{ overflowX: 'auto' }}>
           <table className="table-standard">
+            <caption className="sr-only">Séances et finances du mois sélectionné</caption>
             <thead>
               <tr>
                 {['Date', 'Type', 'Client', 'Source', 'Statut', 'Montant', 'Paiement', 'Encaissé', 'Rappel'].map(h => (
-                  <th key={h} style={{ textAlign: ['Date', 'Client'].includes(h) ? 'left' : 'center' }}>
+                  <th key={h} scope="col" style={{ textAlign: ['Date', 'Client'].includes(h) ? 'left' : 'center' }}>
                     {h}
                   </th>
                 ))}
@@ -497,7 +500,7 @@ export default function FinancesPage() {
                     onMouseEnter={e => { if (!isCancelled) e.currentTarget.style.background = 'var(--primary-50)' }}
                     onMouseLeave={e => { e.currentTarget.style.background = isCancelled ? '#FFF5F5' : 'transparent' }}
                   >
-                    <td style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>{renderCell(formatDate(s.date))}</td>
+                    <th scope="row" style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>{renderCell(formatDate(s.date))}</th>
                     <td style={{ textAlign: 'center' }}>
                       {(() => {
                         const cType = getClientType(s.clientId)
@@ -556,9 +559,9 @@ export default function FinancesPage() {
                     </td>
                     <td style={{ textAlign: 'center' }}>
                       {(isScheduled || isToConfirm || (isCancelled && !s.paymentAmount) || s.paymentAmount === 0) ? <AbsenceDash /> : isPaid ? (
-                        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: '50%', background: '#C6F6D5', color: '#276749', fontSize: '0.714rem', fontWeight: 700 }} title="Encaissé">€</div>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: '50%', background: '#C6F6D5', color: '#276749', fontSize: '0.714rem', fontWeight: 700 }} title="Encaissé" aria-label="Encaissé">€</div>
                       ) : (
-                        <Hourglass size={14} style={{ color: 'var(--error)' }} title="En attente d'encaissement" />
+                        <Hourglass size={14} style={{ color: 'var(--error)' }} title="En attente d'encaissement" aria-label="En attente d'encaissement" />
                       )}
                     </td>
                     <td style={{ textAlign: 'center' }}>

@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Crown, Users, Ear, ShieldCheck, XCircle, CheckCircle, AlertCircle } from 'lucide-react'
+import { usePageTitle } from '../hooks/usePageTitle'
+import { Crown, Users, Ear, ShieldCheck, XCircle, CheckCircle, AlertCircle, Shield, KeyRound, QrCode } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 export default function AdminPage() {
+  usePageTitle('Administration')
   const [allUsers, setAllUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -49,8 +51,9 @@ export default function AdminPage() {
 
   if (loading) {
     return (
-      <div style={{ padding: 'var(--space-xl)', textAlign: 'center', color: 'var(--text-secondary)' }}>
-        <div className="spinner" style={{ margin: '0 auto 16px' }} />
+      <div role="status" aria-live="polite" style={{ padding: 'var(--space-xl)', textAlign: 'center', color: 'var(--text-secondary)' }}>
+        <div className="spinner" style={{ margin: '0 auto 16px' }} aria-hidden="true" />
+        <span className="sr-only">Chargement…</span>
         Chargement de la console d'administration...
       </div>
     )
@@ -117,21 +120,22 @@ export default function AdminPage() {
           <h3>Administrateur(s)</h3>
         </div>
         <table className="table-standard">
+          <caption className="sr-only">Administrateurs du compte CoachCRM</caption>
           <thead>
             <tr>
-              <th>Nom</th>
-              <th>Email</th>
-              <th>Rôle</th>
-              <th>Inscrit le</th>
+              <th scope="col">Nom</th>
+              <th scope="col">Email</th>
+              <th scope="col">Rôle</th>
+              <th scope="col">Inscrit le</th>
             </tr>
           </thead>
           <tbody>
             {admins.map(a => (
               <tr key={a.id}>
-                <td style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+                <th scope="row" style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
                   {a.photo_url && <img src={a.photo_url} alt="" loading="lazy" referrerPolicy="no-referrer" style={{ width: 28, height: 28, borderRadius: '50%' }} />}
                   {a.name || 'Sans nom'}
-                </td>
+                </th>
                 <td className="caption" style={{ color: 'var(--text-secondary)' }}>{a.email}</td>
                 <td>
                   <span className="badge" style={{ background: '#FEF5E7', color: 'var(--accent-dark)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
@@ -157,19 +161,20 @@ export default function AdminPage() {
           </div>
         ) : (
           <table className="table-standard">
+            <caption className="sr-only">Thérapeutes inscrits</caption>
             <thead>
               <tr>
-                <th>Thérapeute</th>
-                <th>Email</th>
-                <th>Rôle</th>
-                <th>Inscrit le</th>
-                <th>Statut</th>
+                <th scope="col">Thérapeute</th>
+                <th scope="col">Email</th>
+                <th scope="col">Rôle</th>
+                <th scope="col">Inscrit le</th>
+                <th scope="col">Statut</th>
               </tr>
             </thead>
             <tbody>
               {therapists.map(t => (
                 <tr key={t.id}>
-                  <td style={{ fontWeight: 500 }}>{t.name || 'Sans nom'}</td>
+                  <th scope="row" style={{ fontWeight: 500 }}>{t.name || 'Sans nom'}</th>
                   <td className="caption" style={{ color: 'var(--text-secondary)' }}>{t.email}</td>
                   <td><span className="badge badge-inactive">Thérapeute</span></td>
                   <td className="caption" style={{ color: 'var(--text-secondary)' }}>{formatDate(t.created_at)}</td>

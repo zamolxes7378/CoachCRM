@@ -362,24 +362,24 @@ export default function OnboardingWizard({ user, onComplete }) {
         overflow: 'hidden'
       }}>
         {/* Step indicator bar */}
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0,
-          padding: '16px 32px 0'
-        }}>
+        <nav aria-label="Étapes" style={{ padding: '16px 32px 0' }}>
+          <ol style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0, listStyle: 'none', margin: 0, padding: 0 }}>
           {stepLabels.map((label, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center' }}>
-              <div
+            <li key={i} style={{ display: 'flex', alignItems: 'center' }}>
+              <button
                 onClick={() => goTo(i)}
+                aria-current={i === step ? 'step' : undefined}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 5,
                   padding: '5px 12px',
                   borderBottom: i === step ? '2px solid var(--accent-main)' : '2px solid transparent',
+                  background: 'none', border: 'none', borderRadius: 0,
                   cursor: 'pointer', transition: 'all 0.2s'
                 }}
                 onMouseEnter={e => { if (i !== step) e.currentTarget.style.borderBottomColor = 'var(--border-medium)' }}
-                onMouseLeave={e => { if (i !== step) e.currentTarget.style.borderBottomColor = 'transparent' }}
+                onMouseLeave={e => { if (i !== step) e.currentTarget.style.borderBottomColor = i === step ? 'var(--accent-main)' : 'transparent' }}
               >
-                <div style={{
+                <div aria-hidden="true" style={{
                   width: 20, height: 20, borderRadius: 'var(--radius-sm)',
                   background: i < step ? 'var(--accent-main)' : 'var(--primary-50)',
                   color: i < step ? 'white' : i === step ? 'var(--accent-main)' : 'var(--text-tertiary)',
@@ -393,17 +393,18 @@ export default function OnboardingWizard({ user, onComplete }) {
                   color: i === step ? 'var(--accent-main)' : i < step ? 'var(--accent-dark)' : 'var(--text-tertiary)',
                   transition: 'color 0.2s'
                 }}>{label}</span>
-              </div>
+              </button>
               {i < STEP_COUNT - 1 && (
-                <div style={{
+                <div aria-hidden="true" style={{
                   width: 16, height: 1,
                   background: i < step ? 'var(--accent-main)' : 'var(--border-light)',
                   transition: 'background 0.3s'
                 }} />
               )}
-            </div>
+            </li>
           ))}
-        </div>
+          </ol>
+        </nav>
 
         {/* Content */}
         <div style={{ padding: '20px 32px 12px', minHeight: 300, overflow: 'hidden' }}>

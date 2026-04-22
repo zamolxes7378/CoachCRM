@@ -100,21 +100,23 @@ export default function DeletedClientsPage() {
         <>
           <div className="card" style={{ overflow: 'hidden' }}>
             <table className="table-standard">
+              <caption className="sr-only">Clients archivés</caption>
               <thead>
                 <tr>
-                  <th style={{ width: 44 }}>
+                  <th scope="col" style={{ width: 44 }}>
                     <button
                       onClick={toggleAll}
+                      aria-label={allSelected ? 'Tout désélectionner' : 'Tout sélectionner'}
                       style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center', color: allSelected ? 'var(--error)' : 'var(--text-tertiary)' }}
                     >
                       {allSelected ? <CheckSquare size={18} /> : <Square size={18} />}
                     </button>
                   </th>
-                  <th>Client</th>
-                  <th>Type</th>
-                  <th>Créé le</th>
-                  <th>Archivé le</th>
-                  <th style={{ textAlign: 'right' }}>Action</th>
+                  <th scope="col">Client</th>
+                  <th scope="col">Type</th>
+                  <th scope="col">Créé le</th>
+                  <th scope="col">Archivé le</th>
+                  <th scope="col" style={{ textAlign: 'right' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -133,7 +135,7 @@ export default function DeletedClientsPage() {
                           {isChecked ? <CheckSquare size={18} /> : <Square size={18} />}
                         </button>
                       </td>
-                      <td>
+                      <th scope="row">
                         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
                           <div style={{
                             width: 36, height: 36, borderRadius: 'var(--radius-full)',
@@ -153,7 +155,7 @@ export default function DeletedClientsPage() {
                             {getClientName(client)}
                           </span>
                         </div>
-                      </td>
+                      </th>
                       <td>
                         <span style={{
                           fontSize: '0.857rem', fontWeight: 600, padding: '3px 0',

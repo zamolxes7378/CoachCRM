@@ -205,8 +205,9 @@ export default function App() {
   }
 
   const suspenseFallback = (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '50vh' }}>
-      <div className="spinner" />
+    <div role="status" aria-live="polite" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '50vh' }}>
+      <div className="spinner" aria-hidden="true" />
+      <span className="sr-only">Chargement…</span>
     </div>
   )
 
@@ -248,9 +249,10 @@ function AppContent({ loading, user, authError, showOnboarding, setShowOnboardin
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg-main)' }}>
+      <div role="status" aria-live="polite" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg-main)' }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ width: 40, height: 40, border: '3px solid var(--primary-200)', borderTopColor: 'var(--primary-600)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
+          <div aria-hidden="true" style={{ width: 40, height: 40, border: '3px solid var(--primary-200)', borderTopColor: 'var(--primary-600)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
+          <span className="sr-only">Chargement…</span>
           <p style={{ color: 'var(--text-secondary)' }}>Connexion en cours...</p>
         </div>
         <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>

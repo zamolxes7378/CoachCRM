@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { Settings, Calendar, RefreshCw, CheckCircle, Bell, Shield, Euro, Layers, Plus, Trash2, GripVertical } from 'lucide-react'
 import { useData } from '../context/DataContext'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 export default function SettingsPage() {
+  usePageTitle('Paramètres')
   const {
     sessionRates, recruitmentSources, therapyPhases, defaultTherapyConfig,
     upsertSettings

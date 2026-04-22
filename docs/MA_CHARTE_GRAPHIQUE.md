@@ -58,15 +58,22 @@ COULEURS PRINCIPALES
 │   ├── Sidebar:      #243B53  ← Sidebar (fond sombre bleu marine)
 │   └── Sidebar Text: #D9E2EC  ← Texte dans la sidebar
 │
-└── Sémantiques  [valeurs mises à jour Track I — audit a11y 2026-04-21]
+└── Sémantiques  [valeurs mises à jour Track I — audit a11y 2026-04-21 / confirmées Track V 2026-04-22]
     ├── Success:  #2F855A  (vert — ratio 4.63:1 sur blanc, passe AA)  [était #38A169 = 3.07:1]
     ├── Warning:  #975A16  (ambre foncé — ratio 5.5:1 sur blanc, passe AA)  [était #D69E2E = 2.35:1]
-    ├── Error:    #C53030  (rouge doux)
+    ├── Error:    #C53030  (rouge doux — ratio 5.71:1 sur blanc, passe AA)
     └── Info:     #2B6CB0  (bleu — ratio 5.20:1 sur blanc, passe AA)  [était #3182CE = 4.01:1]
 
 Tokens texte (--text-secondary / --text-tertiary) :
   --text-secondary: #486581  (primary-600 — ratio 5.44:1 sur blanc)  [était #627D98 = 4.12:1]
   --text-tertiary:  #4A617A  (entre primary-500 et primary-600 — ratio 6.1:1 sur blanc, passe AA)  [était #627D98 = 4.12:1]
+
+Token accent :
+  --accent-main:    #D69E2E  (or — ratio 2.35:1 sur blanc, usage décoratif uniquement — ne pas utiliser pour du texte courant)
+                    Pour du texte doré sur fond sombre (sidebar) : --accent-main sur --bg-sidebar = ratio > 3:1 (grands textes OK).
+
+Règles d'impression (Track V) :
+  @media print — sidebar, header, toasts, boutons masqués ; fond blanc ; taille de police 12pt ; URL affichées après les liens.
 ```
 
 ### Mode Sombre (option)
