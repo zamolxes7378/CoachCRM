@@ -25,6 +25,12 @@ export function useIdleTimeout(timeoutMs, warningMs, onWarn, onLogout) {
     clearTimeout(logoutTimerRef.current)
     clearTimeout(warnTimerRef.current)
 
+    // App passes `Infinity` when idle detection is off. `setTimeout(..., Infinity)` is not
+    // "wait forever" — runtimes clamp it (e.g. to 1 ms), which fired logout + full reload in a loop.
+    if (!Number.isFinite(timeoutMs) || timeoutMs <= warningMs) {
+      return
+    }
+
     warnTimerRef.current = setTimeout(() => {
       onWarnRef.current()
     }, timeoutMs - warningMs)
@@ -35,6 +41,13 @@ export function useIdleTimeout(timeoutMs, warningMs, onWarn, onLogout) {
   }, [timeoutMs, warningMs])
 
   useEffect(() => {
+    clearTimeout(logoutTimerRef.current)
+    clearTimeout(warnTimerRef.current)
+
+    if (!Number.isFinite(timeoutMs) || timeoutMs <= warningMs) {
+      return undefined
+    }
+
     // Debounce activity resets — only reset at most every 500 ms
     let debounceTimer = null
     const handleActivity = () => {
@@ -58,6 +71,7 @@ export function useIdleTimeout(timeoutMs, warningMs, onWarn, onLogout) {
       )
       clearTimeout(logoutTimerRef.current)
       clearTimeout(warnTimerRef.current)
+      if (debounceTimer) clearTimeout(debounceTimer)
     }
-  }, [reset])
+  }, [reset, timeoutMs, warningMs])
 }
