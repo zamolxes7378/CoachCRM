@@ -921,8 +921,7 @@ export default function SessionDetailModal({
               })()}
             </div>
           </div>
-        </div >
-      </div>
+        </div>
     </>
   )
 }
