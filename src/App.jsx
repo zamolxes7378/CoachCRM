@@ -22,6 +22,7 @@ const FinancesPage = lazy(() => import('./pages/FinancesPage'))
 const AdminPage = lazy(() => import('./pages/AdminPage'))
 const DeletedClientsPage = lazy(() => import('./pages/DeletedClientsPage'))
 const ReseauProPage = lazy(() => import('./pages/ReseauProPage'))
+const DsarRequestsPage = lazy(() => import('./pages/admin/DsarRequestsPage'))
 const SettingsPage = lazy(() => import('./pages/SettingsPage'))
 const HelpPage = lazy(() => import('./pages/HelpPage'))
 
@@ -340,6 +341,7 @@ function AppContent({ loading, user, authError, showOnboarding, setShowOnboardin
                 <Route path="/admin" element={user.role === 'admin' ? <AdminPage /> : <Navigate to="/" />} />
                 <Route path="/admin/deleted-clients" element={user.role === 'admin' ? <DeletedClientsPage /> : <Navigate to="/" />} />
                 <Route path="/admin/reseau-pro" element={user.role === 'admin' ? <ReseauProPage /> : <Navigate to="/" />} />
+                <Route path="/admin/dsar" element={user.role === 'admin' ? <DsarRequestsPage /> : <Navigate to="/" />} />
                 <Route path="*" element={<Navigate to="/" />} />
               </Routes>
               </ErrorBoundary>

@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom'
-import { Home, Users, Mic, FileText, BookOpen, Settings, HelpCircle, Crown, Heart, LogOut, Menu, X, Brain, Euro, Repeat, Archive, Briefcase } from 'lucide-react'
+import { Home, Users, Mic, FileText, BookOpen, Settings, HelpCircle, Crown, Heart, LogOut, Menu, X, Brain, Euro, Repeat, Archive, Briefcase, ShieldAlert } from 'lucide-react'
 
 export default function Sidebar({ user, onLogout, isOpen, onToggle }) {
   const location = useLocation()
@@ -121,6 +121,15 @@ export default function Sidebar({ user, onLogout, isOpen, onToggle }) {
                 >
                   <Briefcase aria-hidden="true" />
                   <span>Réseau Pro</span>
+                </NavLink>
+                <NavLink
+                  to="/admin/dsar"
+                  className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+                  aria-current={location.pathname.startsWith('/admin/dsar') ? 'page' : undefined}
+                  onClick={() => onToggle && window.innerWidth < 768 && onToggle()}
+                >
+                  <ShieldAlert aria-hidden="true" />
+                  <span>Demandes RGPD</span>
                 </NavLink>
               </div>
             </>
