@@ -1,10 +1,8 @@
 import { todayIso } from '../lib/date'
+import { downloadBlob } from '../lib/fileDownload'
 
 export async function exportClientDossierExcel(client, sessions, reports, formatDate, getPhaseLabel) {
-  const [{ default: ExcelJS }, { saveAs }] = await Promise.all([
-    import('exceljs'),
-    import('file-saver')
-  ])
+  const { default: ExcelJS } = await import('exceljs')
   const workbook = new ExcelJS.Workbook()
   workbook.creator = 'CoachCRM'
   workbook.created = new Date()
@@ -93,5 +91,5 @@ export async function exportClientDossierExcel(client, sessions, reports, format
   const buffer = await workbook.xlsx.writeBuffer()
   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
   const fileName = `Dossier_Client_${client.firstName}_${client.lastName}_${todayIso()}.xlsx`
-  saveAs(blob, fileName)
+  downloadBlob(blob, fileName)
 }

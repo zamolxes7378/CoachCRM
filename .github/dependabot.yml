@@ -1,0 +1,17 @@
+version: 2
+updates:
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    groups:
+      dev-dependencies:
+        dependency-type: 'dev'
+      security-patches:
+        patterns:
+          - '*'
+        update-types:
+          - 'version-update:semver-patch'
+        dependency-type: 'production'
+    allow:
+      - dependency-type: 'all'
