@@ -27,6 +27,7 @@ import ClientStatsPanel from '../components/client/ClientStatsPanel'
 import ClientNotesPreview from '../components/client/ClientNotesPreview'
 import ClientCreationMarker from '../components/client/ClientCreationMarker'
 import { exportClientDossierExcel } from '../services/exportService'
+import ExportConfirmModal from '../components/ExportConfirmModal'
 import { AiTransparencyBanner } from '../components/AiTransparencyBanner'
 import { supabase } from '../lib/supabase.js'
 
@@ -97,6 +98,24 @@ export default function ClientDetailPage({ clientIdProp, sessionIdProp, onClose 
   const [showAddLink, setShowAddLink] = useState(false)
   const [addLinkType, setAddLinkType] = useState('dossier')
   const [addLinkSearch, setAddLinkSearch] = useState('')
+  const [showExportModal, setShowExportModal] = useState(false)
+
+  async function handleExportConfirmed(password) {
+    setShowExportModal(false)
+    const { data: { user } } = await supabase.auth.getUser()
+    await exportClientDossierExcel(
+      client,
+      sessions,
+      allReports.filter(r => r.clientId === id),
+      formatDate,
+      getPhaseLabel,
+      {
+        therapistEmail: user?.email || '',
+        therapistId: user?.id || '',
+        password,
+      }
+    )
+  }
 
   // Determine which cycle a session belongs to
   const getSessionCycle = (session) => {
@@ -249,7 +268,7 @@ export default function ClientDetailPage({ clientIdProp, sessionIdProp, onClose 
         setShowAddLink={setShowAddLink}
         addLinkSearch={addLinkSearch}
         setAddLinkSearch={setAddLinkSearch}
-        onExport={() => exportClientDossierExcel(client, sessions, allReports.filter(r => r.clientId === id), formatDate, getPhaseLabel)}
+        onExport={() => setShowExportModal(true)}
       />
 
       {/* Synthesis + Stats — 50/50 layout */}
@@ -506,7 +525,14 @@ export default function ClientDetailPage({ clientIdProp, sessionIdProp, onClose 
         />
       )}
 
-
+      {/* Export Confirmation */}
+      {showExportModal && (
+        <ExportConfirmModal
+          clientInitials={getClientInitials(client)}
+          onConfirm={handleExportConfirmed}
+          onCancel={() => setShowExportModal(false)}
+        />
+      )}
 
       {/* CSS animations */}
       <style>{`
