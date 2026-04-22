@@ -708,7 +708,7 @@ export default function EditIdentityModal({
                                 createdAt: today,
                                 referrals: [{ clientId: client.id, date: today, clientName: getClientName({ ...client, partnerA: updatedPartnerA, partnerB: updatedPartnerB }) }]
                               })
-                              proId = newPro?.id || ('pro-' + Date.now())
+                              proId = newPro?.id || crypto.randomUUID()
                             }
                             if (!updates.clientLinks.some(l => l.type === 'parrainage-pro' && l.proId === proId)) {
                               updates.clientLinks.push({ type: 'parrainage-pro', proId, proName: `${modalExternalReferrer.firstName || ''} ${modalExternalReferrer.lastName}`.trim(), role: 'filleul' })

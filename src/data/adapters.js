@@ -68,13 +68,11 @@ export function adaptTherapyCycle(tc) {
   }
 }
 
-const stripTz = (d) => d ? d.replace(/([+-]\d{2}:\d{2}|Z)$/, '') : d
-
 export function adaptSession(s) {
   if (!s) return s
   return {
     ...s,
-    date: stripTz(s.date),
+    date: s.date,
     clientId: s.client_id,
     hasReport: s.has_report,
     paymentMethod: s.payment_method,
@@ -123,12 +121,11 @@ export function adaptProfessional(p) {
 
 export function adaptContact(c) {
   if (!c) return c
-  const date = stripTz(c.date)
   return {
     ...c,
     clientId: c.client_id,
     userId: c.user_id,
-    date: date ? date.slice(0, 16) : date
+    date: c.date ? c.date.slice(0, 16) : c.date
   }
 }
 

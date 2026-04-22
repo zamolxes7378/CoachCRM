@@ -110,26 +110,13 @@ CREATE TABLE professionals (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 7. Client Links (parrainage client↔client, parrainage-pro, dossier)
-CREATE TABLE client_links (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  client_id UUID REFERENCES clients(id) ON DELETE CASCADE,
-  linked_client_id UUID REFERENCES clients(id) ON DELETE CASCADE,
-  linked_professional_id UUID REFERENCES professionals(id) ON DELETE SET NULL,
-  type TEXT NOT NULL CHECK (type IN ('parrainage', 'parrainage-pro', 'dossier')),
-  role TEXT CHECK (role IN ('parrain', 'filleul')),
-  created_at TIMESTAMPTZ DEFAULT now()
-);
+-- 7. client_links — RETIRED (never existed in live DB)
+--    Equivalent data lives in clients.client_links JSONB column.
+--    See supabase/migrations/20260422100500_retire_dead_tables.sql.
 
--- 8. Professional Referrals (recommandations pro → clients)
-CREATE TABLE professional_referrals (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  professional_id UUID REFERENCES professionals(id) ON DELETE CASCADE,
-  client_id UUID REFERENCES clients(id) ON DELETE CASCADE,
-  client_name TEXT,
-  date DATE,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
+-- 8. professional_referrals — RETIRED (never existed in live DB)
+--    Equivalent data lives in professionals.referrals JSONB column.
+--    See supabase/migrations/20260422100500_retire_dead_tables.sql.
 
 -- 9. Settings (paramètres par praticien)
 CREATE TABLE settings (
@@ -152,11 +139,7 @@ CREATE INDEX idx_sessions_date ON sessions(date);
 CREATE INDEX idx_contacts_client_id ON contacts(client_id);
 CREATE INDEX idx_reports_session_id ON reports(session_id);
 CREATE INDEX idx_professionals_user_id ON professionals(user_id);
-CREATE INDEX idx_client_links_client_id ON client_links(client_id);
-CREATE INDEX idx_client_links_linked_client_id ON client_links(linked_client_id);
-CREATE INDEX idx_client_links_linked_professional_id ON client_links(linked_professional_id);
-CREATE INDEX idx_professional_referrals_professional_id ON professional_referrals(professional_id);
-CREATE INDEX idx_professional_referrals_client_id ON professional_referrals(client_id);
+-- retired: idx_client_links_* and idx_professional_referrals_* removed (tables retired)
 
 -- ============================================
 -- Row Level Security (RLS)
@@ -168,8 +151,7 @@ ALTER TABLE contacts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE professionals ENABLE ROW LEVEL SECURITY;
-ALTER TABLE client_links ENABLE ROW LEVEL SECURITY;
-ALTER TABLE professional_referrals ENABLE ROW LEVEL SECURITY;
+-- retired: client_links and professional_referrals RLS removed (tables retired)
 
 -- Policies: users can only access their own data
 CREATE POLICY "Users can view own clients" ON clients FOR ALL USING (user_id = auth.uid());
@@ -178,5 +160,4 @@ CREATE POLICY "Users can view own contacts" ON contacts FOR ALL USING (user_id =
 CREATE POLICY "Users can view own reports" ON reports FOR ALL USING (client_id IN (SELECT id FROM clients WHERE user_id = auth.uid()));
 CREATE POLICY "Users can view own settings" ON settings FOR ALL USING (user_id = auth.uid());
 CREATE POLICY "Users can view own professionals" ON professionals FOR ALL USING (user_id = auth.uid());
-CREATE POLICY "Users can view own client_links" ON client_links FOR ALL USING (client_id IN (SELECT id FROM clients WHERE user_id = auth.uid()));
-CREATE POLICY "Users can view own professional_referrals" ON professional_referrals FOR ALL USING (professional_id IN (SELECT id FROM professionals WHERE user_id = auth.uid()));
+-- retired: client_links and professional_referrals policies removed (tables retired)
