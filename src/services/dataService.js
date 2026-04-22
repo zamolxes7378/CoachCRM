@@ -1,6 +1,30 @@
 import { supabase } from '../lib/supabase.js'
 
 // ============================================
+// Access log — Art. 9 sensitive data reads
+// ============================================
+/**
+ * Emit an access_log row after a successful sensitive-data read.
+ * Non-fatal: failures are logged to console and do not propagate.
+ * In production this should be routed through a service_role-capable
+ * edge function; on the client it will be blocked by RLS for non-admin users.
+ *
+ * @param {string} entity     - e.g. 'report', 'client', 'session'
+ * @param {string} entity_id  - UUID of the accessed row
+ * @param {string} action     - e.g. 'read_report', 'read_notes', 'read_session_summary'
+ */
+async function logAccess(entity, entity_id, action) {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+  const { error } = await supabase
+    .from('access_log')
+    .insert({ user_id: user.id, entity, entity_id, action })
+  if (error) {
+    console.warn('[dataService] access_log write failed:', error.message)
+  }
+}
+
+// ============================================
 // Users
 // ============================================
 export async function getCurrentUser(email) {
@@ -44,6 +68,10 @@ export async function getClient(clientId) {
     .eq('id', clientId)
     .single()
   if (error) throw new Error(`getClient failed: ${error.message}`)
+  // Emit access log for sensitive columns (notes, ai_synthesis) — Art. 9
+  if (data) {
+    await logAccess('client', clientId, 'read_client_sensitive')
+  }
   return data
 }
 
@@ -151,7 +179,12 @@ export async function getReports(userId) {
     .is('clients.deleted_at', null)
     .order('date', { ascending: false })
   if (error) throw new Error(`getReports failed: ${error.message}`)
-  return (data || []).map(({ clients: _c, ...r }) => r)
+  const rows = (data || []).map(({ clients: _c, ...r }) => r)
+  // Emit one access_log row per report read (narrative + vigilance are Art. 9 sensitive)
+  for (const r of rows) {
+    await logAccess('report', r.id, 'read_report')
+  }
+  return rows
 }
 
 export async function createReport(report) {
