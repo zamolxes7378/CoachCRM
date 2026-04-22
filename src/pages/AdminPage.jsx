@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { usePageTitle } from '../hooks/usePageTitle'
 import { Crown, Users, Ear, ShieldCheck, XCircle, CheckCircle, AlertCircle, Shield, KeyRound, QrCode } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { enrollTotp, challengeAndVerify, listFactors, getAssuranceLevel } from '../lib/mfa'
@@ -190,6 +191,7 @@ function TotpChallengePanel({ factorId, onVerified }) {
 // ─── Main AdminPage ─────────────────────────────────────────────────────────
 
 export default function AdminPage() {
+  usePageTitle('Administration')
   const [allUsers, setAllUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)

@@ -111,10 +111,10 @@ export default function ReferrerSection({
 
         {/* Name fields */}
         <div className="grid-2" style={{ marginBottom: 6 }}>
-          <input className="input" placeholder="Prénom" value={externalReferrer.firstName || ''}
+          <input className="input" placeholder="Prénom" autoComplete="given-name" value={externalReferrer.firstName || ''}
             onChange={e => setExternalReferrer({ ...externalReferrer, firstName: e.target.value })}
             style={{ fontSize: '0.786rem' }} />
-          <input className="input" placeholder="Nom *" value={externalReferrer.lastName || ''}
+          <input className="input" placeholder="Nom *" autoComplete="family-name" value={externalReferrer.lastName || ''}
             onChange={e => {
               setExternalReferrer({ ...externalReferrer, lastName: e.target.value })
               setDuplicateDismissed(false)
@@ -144,10 +144,10 @@ export default function ReferrerSection({
 
         {/* Contact fields */}
         <div className="grid-2" style={{ marginBottom: 6 }}>
-          <input className="input" type="email" placeholder="Email" value={externalReferrer.email || ''}
+          <input className="input" type="email" placeholder="Email" autoComplete="email" value={externalReferrer.email || ''}
             onChange={e => setExternalReferrer({ ...externalReferrer, email: e.target.value })}
             style={{ fontSize: '0.786rem' }} />
-          <input className="input" type="tel" placeholder="Téléphone" value={externalReferrer.phone || ''}
+          <input className="input" type="tel" placeholder="Téléphone" autoComplete="tel" value={externalReferrer.phone || ''}
             onChange={e => setExternalReferrer({ ...externalReferrer, phone: e.target.value })}
             style={{ fontSize: '0.786rem' }} />
         </div>

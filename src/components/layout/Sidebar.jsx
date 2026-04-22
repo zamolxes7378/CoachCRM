@@ -29,34 +29,40 @@ export default function Sidebar({ user, onLogout, isOpen, onToggle }) {
 
         <nav className="sidebar-nav">
           <div className="sidebar-section">
-            {mainNav.map(item => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.to === '/'}
-                className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
-                onClick={() => onToggle && window.innerWidth < 768 && onToggle()}
-              >
-                <item.icon />
-                <span>{item.label}</span>
-              </NavLink>
-            ))}
+            {mainNav.map(item => {
+              const isActive = item.to === '/' ? location.pathname === '/' : location.pathname.startsWith(item.to)
+              return (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.to === '/'}
+                  className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+                  aria-current={isActive ? 'page' : undefined}
+                  onClick={() => onToggle && window.innerWidth < 768 && onToggle()}
+                >
+                  <item.icon aria-hidden="true" />
+                  <span>{item.label}</span>
+                </NavLink>
+              )
+            })}
           </div>
 
           <div className="sidebar-divider" />
 
           <div className="sidebar-section">
             {secondaryNav.map(item => (
-              <div
+              <button
                 key={item.to}
                 className="sidebar-link"
-                style={{ opacity: item.disabled ? 0.4 : 1, cursor: item.disabled ? 'default' : 'pointer' }}
-                title={item.disabled ? 'Bientôt disponible' : ''}
+                disabled
+                aria-disabled="true"
+                aria-label={`${item.label} — bientôt disponible`}
+                style={{ opacity: 0.4, cursor: 'default', width: '100%', background: 'none', border: 'none', textAlign: 'left', color: 'inherit' }}
               >
-                <item.icon />
+                <item.icon aria-hidden="true" />
                 <span>{item.label}</span>
-                {item.disabled && <span style={{ fontSize: '0.65rem', marginLeft: 'auto', background: 'rgba(255,255,255,0.1)', padding: '1px 6px', borderRadius: 4 }}>V2</span>}
-              </div>
+                <span aria-hidden="true" style={{ fontSize: '0.65rem', marginLeft: 'auto', background: 'rgba(255,255,255,0.1)', padding: '1px 6px', borderRadius: 4 }}>V2</span>
+              </button>
             ))}
           </div>
 
@@ -66,17 +72,19 @@ export default function Sidebar({ user, onLogout, isOpen, onToggle }) {
             <NavLink
               to="/settings"
               className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+              aria-current={location.pathname.startsWith('/settings') ? 'page' : undefined}
               onClick={() => onToggle && window.innerWidth < 768 && onToggle()}
             >
-              <Settings />
+              <Settings aria-hidden="true" />
               <span>Paramètres</span>
             </NavLink>
             <NavLink
               to="/help"
               className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+              aria-current={location.pathname.startsWith('/help') ? 'page' : undefined}
               onClick={() => onToggle && window.innerWidth < 768 && onToggle()}
             >
-              <HelpCircle />
+              <HelpCircle aria-hidden="true" />
               <span>Aide</span>
             </NavLink>
           </div>
@@ -90,25 +98,28 @@ export default function Sidebar({ user, onLogout, isOpen, onToggle }) {
                   to="/admin"
                   end
                   className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+                  aria-current={location.pathname === '/admin' ? 'page' : undefined}
                   onClick={() => onToggle && window.innerWidth < 768 && onToggle()}
                 >
-                  <Crown />
+                  <Crown aria-hidden="true" />
                   <span>Admin</span>
                 </NavLink>
                 <NavLink
                   to="/admin/deleted-clients"
                   className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+                  aria-current={location.pathname.startsWith('/admin/deleted-clients') ? 'page' : undefined}
                   onClick={() => onToggle && window.innerWidth < 768 && onToggle()}
                 >
-                  <Archive />
+                  <Archive aria-hidden="true" />
                   <span>Clients archivés</span>
                 </NavLink>
                 <NavLink
                   to="/admin/reseau-pro"
                   className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+                  aria-current={location.pathname.startsWith('/admin/reseau-pro') ? 'page' : undefined}
                   onClick={() => onToggle && window.innerWidth < 768 && onToggle()}
                 >
-                  <Briefcase />
+                  <Briefcase aria-hidden="true" />
                   <span>Réseau Pro</span>
                 </NavLink>
               </div>
@@ -126,7 +137,6 @@ export default function Sidebar({ user, onLogout, isOpen, onToggle }) {
             <button
               onClick={onLogout}
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-sidebar-muted)', padding: 4 }}
-              title="Déconnexion"
               aria-label="Déconnexion"
             >
               <LogOut size={18} />

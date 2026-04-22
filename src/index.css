@@ -96,7 +96,6 @@
 }
 
 html {
-  font-size: 14px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -1543,4 +1542,45 @@ select:focus-visible {
   gap: var(--space-sm);
   padding: var(--space-md) var(--space-lg);
   border-top: 1px solid var(--border-light);
+}
+
+/* --- Toast animation (moved from ToastContext inline style) --- */
+@keyframes toastSlideIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Print styles (A-09 / WCAG 1.3.4) --- */
+@media print {
+  .sidebar,
+  .sidebar-overlay,
+  .app-header,
+  .toast-container,
+  .modal-overlay,
+  .btn,
+  [role="status"][aria-live],
+  .skip-link {
+    display: none !important;
+  }
+
+  .app-main {
+    margin-left: 0 !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 12pt;
+  }
+
+  a[href]::after {
+    content: ' (' attr(href) ')';
+    font-size: 0.8em;
+    color: #555;
+  }
+
+  .card {
+    box-shadow: none !important;
+    border: 1px solid #ccc !important;
+  }
 }

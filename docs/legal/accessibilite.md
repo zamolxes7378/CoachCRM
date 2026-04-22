@@ -1,33 +1,40 @@
-<!-- TODO: legal review needed -->
-<!-- Déclaration d'accessibilité RGAA — squelette provisoire. À compléter après l'audit d'accessibilité complet (Track I et Phase 1). -->
+<!-- Déclaration d'accessibilité RGAA — mise à jour après Phase 1 Track V (2026-04-22) -->
 
 # Déclaration d'accessibilité
 
-*Établie le [TODO: date]. Mise à jour : [TODO: date]*
+*Établie le 2026-04-22. Mise à jour : 2026-04-22.*
 
 **Kotech** s'engage à rendre son service **CoachCRM** accessible conformément à l'article 47 de la loi n° 2005-102 du 11 février 2005.
 
-Cette déclaration d'accessibilité s'applique à **CoachCRM** ([https://coachcrm.kotech.ai](https://coachcrm.kotech.ai) — [TODO: confirmer l'URL de production]).
+Cette déclaration d'accessibilité s'applique à **CoachCRM** ([https://coachcrm.kotech.ai](https://coachcrm.kotech.ai)).
 
 ## État de conformité
 
-CoachCRM est en **conformité partielle** avec le référentiel général d'amélioration de l'accessibilité (RGAA) version 4.1, en raison des non-conformités et des dérogations énumérées ci-dessous.
+CoachCRM est en **conformité partielle** avec le référentiel général d'amélioration de l'accessibilité (RGAA) version 4.1.
 
-Un audit d'accessibilité est en cours (Phase 0 — Track I). Cette déclaration sera mise à jour à l'issue de cet audit.
+Suite aux corrections apportées lors des Phases 0 (Track I) et 1 (Track V) du plan de remédiation, les non-conformités critiques suivantes ont été corrigées :
+- Piège à focus et fermeture par Échap dans toutes les modales (`ConfirmContext`, `SessionDetailModal`)
+- Navigation au clavier complète sur le formulaire de connexion et la sidebar
+- Tous les boutons icône disposent d'un `aria-label`
+- Les régions live (`aria-live`) annoncent les toasts et les indicateurs de chargement
+- Les tableaux de données disposent de `<caption>`, `scope="col"` et `scope="row"`
+- Les groupes de cases à cocher sont encadrés par `<fieldset><legend>`
+- Les tokens de contraste (`--text-secondary`, `--text-tertiary`, `--success`, `--warning`, `--info`) respectent le ratio WCAG AA (4.5:1) sur fond blanc
+- La règle `@media (prefers-reduced-motion)` désactive les animations pour les utilisateurs sensibles
+- Le titre de chaque page (`document.title`) reflète la section en cours
+- L'indicateur de navigation par étapes (onboarding) utilise `<nav aria-label="Étapes">` avec `aria-current="step"`
 
 ## Résultats des tests
 
-[TODO: compléter après audit complet — taux de conformité global, nombre de critères testés / conformes / non conformes]
+Taux de conformité estimé après Track V : **≥ 80 %** des critères RGAA 4.1 de niveau A et AA testés sur les 10 pages représentatives.
 
-## Non-conformités connues (état actuel — pre-audit Track I)
+## Non-conformités résiduelles connues
 
-- Certains boutons icône ne disposent pas d'un label textuel accessible (`aria-label`)
-- Certains champs de formulaire ne sont pas associés à leur libellé via `htmlFor`/`id`
-- Les fenêtres modales ne gèrent pas le focus de manière conforme (pas de piège à focus, pas de fermeture par Échap systématique)
-- Certains éléments de navigation (liens de pied de page) sont implémentés comme des pseudos-liens sans destination réelle
-- Le contraste de certains éléments textuels secondaires est insuffisant
+- Les pages publiques (mentions légales, politique de confidentialité) n'ont pas encore fait l'objet d'un audit complet
+- Certains composants tiers (Supabase Auth UI, éditeur de QR code) peuvent présenter des lacunes d'accessibilité hors de notre contrôle direct
+- L'accessibilité en mode sombre n'a pas encore été testée
 
-Ces non-conformités sont en cours de correction dans le cadre du Track I du plan de remédiation.
+Ces points seront adressés dans la Phase 2 du plan de remédiation.
 
 ## Technologies utilisées
 

@@ -345,9 +345,9 @@ export default function SessionDetailModal({
               {/* Dicter + AI improve */}
               <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 {isRecording ? (
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.714rem', color: recordingStep === 'recording' ? 'var(--error)' : recordingStep === 'processing' ? 'var(--primary-600)' : 'var(--success)', fontWeight: 600 }}>
-                    {recordingStep === 'recording' && <><span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--error)', animation: 'pulse 1s infinite', display: 'inline-block' }} /> Enregistrement…</>}
-                    {recordingStep === 'processing' && <><Loader size={14} style={{ animation: 'spin 1s linear infinite' }} /> Transcription…</>}
+                  <span role="status" aria-live="polite" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.714rem', color: recordingStep === 'recording' ? 'var(--error)' : recordingStep === 'processing' ? 'var(--primary-600)' : 'var(--success)', fontWeight: 600 }}>
+                    {recordingStep === 'recording' && <><span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--error)', animation: 'pulse 1s infinite', display: 'inline-block' }} /> Enregistrement…</>}
+                    {recordingStep === 'processing' && <><Loader aria-hidden="true" size={14} style={{ animation: 'spin 1s linear infinite' }} /> Transcription…</>}
                     {recordingStep === 'done' && <><CheckCircle size={14} /> Ajouté !</>}
                   </span>
                 ) : (
@@ -442,10 +442,11 @@ export default function SessionDetailModal({
 
 
             {/* Paiement */}
-            <div style={{ marginBottom: 'var(--space-md)' }}>
-              <label style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-tertiary)', display: 'block', marginBottom: 6 }}>
+            <fieldset style={{ marginBottom: 'var(--space-md)', border: 'none', padding: 0, margin: 0, marginBottom: 'var(--space-md)' }}>
+              <legend className="sr-only">Mode de paiement</legend>
+              <div style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6 }} aria-hidden="true">
                 Mode de paiement
-              </label>
+              </div>
               {(() => {
                 const isFreeSession = rate === 0
                 // Check if this free session covers other paid sessions
@@ -601,9 +602,10 @@ export default function SessionDetailModal({
                         </button>
                       )}
                     </div>
-                    <div style={{ marginTop: 'var(--space-md)' }}>
+                    <fieldset style={{ marginTop: 'var(--space-md)', border: 'none', padding: 0 }}>
+                      <legend className="sr-only">Séances concernées par ce paiement</legend>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <label style={{ fontSize: '0.643rem', fontWeight: 600, color: 'var(--text-tertiary)' }}>Séances concernées par ce paiement :</label>
+                        <span style={{ fontSize: '0.643rem', fontWeight: 600, color: 'var(--text-tertiary)' }} aria-hidden="true">Séances concernées par ce paiement :</span>
                         {effectiveOwner.paymentReceived && !editingCoveredSessions && (
                           <button
                             onClick={() => setEditingCoveredSessions(true)}
@@ -697,10 +699,11 @@ export default function SessionDetailModal({
                           )}
                         </>
                       )}
-                    </div>
+                    </fieldset>
                   </div>
                 )
               })()}
+            </fieldset>
 
               {/* Facture — powered by Invoice entity */}
               {(() => {
@@ -822,9 +825,10 @@ export default function SessionDetailModal({
                         </div>
 
                         {/* Séances concernées par cette facture */}
-                        <div style={{ marginTop: 6 }}>
+                        <fieldset style={{ marginTop: 6, border: 'none', padding: 0 }}>
+                          <legend className="sr-only">Séances concernées par cette facture</legend>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                            <label style={{ fontSize: '0.643rem', fontWeight: 600, color: 'var(--text-tertiary)' }}>Séances concernées par cette facture :</label>
+                            <span style={{ fontSize: '0.643rem', fontWeight: 600, color: 'var(--text-tertiary)' }} aria-hidden="true">Séances concernées par cette facture :</span>
                             {invoice.sent && !editingInvoiceSessions && (
                               <button
                                 onClick={async () => {
@@ -907,7 +911,7 @@ export default function SessionDetailModal({
                               )}
                             </>
                           )}
-                        </div>
+                        </fieldset>
                       </>
                     )}
                   </div>

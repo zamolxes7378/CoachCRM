@@ -223,6 +223,7 @@ export default function App() {
           showOnboarding={showOnboarding}
           setShowOnboarding={setShowOnboarding}
           handleLogout={handleLogout}
+          pendingEmail={pendingEmail}
           suspenseFallback={suspenseFallback}
         />
       </BrowserRouter>
@@ -233,7 +234,7 @@ export default function App() {
 const IDLE_TIMEOUT_MS = 30 * 60_000   // 30 minutes
 const IDLE_WARNING_MS = 2 * 60_000    // warn 2 minutes before logout
 
-function AppContent({ loading, user, authError, showOnboarding, setShowOnboarding, handleLogout, suspenseFallback }) {
+function AppContent({ loading, user, authError, showOnboarding, setShowOnboarding, handleLogout, pendingEmail, suspenseFallback }) {
   const location = useLocation()
   const isPublicRoute = PUBLIC_ROUTES.includes(location.pathname)
 

@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef } from 'react'
+import { usePageTitle } from '../hooks/usePageTitle'
 import {
   Users, UserPlus, Calendar, LayoutList, CheckSquare, X, Trash2, Hourglass, ChevronDown, Heart, PenTool, FileText, ArrowRight, Mic, CheckCircle, XCircle, CreditCard, Landmark, Banknote, Receipt, Plus, AlertTriangle, Award, Search, Sprout, HelpCircle, Square, AlertCircle, ChevronRight, Phone, MessageSquare, Mail, MessageCircle, Globe, Share2
 } from 'lucide-react'
@@ -19,6 +20,7 @@ import { todayIso } from '../lib/date'
 
 
 export default function DashboardPage({ user }) {
+  usePageTitle('Accueil')
   const navigate = useNavigate()
   const { clients, sessions, reports, contacts, phaseIcons, phaseColors, isProspect, getClientName, getClientInitials, getClientType, formatTime, formatDate, formatRelativeDate, formatDashboardDate, getPhaseLabel, getComputedStatus, createSession, deleteSession, deleteSessions, sessionRates, defaultPhaseKey, getPhaseColor, getPhaseIcon, getInvoiceForSession } = useData()
   const { urgencies, clientsToReactivate, pendingCRs, pendingPaymentSessions, pendingInvoiceSessions } = useUrgencies()

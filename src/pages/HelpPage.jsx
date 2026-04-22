@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Heart, Home, Users, FileText, Euro, Settings, HelpCircle, Mic, Sparkles, Calendar, Repeat, Brain, GripVertical, ChevronDown, ChevronRight, ArrowRight, BookOpen, Star, Lightbulb, MessageCircle, Mail, ExternalLink, Target, Search, PenTool, CreditCard, XCircle, Zap } from 'lucide-react'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 export default function HelpPage() {
+  usePageTitle('Aide')
   const navigate = useNavigate()
   const [openFaq, setOpenFaq] = useState(null)
   const sectionRefs = useRef([])

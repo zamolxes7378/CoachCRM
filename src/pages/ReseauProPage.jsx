@@ -385,21 +385,23 @@ export default function ReseauProPage() {
         /* ===== LIST VIEW ===== */
         <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', border: '1px solid var(--border-light)' }}>
           <table className="table-standard">
+            <caption className="sr-only">Partenaires professionnels du réseau</caption>
             <thead>
               <tr>
-                <th style={{ width: 44 }}>
+                <th scope="col" style={{ width: 44 }}>
                   <button
                     onClick={toggleSelectAll}
+                    aria-label={selected.size === filtered.length && filtered.length > 0 ? 'Tout désélectionner' : 'Tout sélectionner'}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center', color: selected.size === filtered.length && filtered.length > 0 ? 'var(--error)' : 'var(--text-tertiary)' }}
                   >
                     {selected.size === filtered.length && filtered.length > 0 ? <CheckSquare size={18} /> : <Square size={18} />}
                   </button>
                 </th>
-                <th>Partenaire</th>
-                <th>Spécialité / Société</th>
-                <th style={{ textAlign: 'center' }}>Recommandations</th>
-                <th>Date d'ajout</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
+                <th scope="col">Partenaire</th>
+                <th scope="col">Spécialité / Société</th>
+                <th scope="col" style={{ textAlign: 'center' }}>Recommandations</th>
+                <th scope="col">Date d'ajout</th>
+                <th scope="col" style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -422,7 +424,7 @@ export default function ReseauProPage() {
                           {isChecked ? <CheckSquare size={18} /> : <Square size={18} />}
                         </button>
                       </td>
-                      <td>
+                      <th scope="row">
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <div style={{
                             width: 32, height: 32, borderRadius: '50%',
@@ -434,7 +436,7 @@ export default function ReseauProPage() {
                           </div>
                           <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{pro.firstName} {pro.lastName}</span>
                         </div>
-                      </td>
+                      </th>
                       <td>
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
                           <span style={{ fontSize: '0.857rem', color: 'var(--text-secondary)' }}>{pro.specialty || 'Professionnel'}</span>
