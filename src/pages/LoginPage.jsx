@@ -22,7 +22,7 @@ export default function LoginPage({ error }) {
     })
     if (error) {
       console.error('Google login error:', error)
-      setLoginError('Erreur de connexion. Réessayez.')
+      setLoginError(`Erreur: ${error.message || error.error_description || 'Inconnue'}`)
     }
   }
 
