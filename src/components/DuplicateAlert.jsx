@@ -43,7 +43,7 @@ export default function DuplicateAlert({ matches, onView, onLink, onDismiss, typ
           {matches.length === 1 ? 'Doublon potentiel détecté' : `${matches.length} doublons potentiels`}
         </span>
         {onDismiss && (
-          <button onClick={onDismiss} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 0 }}>
+          <button onClick={onDismiss} aria-label="Ignorer les doublons" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 0 }}>
             <X size={12} />
           </button>
         )}
@@ -109,6 +109,7 @@ export default function DuplicateAlert({ matches, onView, onLink, onDismiss, typ
                   <button
                     onClick={(e) => { e.stopPropagation(); setExpandedId(isExpanded ? null : item.id) }}
                     title={isExpanded ? 'Masquer l\'aperçu' : 'Voir l\'aperçu'}
+                    aria-label={isExpanded ? 'Masquer l\'aperçu' : 'Voir l\'aperçu'}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 2,
                       padding: '3px 6px', borderRadius: 'var(--radius-sm)',
@@ -128,6 +129,7 @@ export default function DuplicateAlert({ matches, onView, onLink, onDismiss, typ
                     <button
                       onClick={(e) => { e.stopPropagation(); onLink(item) }}
                       title="Lier au dossier existant"
+                      aria-label="Lier au dossier existant"
                       style={{
                         display: 'flex', alignItems: 'center', gap: 2,
                         padding: '3px 6px', borderRadius: 'var(--radius-sm)',

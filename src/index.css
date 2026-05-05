@@ -33,19 +33,19 @@
   --text-sidebar-muted: #9FB3C8;
 
   /* Sémantiques */
-  --success: #38A169;
+  --success: #2F855A;
   --success-bg: #F0FFF4;
-  --warning: #D69E2E;
+  --warning: #975A16;
   --warning-bg: #FFFFF0;
   --error: #C53030;
   --error-bg: #FFF5F5;
-  --info: #3182CE;
+  --info: #2B6CB0;
   --info-bg: #EBF8FF;
 
   /* Texte */
   --text-primary: #243B53;
-  --text-secondary: #627D98;
-  --text-tertiary: #9FB3C8;
+  --text-secondary: #486581;
+  --text-tertiary: #4A617A;
   --text-inverse: #FFFFFF;
 
   /* Bordures */
@@ -96,7 +96,6 @@
 }
 
 html {
-  font-size: 14px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -111,6 +110,44 @@ body {
 
 #root {
   min-height: 100vh;
+}
+
+/* --- Accessibility: focus ring (A-03) --- */
+:focus-visible {
+  outline: 2px solid var(--primary-600);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* --- Accessibility: skip link (A-07) --- */
+.skip-link {
+  position: absolute;
+  top: -48px;
+  left: 0;
+  padding: 8px 16px;
+  background: var(--primary-800);
+  color: var(--text-inverse);
+  z-index: 100000;
+  text-decoration: none;
+  font-weight: 600;
+  border-radius: 0 0 var(--radius-md) 0;
+  transition: top var(--transition-fast);
+}
+.skip-link:focus {
+  top: 0;
+}
+
+/* --- Accessibility: screen-reader only utility --- */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 a {
@@ -234,14 +271,14 @@ h3,
   color: var(--accent-main);
 }
 
-.sidebar-brand h1 {
+.sidebar-brand .h1 {
   font-size: 1.143rem;
   font-weight: 700;
   color: var(--text-inverse);
   letter-spacing: -0.3px;
 }
 
-.sidebar-brand h1 span {
+.sidebar-brand .h1 span {
   font-weight: 400;
   color: var(--text-sidebar-muted);
 }
@@ -639,25 +676,37 @@ h3,
   background: var(--bg-card);
 }
 
-.input:focus {
-  outline: none;
-  border-color: var(--primary-500);
-  box-shadow: 0 0 0 3px rgba(99, 125, 152, 0.15);
+.input:focus,
+.input:focus-visible {
+  outline: 2px solid var(--primary-600);
+  outline-offset: 0;
+  border-color: var(--primary-600);
+  box-shadow: 0 0 0 3px rgba(72, 101, 129, 0.25);
 }
 
-/* Global soft focus for all text fields */
+/* Global focus for all text fields */
 textarea:focus,
+textarea:focus-visible,
 input[type="text"]:focus,
+input[type="text"]:focus-visible,
 input[type="email"]:focus,
+input[type="email"]:focus-visible,
 input[type="password"]:focus,
+input[type="password"]:focus-visible,
 input[type="search"]:focus,
+input[type="search"]:focus-visible,
 input[type="number"]:focus,
+input[type="number"]:focus-visible,
 input[type="date"]:focus,
+input[type="date"]:focus-visible,
 input[type="datetime-local"]:focus,
-select:focus {
-  outline: none;
-  border-color: var(--primary-300) !important;
-  box-shadow: 0 0 0 3px rgba(95, 126, 179, 0.12) !important;
+input[type="datetime-local"]:focus-visible,
+select:focus,
+select:focus-visible {
+  outline: 2px solid var(--primary-600) !important;
+  outline-offset: 0 !important;
+  border-color: var(--primary-600) !important;
+  box-shadow: 0 0 0 3px rgba(72, 101, 129, 0.25) !important;
 }
 
 .input::placeholder {
@@ -1346,6 +1395,17 @@ select:focus {
   }
 }
 
+/* --- Accessibility: reduced motion (A-03 / WCAG 2.3.3) --- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 .animate-in {
   animation: slideUp var(--transition-slow);
 }
@@ -1482,4 +1542,45 @@ select:focus {
   gap: var(--space-sm);
   padding: var(--space-md) var(--space-lg);
   border-top: 1px solid var(--border-light);
+}
+
+/* --- Toast animation (moved from ToastContext inline style) --- */
+@keyframes toastSlideIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Print styles (A-09 / WCAG 1.3.4) --- */
+@media print {
+  .sidebar,
+  .sidebar-overlay,
+  .app-header,
+  .toast-container,
+  .modal-overlay,
+  .btn,
+  [role="status"][aria-live],
+  .skip-link {
+    display: none !important;
+  }
+
+  .app-main {
+    margin-left: 0 !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 12pt;
+  }
+
+  a[href]::after {
+    content: ' (' attr(href) ')';
+    font-size: 0.8em;
+    color: #555;
+  }
+
+  .card {
+    box-shadow: none !important;
+    border: 1px solid #ccc !important;
+  }
 }

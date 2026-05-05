@@ -99,7 +99,7 @@ Le traitement de vos données repose sur votre **consentement explicite** (artic
 Les mesures suivantes sont mises en œuvre pour protéger vos données :
 - 🔒 **Chiffrement** des enregistrements audio et des transcriptions (au repos et en transit)
 - 🔐 **Accès restreint** par mot de passe et authentification du thérapeute
-- 💾 **Stockage sécurisé** sur serveurs conformes aux normes européennes (hébergement HDS si applicable)
+- 💾 **Stockage sécurisé** sur infrastructure Supabase · région UE (eu-west-2, Londres — GDPR-adéquat)
 - 🗑️ **Suppression sécurisée** des fichiers audio bruts après transcription
 - 📋 **Journalisation** des accès aux données
 

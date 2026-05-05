@@ -12,6 +12,7 @@ import { findDuplicateClients, findDuplicatePros } from '../utils/duplicateUtils
 import DuplicateAlert from '../components/DuplicateAlert'
 import DeleteConfirmModal from '../components/client/DeleteConfirmModal'
 import NotesModal from '../components/client/NotesModal'
+import DataMinimisationHint from '../components/DataMinimisationHint'
 import SessionDetailModal from '../components/client/SessionDetailModal'
 import EditIdentityModal from '../components/client/EditIdentityModal'
 import useSessionModalState from '../hooks/useSessionModalState'
@@ -27,6 +28,9 @@ import ClientStatsPanel from '../components/client/ClientStatsPanel'
 import ClientNotesPreview from '../components/client/ClientNotesPreview'
 import ClientCreationMarker from '../components/client/ClientCreationMarker'
 import { exportClientDossierExcel } from '../services/exportService'
+import ExportConfirmModal from '../components/ExportConfirmModal'
+import { AiTransparencyBanner } from '../components/AiTransparencyBanner'
+import { supabase } from '../lib/supabase.js'
 
 export default function ClientDetailPage({ clientIdProp, sessionIdProp, onClose } = {}) {
   const params = useParams()
@@ -35,10 +39,10 @@ export default function ClientDetailPage({ clientIdProp, sessionIdProp, onClose 
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const from = location.state?.from
-  const { clients, sessions: allSessions, reports: allReports, contacts: allContacts, therapyCycles: allTherapyCycles, recruitmentSources, sessionRates, therapyPhases: therapyPhasesData, phaseIcons, phaseColors, defaultPhaseKey, getPhaseColor, getPhaseIcon, getClientName, getClientInitials, getPhaseLabel, getStatusLabel, getClientType, isProspect, formatDate, formatTime, updateSession, updateClient, createClient, createSession, deleteSession, refreshData, professionals, createProfessional: createPro, updateProfessional: updatePro, createContact, updateContact, deleteContact, createTherapyCycle, updateTherapyCycle, deleteTherapyCycle, getInvoiceForSession, getInvoicesByClient } = useData()
+  const { clients, clientById, sessions: allSessions, reports: allReports, contacts: allContacts, therapyCycles: allTherapyCycles, recruitmentSources, sessionRates, therapyPhases: therapyPhasesData, phaseIcons, phaseColors, defaultPhaseKey, getPhaseColor, getPhaseIcon, getClientName, getClientInitials, getPhaseLabel, getStatusLabel, getClientType, isProspect, formatDate, formatTime, updateSession, updateClient, createClient, createSession, deleteSession, refreshData, professionals, createProfessional: createPro, updateProfessional: updatePro, createContact, updateContact, deleteContact, createTherapyCycle, updateTherapyCycle, deleteTherapyCycle, getInvoiceForSession, getInvoicesByClient } = useData()
   const { showToast } = useToast()
   const confirm = useConfirm()
-  const client = clients.find(c => c.id === id)
+  const client = clientById.get(id)
   // Sanitize: compute non-self-referencing clientLinks without mutation
   const sanitizedClientLinks = useMemo(() => {
     return client?.clientLinks?.filter(l => l.clientId !== client.id) || []
@@ -76,6 +80,15 @@ export default function ClientDetailPage({ clientIdProp, sessionIdProp, onClose 
   const [phaseFilter, setPhaseFilter] = useState(null)
   const [contactDate, setContactDate] = useState(new Date().toISOString().slice(0, 16))
   const contacts = useMemo(() => allContacts.filter(c => c.clientId === id), [allContacts, id])
+  const handleValidateAiReport = async (reportId) => {
+    const { data: { user: currentUser } } = await supabase.auth.getUser()
+    await supabase.from('reports').update({
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: currentUser?.id ?? null,
+    }).eq('id', reportId)
+    refreshData()
+  }
+
   const [aiGenerating, setAiGenerating] = useState(false)
   const [showNotesModal, setShowNotesModal] = useState(false)
   const [confirmingContactId, setConfirmingContactId] = useState(null)
@@ -86,6 +99,24 @@ export default function ClientDetailPage({ clientIdProp, sessionIdProp, onClose 
   const [showAddLink, setShowAddLink] = useState(false)
   const [addLinkType, setAddLinkType] = useState('dossier')
   const [addLinkSearch, setAddLinkSearch] = useState('')
+  const [showExportModal, setShowExportModal] = useState(false)
+
+  async function handleExportConfirmed(password) {
+    setShowExportModal(false)
+    const { data: { user } } = await supabase.auth.getUser()
+    await exportClientDossierExcel(
+      client,
+      sessions,
+      allReports.filter(r => r.clientId === id),
+      formatDate,
+      getPhaseLabel,
+      {
+        therapistEmail: user?.email || '',
+        therapistId: user?.id || '',
+        password,
+      }
+    )
+  }
 
   // Determine which cycle a session belongs to
   const getSessionCycle = (session) => {
@@ -117,7 +148,8 @@ export default function ClientDetailPage({ clientIdProp, sessionIdProp, onClose 
   }, [sessionIdProp, clientIdProp, searchParams])
 
 
-  const sessions = allSessions.filter(s => s.clientId === id).map(s => {
+  // P-07: memoize derived session arrays to avoid recomputing every render
+  const sessions = useMemo(() => allSessions.filter(s => s.clientId === id).map(s => {
     // Auto-complete: only if past AND payment condition met (paymentMethod set OR paymentAmount = 0)
     if (s.status === 'scheduled') {
       const endTime = new Date(new Date(s.date).getTime() + (s.duration || 60) * 60000)
@@ -126,24 +158,27 @@ export default function ClientDetailPage({ clientIdProp, sessionIdProp, onClose 
       if (endTime <= new Date() && paymentCondition) return { ...s, status: 'completed' }
     }
     return s
-  }).sort((a, b) => (b.date || '').localeCompare(a.date || ''))
-  const reports = allReports.filter(r => r.clientId === id)
+  }).sort((a, b) => (b.date || '').localeCompare(a.date || '')), [allSessions, id, sessionRates.client])
+
+  const reports = useMemo(() => allReports.filter(r => r.clientId === id), [allReports, id])
   const PhaseIcon = client ? getPhaseIcon(client.phase) : HelpCircle
 
-  // Compute session numbers chronologically
-  const sortedSessions = [...sessions].filter(s => s.status !== 'cancelled').sort((a, b) => (a.date || '').localeCompare(b.date || ''))
-  const sessionNumbers = {}
-  // Number sessions per therapy cycle so each new therapy starts from 1
-  const cycleCounters = {}
-  sortedSessions.forEach(s => {
-    const cycle = getSessionCycle(s)
-    const cid = cycle?.id || 'default'
-    cycleCounters[cid] = (cycleCounters[cid] || 0) + 1
-    sessionNumbers[s.id] = cycleCounters[cid]
-  })
+  // Compute session numbers chronologically — memoized (P-07)
+  const { sortedSessions, sessionNumbers } = useMemo(() => {
+    const sorted = [...sessions].filter(s => s.status !== 'cancelled').sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+    const numbers = {}
+    const cycleCounters = {}
+    sorted.forEach(s => {
+      const cycle = getSessionCycle(s)
+      const cid = cycle?.id || 'default'
+      cycleCounters[cid] = (cycleCounters[cid] || 0) + 1
+      numbers[s.id] = cycleCounters[cid]
+    })
+    return { sortedSessions: sorted, sessionNumbers: numbers }
+  }, [sessions, therapyCycles])
 
   // Cycle-aware counts
-  const activeCycleSessions = sessions.filter(s => getSessionCycle(s)?.id === activeCycle.id)
+  const activeCycleSessions = useMemo(() => sessions.filter(s => getSessionCycle(s)?.id === activeCycle.id), [sessions, activeCycle, therapyCycles])
   const [completedCount, reportsCount, pendingReportsCount] = useMemo(() => {
     const completed = activeCycleSessions.filter(s => s.status === 'completed')
     const hasR = activeCycleSessions.filter(s => s.hasReport || sessionUpdates[s.id]?.hasReport)
@@ -236,7 +271,7 @@ export default function ClientDetailPage({ clientIdProp, sessionIdProp, onClose 
         setShowAddLink={setShowAddLink}
         addLinkSearch={addLinkSearch}
         setAddLinkSearch={setAddLinkSearch}
-        onExport={() => exportClientDossierExcel(client, sessions, allReports.filter(r => r.clientId === id), formatDate, getPhaseLabel)}
+        onExport={() => setShowExportModal(true)}
       />
 
       {/* Synthesis + Stats — 50/50 layout */}
@@ -368,6 +403,15 @@ export default function ClientDetailPage({ clientIdProp, sessionIdProp, onClose 
 
         <div>
 
+          {/* AI Report Transparency Banners */}
+          {reports.filter(r => r.ai_generated).map(report => (
+            <AiTransparencyBanner
+              key={report.id}
+              report={report}
+              onValidate={() => handleValidateAiReport(report.id)}
+            />
+          ))}
+
           {/* AI Synthesis */}
           <ClientAiSynthesisPanel
             client={client}
@@ -383,6 +427,10 @@ export default function ClientDetailPage({ clientIdProp, sessionIdProp, onClose 
             client={client}
             setShowNotesModal={setShowNotesModal}
           />
+          {/* Minimisation hint — shown near free-text note area (RGPD Art.5(1)(c)) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: -4, marginBottom: 8, paddingLeft: 2 }}>
+            <DataMinimisationHint />
+          </div>
 
           {/* Mini Financial Dashboard */}
           <ClientFinancialPanel
@@ -484,7 +532,14 @@ export default function ClientDetailPage({ clientIdProp, sessionIdProp, onClose 
         />
       )}
 
-
+      {/* Export Confirmation */}
+      {showExportModal && (
+        <ExportConfirmModal
+          clientInitials={getClientInitials(client)}
+          onConfirm={handleExportConfirmed}
+          onCancel={() => setShowExportModal(false)}
+        />
+      )}
 
       {/* CSS animations */}
       <style>{`

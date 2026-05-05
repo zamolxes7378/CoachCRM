@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
+import { usePageTitle } from '../hooks/usePageTitle'
 import {
   Users, UserPlus, Calendar, LayoutList, CheckSquare, X, Trash2, Hourglass, ChevronDown, Heart, PenTool, FileText, ArrowRight, Mic, CheckCircle, XCircle, CreditCard, Landmark, Banknote, Receipt, Plus, AlertTriangle, Award, Search, Sprout, HelpCircle, Square, AlertCircle, ChevronRight, Phone, MessageSquare, Mail, MessageCircle, Globe, Share2
 } from 'lucide-react'
@@ -13,11 +14,15 @@ import { useNavigate } from 'react-router-dom'
 import { useData } from '../context/DataContext'
 import { useConfirm } from '../context/ConfirmContext'
 import ActionDetailPanel from '../components/dashboard/ActionDetailPanel'
+import { useFocusTrap } from '../hooks/useFocusTrap'
+import { useEscapeKey } from '../hooks/useEscapeKey'
+import { todayIso } from '../lib/date'
 
 
 export default function DashboardPage({ user }) {
+  usePageTitle('Accueil')
   const navigate = useNavigate()
-  const { clients, sessions, reports, contacts, phaseIcons, phaseColors, isProspect, getClientName, getClientInitials, getClientType, formatTime, formatDate, formatRelativeDate, formatDashboardDate, getPhaseLabel, getComputedStatus, createSession, deleteSession, deleteSessions, sessionRates, defaultPhaseKey, getPhaseColor, getPhaseIcon, getInvoiceForSession } = useData()
+  const { clients, clientById, sessions, reports, contacts, phaseIcons, phaseColors, isProspect, getClientName, getClientInitials, getClientType, formatTime, formatDate, formatRelativeDate, formatDashboardDate, getPhaseLabel, getComputedStatus, createSession, deleteSession, deleteSessions, sessionRates, defaultPhaseKey, getPhaseColor, getPhaseIcon, getInvoiceForSession } = useData()
   const { urgencies, clientsToReactivate, pendingCRs, pendingPaymentSessions, pendingInvoiceSessions } = useUrgencies()
   const confirm = useConfirm()
   const [visibleCount, setVisibleCount] = useState(10)
@@ -26,7 +31,7 @@ export default function DashboardPage({ user }) {
   const [searchDate, setSearchDate] = useState('')
   const [showNewSession, setShowNewSession] = useState(false)
   const [newSessionClient, setNewSessionClient] = useState('')
-  const [newSessionDate, setNewSessionDate] = useState(() => new Date().toISOString().split('T')[0])
+  const [newSessionDate, setNewSessionDate] = useState(() => todayIso())
   const [newSessionTime, setNewSessionTime] = useState(() => {
     const now = new Date()
     return `${String(now.getHours()).padStart(2, '0')}:00`
@@ -40,6 +45,9 @@ export default function DashboardPage({ user }) {
   const [selectedSessions, setSelectedSessions] = useState(new Set())
   const [dashboardView, setDashboardView] = useState('list') // 'list' | 'calendar'
   const [activeUrgency, setActiveUrgency] = useState(null)
+  const newSessionModalRef = useRef(null)
+  useFocusTrap(newSessionModalRef, showNewSession)
+  useEscapeKey(() => setShowNewSession(false), showNewSession)
 
   const toggleSelect = (id) => {
     setSelectedSessions(prev => {
@@ -51,11 +59,11 @@ export default function DashboardPage({ user }) {
   const exitSelectMode = () => { setSelectMode(false); setSelectedSessions(new Set()) }
 
 
-  // All sessions with client info
+  // All sessions with client info — O(1) lookup via clientById Map
   const allSessionsWithClient = sessions
-    .map(s => ({ ...s, client: clients.find(c => c.id === s.clientId) }))
+    .map(s => ({ ...s, client: clientById.get(s.clientId) }))
 
-  const todayStr = new Date().toISOString().split('T')[0]
+  const todayStr = todayIso()
   const pastSessions = allSessionsWithClient.filter(s => (s.date?.split('T')[0] || '') < todayStr).sort((a, b) => (b.date || '').localeCompare(a.date || ''))
   const upcomingSessions = allSessionsWithClient.filter(s => (s.date?.split('T')[0] || '') >= todayStr).sort((a, b) => (a.date || '').localeCompare(b.date || ''))
   const allSessions = [...pastSessions, ...upcomingSessions]
@@ -137,7 +145,7 @@ export default function DashboardPage({ user }) {
                 const now = new Date()
                 setShowNewSession(true)
                 setNewSessionClient('')
-                setNewSessionDate(now.toISOString().split('T')[0])
+                setNewSessionDate(todayIso())
                 setNewSessionTime(`${String(now.getHours()).padStart(2, '0')}:00`)
               }} />
               <NewClientButton onClick={() => navigate('/clients?newClient=1')} />
@@ -224,7 +232,7 @@ export default function DashboardPage({ user }) {
                     {Object.entries(groupedSessions).map(([dateKey, sessions], groupIdx) => (
                       <div key={dateKey} style={{ marginBottom: 'var(--space-md)' }}>
                         {(() => {
-                          const today = new Date().toISOString().split('T')[0]
+                          const today = todayIso()
                           const isToday = dateKey === today
                           return (
                             <div style={{
@@ -377,7 +385,7 @@ export default function DashboardPage({ user }) {
             const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
             const sessionsThisMonth = sessions.filter(s => s.date?.startsWith(currentMonth) && s.status !== 'cancelled').length
             const completedThisMonth = sessions.filter(s => s.date?.startsWith(currentMonth) && s.status === 'completed')
-            const caThisMonth = completedThisMonth.reduce((sum, s) => sum + (s.paymentAmount ?? (sessionRates[clients.find(c => c.id === s.clientId)?.type || 'client'] ?? sessionRates.client ?? 60)), 0)
+            const caThisMonth = completedThisMonth.reduce((sum, s) => sum + (s.paymentAmount ?? (sessionRates[clientById.get(s.clientId)?.type || 'client'] ?? sessionRates.client ?? 60)), 0)
             const totalCompletedSessions = sessions.filter(s => s.status === 'completed').length
             const conversionRate = activeClients + activeProspects > 0 ? Math.round((activeClients / (activeClients + activeProspects)) * 100) : 0
 
@@ -517,16 +525,25 @@ export default function DashboardPage({ user }) {
         const duplicate = duplicateSameClient
         return (
           <div className="modal-overlay" onClick={() => setShowNewSession(false)}>
-            <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 440 }}>
+            <div
+              ref={newSessionModalRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="new-session-title"
+              tabIndex={-1}
+              className="modal"
+              onClick={e => e.stopPropagation()}
+              style={{ maxWidth: 440 }}
+            >
               <div className="modal-header">
-                <h2>Ajouter une séance</h2>
-                <button className="modal-close" onClick={() => setShowNewSession(false)}>
+                <h2 id="new-session-title">Ajouter une séance</h2>
+                <button className="modal-close" onClick={() => setShowNewSession(false)} aria-label="Fermer">
                   <X size={20} />
                 </button>
               </div>
               <div className="modal-body">
                 <div className="input-group">
-                  <label className="label-required">Client</label>
+                  <label htmlFor="new-session-client" className="label-required">Client</label>
                   {newSessionClient ? (
                     <div style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -536,13 +553,14 @@ export default function DashboardPage({ user }) {
                         const c = clients.find(cl => cl.id === newSessionClient)
                         return c ? getClientName(c) : 'Client en cours...'
                       })()}</span>
-                      <button onClick={() => { setNewSessionClient(''); setClientSearch('') }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 2 }}>
+                      <button onClick={() => { setNewSessionClient(''); setClientSearch('') }} aria-label="Effacer le client sélectionné" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 2 }}>
                         <X size={14} />
                       </button>
                     </div>
                   ) : (
                     <div style={{ position: 'relative' }}>
                       <input
+                        id="new-session-client"
                         className="input input-required"
                         type="text"
                         placeholder="Rechercher un client…"
@@ -550,6 +568,7 @@ export default function DashboardPage({ user }) {
                         onChange={e => { setClientSearch(e.target.value); setShowClientDropdown(true) }}
                         onFocus={() => setShowClientDropdown(true)}
                         style={{ fontSize: '0.857rem', width: '100%' }}
+                        autoComplete="off"
                       />
                       {showClientDropdown && (
                         <div style={{
@@ -589,8 +608,9 @@ export default function DashboardPage({ user }) {
 
                 <div className="grid-2" style={{ marginTop: 'var(--space-sm)' }}>
                   <div className="input-group">
-                    <label>Date de la séance</label>
+                    <label htmlFor="new-session-date">Date de la séance</label>
                     <input
+                      id="new-session-date"
                       className="input"
                       type="date"
                       value={newSessionDate}
@@ -600,8 +620,9 @@ export default function DashboardPage({ user }) {
                     />
                   </div>
                   <div className="input-group">
-                    <label>Heure</label>
+                    <label htmlFor="new-session-time">Heure</label>
                     <input
+                      id="new-session-time"
                       className="input"
                       type="time"
                       value={newSessionTime}
@@ -611,8 +632,9 @@ export default function DashboardPage({ user }) {
                 </div>
 
                 <div className="input-group" style={{ marginTop: 'var(--space-sm)' }}>
-                  <label>Note de préparation <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(optionnel)</span></label>
+                  <label htmlFor="new-session-note">Note de préparation <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(optionnel)</span></label>
                   <textarea
+                    id="new-session-note"
                     className="input"
                     rows={3}
                     placeholder="Thèmes à aborder…"
@@ -675,7 +697,7 @@ export default function DashboardPage({ user }) {
             .filter(s => s.status === 'completed' && !s.hasReport)
             .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
             .map(s => {
-              const client = clients.find(c => c.id === s.clientId)
+              const client = clientById.get(s.clientId)
               return {
                 id: s.id,
                 clientId: s.clientId,
@@ -693,7 +715,7 @@ export default function DashboardPage({ user }) {
             .filter(s => s.status === 'completed' && (!s.paymentMethod || (s.paymentMethod !== 'especes' && !s.paymentReceived)))
             .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
             .map(s => {
-              const client = clients.find(c => c.id === s.clientId)
+              const client = clientById.get(s.clientId)
               const amount = s.paymentAmount ?? (sessionRates[client?.type || 'client'] ?? sessionRates.client ?? 60)
               return {
                 id: s.id,
@@ -712,7 +734,7 @@ export default function DashboardPage({ user }) {
             .filter(s => { const inv = getInvoiceForSession(s.id); return inv && !inv.sent })
             .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
             .map(s => {
-              const client = clients.find(c => c.id === s.clientId)
+              const client = clientById.get(s.clientId)
               const amount = s.paymentAmount ?? (sessionRates[client?.type || 'client'] ?? sessionRates.client ?? 60)
               return {
                 id: s.id,

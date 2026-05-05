@@ -1,0 +1,39 @@
+-- ============================================================
+-- 20260422100100_standardise_temporal.sql
+--
+-- Temporal type audit and standardisation (P1-X M-3).
+--
+-- Live-DB verdict (verified 2026-04-21 via information_schema):
+--
+--   contacts.date         TIMESTAMPTZ  ✓ already tz-aware
+--   sessions.date         TIMESTAMPTZ  ✓ already tz-aware
+--   clients.next_session  TIMESTAMPTZ  ✓ already tz-aware
+--   clients.last_session  TIMESTAMPTZ  ✓ already tz-aware
+--   clients.created_at    TIMESTAMPTZ  ✓ already tz-aware
+--   clients.updated_at    TIMESTAMPTZ  ✓ already tz-aware
+--
+-- DATE columns that remain intentionally date-only (no time
+-- component; tz-conversion would be wrong):
+--   clients.start_date               DATE  — therapy start; no time needed
+--   therapy_cycles.start_date        DATE  — cycle start; date-only intentional
+--   invoices.invoice_date            DATE  — invoice date; date-only (legal)
+--   sessions.payment_date            DATE  — payment cleared; date-only
+--   sessions.invoice_date            DATE  — invoice grouping date; date-only
+--   professional_referrals.date      DATE  — referral date; date-only
+--
+-- Conclusion: no ALTER TABLE required.  All timestamp fields that
+-- need tz-awareness already use TIMESTAMPTZ.
+--
+-- App-side cleanup (done in this track):
+--   src/data/adapters.js — removed stripTz helper and its two
+--   call sites (adaptSession, adaptContact).  The raw TIMESTAMPTZ
+--   strings from Supabase now flow through unchanged; callers that
+--   need a bare "YYYY-MM-DDTHH:MM" for <input type="datetime-local">
+--   call .slice(0, 16) directly (already done in adaptContact).
+--   new Date(session.date) in allianceService.js correctly parses
+--   ISO-8601 strings with or without tz offsets.
+--
+-- Findings closed: M-3, M-4.
+-- ============================================================
+
+-- (intentionally empty — no schema changes required; see comment above)

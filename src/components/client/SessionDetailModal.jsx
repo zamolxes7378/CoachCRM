@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useRef } from 'react'
 import { useConfirm } from '../../context/ConfirmContext'
 import { useData } from '../../context/DataContext'
 import {
@@ -7,6 +7,9 @@ import {
   Sprout, Calendar, Clock, HelpCircle
 } from 'lucide-react'
 import ReportIcon from '../ReportIcon'
+import { useFocusTrap } from '../../hooks/useFocusTrap'
+import DataMinimisationHint from '../DataMinimisationHint'
+import { useEscapeKey } from '../../hooks/useEscapeKey'
 
 /**
  * Session Detail Modal — sliding panel for viewing/editing a single session.
@@ -19,9 +22,12 @@ export default function SessionDetailModal({
   therapy,        // { phasesData, defaultPhaseKey, phaseIcons, phaseColors, sessionNumbers }
   utils           // { updateSession, formatDate, getClientName }
 }) {
-  if (!session) return null
   const confirm = useConfirm()
   const { getInvoiceForSession, createInvoice, updateInvoice: updateInv, emitInvoice, unemitInvoice, deleteInvoice, setInvoiceSessions, sessions: allSessions } = useData()
+  const panelRef = useRef(null)
+  useFocusTrap(panelRef, !!session)
+  useEscapeKey(() => setExpandedSessionId(null), !!session)
+  if (!session) return null
   // Destructure for convenience
   const { sessionUpdates, recordingSessionId, recordingStep, editingCoveredSessions, editingInvoiceSessions } = sessionModal
   const { setSessionUpdates, setExpandedSessionId, setRateOverrides, setEditingCoveredSessions, setEditingInvoiceSessions, getRate, handleStartRecording, handleSaveCR } = sessionActions
@@ -45,14 +51,21 @@ export default function SessionDetailModal({
         zIndex: 999, animation: 'fadeIn 0.2s'
       }} />
       {/* Panel */}
-      <div style={{
-        position: 'fixed', top: 0, right: 0, bottom: 0,
-        width: '50%', minWidth: 420, maxWidth: 640,
-        background: 'white', zIndex: 1000,
-        boxShadow: '-8px 0 32px rgba(0,0,0,0.12)',
-        display: 'flex', flexDirection: 'column',
-        animation: 'slideIn 0.25s ease-out'
-      }}>
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="session-detail-title"
+        tabIndex={-1}
+        style={{
+          position: 'fixed', top: 0, right: 0, bottom: 0,
+          width: '50%', minWidth: 420, maxWidth: 640,
+          background: 'white', zIndex: 1000,
+          boxShadow: '-8px 0 32px rgba(0,0,0,0.12)',
+          display: 'flex', flexDirection: 'column',
+          animation: 'slideIn 0.25s ease-out'
+        }}
+      >
         {/* Header */}
         <div style={{
           padding: 'var(--space-md) var(--space-lg)',
@@ -69,11 +82,11 @@ export default function SessionDetailModal({
             </div>
             <div>
               <div style={{ fontSize: '0.857rem', fontWeight: 700, color: session.status === 'cancelled' ? 'var(--error)' : 'var(--text-primary)', marginBottom: 2 }}>{getClientName(client)}</div>
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: session.status === 'cancelled' ? 'var(--error)' : undefined }}>Séance {sessionNum}</h3>
+              <h3 id="session-detail-title" style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: session.status === 'cancelled' ? 'var(--error)' : undefined }}>Séance {sessionNum}</h3>
               {session.theme && <span style={{ fontSize: '0.714rem', color: 'var(--text-tertiary)' }}>{session.theme}</span>}
             </div>
           </div>
-          <button onClick={() => setExpandedSessionId(null)} style={{
+          <button onClick={() => setExpandedSessionId(null)} aria-label="Fermer" style={{
             width: 32, height: 32, borderRadius: '50%', border: 'none',
             background: 'var(--bg-main)', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center'
@@ -148,9 +161,10 @@ export default function SessionDetailModal({
 
           {/* Date + Cancel */}
           <div style={{ marginBottom: 'var(--space-md)' }}>
-            <label style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-tertiary)', display: 'block', marginBottom: 4 }}>Date et heure</label>
+            <label htmlFor="session-detail-date" style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-tertiary)', display: 'block', marginBottom: 4 }}>Date et heure</label>
             <div style={{ display: 'flex', gap: 'var(--space-sm)', alignItems: 'center' }}>
               <input
+                id="session-detail-date"
                 type="datetime-local"
                 className="input"
                 value={session.date.slice(0, 16)}
@@ -278,10 +292,11 @@ export default function SessionDetailModal({
               marginBottom: 'var(--space-md)',
               border: '1px solid #FED7D7'
             }}>
-              <label style={{ fontSize: '0.643rem', fontWeight: 600, color: 'var(--error)', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+              <label htmlFor="session-detail-cancel-reason" style={{ fontSize: '0.643rem', fontWeight: 600, color: 'var(--error)', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
                 <XCircle size={12} /> Raison de l'annulation
               </label>
               <textarea
+                id="session-detail-cancel-reason"
                 value={session.cancellationReason || ''}
                 onChange={e => {
                   session.cancellationReason = e.target.value
@@ -304,11 +319,13 @@ export default function SessionDetailModal({
           {session.status !== 'cancelled' && (
             <div style={{ marginBottom: 'var(--space-lg)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-xs)' }}>
-                <label style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <label htmlFor="session-detail-summary" style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 4 }}>
                   <ReportIcon size={14} /> {isPast ? 'Compte-rendu' : 'Note de préparation'}
+                  <DataMinimisationHint />
                 </label>
               </div>
               <textarea
+                id="session-detail-summary"
                 value={summary || ''}
                 onChange={e => handleSaveCR(session.id, e.target.value)}
                 onKeyDown={e => e.stopPropagation()}
@@ -330,9 +347,9 @@ export default function SessionDetailModal({
               {/* Dicter + AI improve */}
               <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 {isRecording ? (
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.714rem', color: recordingStep === 'recording' ? 'var(--error)' : recordingStep === 'processing' ? 'var(--primary-600)' : 'var(--success)', fontWeight: 600 }}>
-                    {recordingStep === 'recording' && <><span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--error)', animation: 'pulse 1s infinite', display: 'inline-block' }} /> Enregistrement…</>}
-                    {recordingStep === 'processing' && <><Loader size={14} style={{ animation: 'spin 1s linear infinite' }} /> Transcription…</>}
+                  <span role="status" aria-live="polite" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.714rem', color: recordingStep === 'recording' ? 'var(--error)' : recordingStep === 'processing' ? 'var(--primary-600)' : 'var(--success)', fontWeight: 600 }}>
+                    {recordingStep === 'recording' && <><span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--error)', animation: 'pulse 1s infinite', display: 'inline-block' }} /> Enregistrement…</>}
+                    {recordingStep === 'processing' && <><Loader aria-hidden="true" size={14} style={{ animation: 'spin 1s linear infinite' }} /> Transcription…</>}
                     {recordingStep === 'done' && <><CheckCircle size={14} /> Ajouté !</>}
                   </span>
                 ) : (
@@ -403,9 +420,10 @@ export default function SessionDetailModal({
 
             {/* Montant de la séance (editable) */}
             <div style={{ marginBottom: 'var(--space-md)' }}>
-              <label style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-tertiary)', display: 'block', marginBottom: 6 }}>Montant de la séance</label>
+              <label htmlFor="session-detail-amount" style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-tertiary)', display: 'block', marginBottom: 6 }}>Montant de la séance</label>
               <div style={{ position: 'relative', width: 120 }}>
                 <input
+                  id="session-detail-amount"
                   type="number" min="0" step="5"
                   className="input"
                   value={rate ?? ''}
@@ -426,10 +444,11 @@ export default function SessionDetailModal({
 
 
             {/* Paiement */}
-            <div style={{ marginBottom: 'var(--space-md)' }}>
-              <label style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-tertiary)', display: 'block', marginBottom: 6 }}>
+            <fieldset style={{ marginBottom: 'var(--space-md)', border: 'none', padding: 0, margin: 0, marginBottom: 'var(--space-md)' }}>
+              <legend className="sr-only">Mode de paiement</legend>
+              <div style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6 }} aria-hidden="true">
                 Mode de paiement
-              </label>
+              </div>
               {(() => {
                 const isFreeSession = rate === 0
                 // Check if this free session covers other paid sessions
@@ -523,10 +542,11 @@ export default function SessionDetailModal({
                 if (pAmount === 0) return null
                 return (
                   <div style={{ marginBottom: 'var(--space-md)' }}>
-                    <label style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-tertiary)', display: 'block', marginBottom: 6 }}>Montant du paiement <span style={{ fontWeight: 400, fontStyle: 'italic' }}>(calculé)</span></label>
+                    <label htmlFor="session-detail-payment-amount" style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-tertiary)', display: 'block', marginBottom: 6 }}>Montant du paiement <span style={{ fontWeight: 400, fontStyle: 'italic' }}>(calculé)</span></label>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)', marginBottom: 'var(--space-xs)' }}>
                       <div style={{ flex: '0 0 calc(33.33% - 6px)', position: 'relative' }}>
                         <input
+                          id="session-detail-payment-amount"
                           type="number"
                           className="input"
                           value={pAmount || ''}
@@ -584,9 +604,10 @@ export default function SessionDetailModal({
                         </button>
                       )}
                     </div>
-                    <div style={{ marginTop: 'var(--space-md)' }}>
+                    <fieldset style={{ marginTop: 'var(--space-md)', border: 'none', padding: 0 }}>
+                      <legend className="sr-only">Séances concernées par ce paiement</legend>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <label style={{ fontSize: '0.643rem', fontWeight: 600, color: 'var(--text-tertiary)' }}>Séances concernées par ce paiement :</label>
+                        <span style={{ fontSize: '0.643rem', fontWeight: 600, color: 'var(--text-tertiary)' }} aria-hidden="true">Séances concernées par ce paiement :</span>
                         {effectiveOwner.paymentReceived && !editingCoveredSessions && (
                           <button
                             onClick={() => setEditingCoveredSessions(true)}
@@ -680,10 +701,11 @@ export default function SessionDetailModal({
                           )}
                         </>
                       )}
-                    </div>
+                    </fieldset>
                   </div>
                 )
               })()}
+            </fieldset>
 
               {/* Facture — powered by Invoice entity */}
               {(() => {
@@ -805,9 +827,10 @@ export default function SessionDetailModal({
                         </div>
 
                         {/* Séances concernées par cette facture */}
-                        <div style={{ marginTop: 6 }}>
+                        <fieldset style={{ marginTop: 6, border: 'none', padding: 0 }}>
+                          <legend className="sr-only">Séances concernées par cette facture</legend>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                            <label style={{ fontSize: '0.643rem', fontWeight: 600, color: 'var(--text-tertiary)' }}>Séances concernées par cette facture :</label>
+                            <span style={{ fontSize: '0.643rem', fontWeight: 600, color: 'var(--text-tertiary)' }} aria-hidden="true">Séances concernées par cette facture :</span>
                             {invoice.sent && !editingInvoiceSessions && (
                               <button
                                 onClick={async () => {
@@ -890,7 +913,7 @@ export default function SessionDetailModal({
                               )}
                             </>
                           )}
-                        </div>
+                        </fieldset>
                       </>
                     )}
                   </div>
@@ -898,8 +921,7 @@ export default function SessionDetailModal({
               })()}
             </div>
           </div>
-        </div >
-      </div>
+        </div>
     </>
   )
 }

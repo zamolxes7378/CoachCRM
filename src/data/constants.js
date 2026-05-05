@@ -2,12 +2,12 @@
 // CoachCRM — Constantes métier de production
 // ═══════════════════════════════════════════════════════
 
-export const therapyPhases = [
-  { key: 'debut', label: 'Début', color: '#2B6CB0', bg: '#EBF8FF' },
-  { key: 'analyse', label: 'Analyse', color: '#E67E22', bg: '#FFF3E0' },
-  { key: 'integration', label: 'Intégration', color: '#276749', bg: '#F0FFF4' },
-  { key: 'bilan_final', label: 'Bilan final', color: '#6B46C1', bg: '#FAF5FF' }
-]
+// Re-exports from canonical lib files — existing call sites unchanged
+export { MONTHS_FR } from '../lib/date'
+export { PHASES } from '../lib/phases'
+
+// therapyPhases is the legacy export name for PHASES
+export { PHASES as therapyPhases } from '../lib/phases'
 
 export const defaultTherapyConfig = {
   totalSessions: 20
@@ -29,8 +29,9 @@ export const recruitmentSources = [
 ]
 
 export const sessionRates = {
-  client: 75,
-  individual: 60
+  client: 75,   // legacy key for couple-type clients (DB type='client')
+  individual: 60,
+  family: 75
 }
 
 export const clientTypeLabels = {

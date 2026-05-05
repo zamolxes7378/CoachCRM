@@ -1,0 +1,21 @@
+-- ============================================================
+-- 20260422100000_uuid_for_jsonb_ids.sql
+--
+-- No-op anchor migration for UUID JSONB ID cleanup (P1-X).
+--
+-- The schema change is app-side only:
+--   - src/services/sponsorshipService.js:148
+--       id: `contact-parrainage-${Date.now()}` → crypto.randomUUID()
+--   - src/components/client/EditIdentityModal.jsx:711
+--       'pro-' + Date.now() → crypto.randomUUID()
+--
+-- Both sites generated ephemeral IDs stored inside JSONB columns
+-- (contacts.client_links[].id, clients.client_links[].proId).
+-- Switching to UUIDs aligns them with the UUID PK convention used
+-- everywhere else and avoids collisions under concurrent writes.
+--
+-- No ALTER TABLE needed — no new column, no type change.
+-- Findings closed: M-1, M-2.
+-- ============================================================
+
+-- (intentionally empty — real change is in application code above)

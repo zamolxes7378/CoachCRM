@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "supabase": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--read-only",
+        "--project-ref=ncjdvohafipisjcslrkk",
+        "--features=database,storage,functions,branching,debugging",
+        "--access-token=sbp_1dff93bc9ad3fbe18e5b6dd1474b6bfc287532cc"
+      ],
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "sbp_1dff93bc9ad3fbe18e5b6dd1474b6bfc287532cc"
+      }
+    }
+  }
+}

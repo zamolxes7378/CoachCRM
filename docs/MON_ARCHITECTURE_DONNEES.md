@@ -73,10 +73,12 @@ Un « client » peut être un couple, un individu, ou une famille. C'est le doss
 | `ai_synthesis` | JSONB | Synthèse IA globale (parcours, dynamique...) |
 | `session_rate` | numeric | Tarif spécifique de ce client (facultatif) |
 | `session_frequency` | integer | Fréquence des séances (par défaut 2 pour 1/15j) |
-| `axes_travail` | text | Axes de travail structurés |
-| `points_vigilance` | text | Points de vigilance structurés |
-| `objectifs` | text | Objectifs thérapeutiques structurés |
-| `dynamique_relationnelle` | text | Dynamique relationnelle structurée |
+| `note_dynamique` | text | Note libre — dynamique relationnelle (**colonne canonique**) |
+| `note_axes` | text | Note libre — axes de travail (**colonne canonique**) |
+| `note_vigilance` | text | Note libre — points de vigilance (**colonne canonique**) |
+| `note_objectifs` | text | Note libre — objectifs thérapeutiques (**colonne canonique**) |
+| `anonymized_at` | timestamptz | Date d'anonymisation (purge RGPD) |
+| `retention_until` | timestamptz | Échéance de conservation absolue |
 
 #### Structure JSONB `partner_a` / `partner_b`
 
@@ -251,6 +253,41 @@ Carnet d'adresses des professionnels partenaires (médecins, avocats, etc.).
 | `website` | text | Site web |
 | `note` | text | Notes |
 | `referrals` | JSONB | Orientations reçues/envoyées `[]` |
+| `created_at` | timestamptz | Date de création |
+| `updated_at` | timestamptz | Dernière modification |
+
+---
+
+### 9. `retention_policies` — Politique de conservation (P1-R)
+
+Registre canonique des durées de conservation par entité/régime. Mis à jour conjointement avec `docs/retention_policy.md`.
+
+| Champ | Type | Description |
+|-------|------|-------------|
+| `id` | bigint | Identifiant auto |
+| `entity` | text | Nom de la table ou catégorie logique |
+| `regime` | text | Régime de conservation (`post_therapy`, `accounting`, `erasure_request`, …) |
+| `retention_months` | integer | Durée en mois (0 = suppression immédiate) |
+| `legal_basis` | text | Base légale (ex : RGPD Art. 17) |
+| `notes` | text | Notes explicatives |
+| `created_at` | timestamptz | Date de création |
+
+---
+
+### 10. `dsar_requests` — Demandes de droits (DSAR, P1-R)
+
+Journal des demandes DSAR (accès, effacement, portabilité…). Accès admin uniquement via RLS.
+
+| Champ | Type | Description |
+|-------|------|-------------|
+| `id` | UUID (auto) | Identifiant unique |
+| `subject_email` | text | Email de la personne concernée |
+| `request_type` | text | `access`, `erasure`, `portability`, `rectification`, `restriction` |
+| `status` | text | `pending`, `in_progress`, `fulfilled`, `rejected`, `cancelled` |
+| `raised_at` | timestamptz | Date de réception |
+| `fulfilled_at` | timestamptz | Date de traitement |
+| `handler_id` | UUID → auth.users | Admin traitant |
+| `notes` | text | Notes internes |
 | `created_at` | timestamptz | Date de création |
 | `updated_at` | timestamptz | Dernière modification |
 

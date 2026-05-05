@@ -1,15 +1,19 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import React, { useState, useEffect, useCallback, Suspense, lazy } from 'react'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { supabase } from './lib/supabase'
 import { upsertUser } from './services/dataService'
+import { isEmailAllowed } from './lib/allowlist'
 import { DataProvider } from './context/DataContext'
 import { ToastProvider } from './context/ToastContext'
 import { ConfirmProvider } from './context/ConfirmContext'
 import Layout from './components/layout/Layout'
 import LoginPage from './pages/LoginPage'
 import OnboardingWizard from './components/OnboardingWizard'
+import ErrorBoundary from './components/ErrorBoundary'
+import { useIdleTimeout } from './hooks/useIdleTimeout'
+import IdleWarningModal from './components/IdleWarningModal'
 
-// Code splitting pour les pages
+// Code splitting pour les pages authentifiées
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
 const ClientsPage = lazy(() => import('./pages/ClientsPage'))
 const ClientDetailPage = lazy(() => import('./pages/ClientDetailPage'))
@@ -18,41 +22,52 @@ const FinancesPage = lazy(() => import('./pages/FinancesPage'))
 const AdminPage = lazy(() => import('./pages/AdminPage'))
 const DeletedClientsPage = lazy(() => import('./pages/DeletedClientsPage'))
 const ReseauProPage = lazy(() => import('./pages/ReseauProPage'))
+const DsarRequestsPage = lazy(() => import('./pages/admin/DsarRequestsPage'))
 const SettingsPage = lazy(() => import('./pages/SettingsPage'))
 const HelpPage = lazy(() => import('./pages/HelpPage'))
 
-/**
- * GlobalErrorBoundary — Capture les erreurs de rendu React pour éviter la page blanche.
- */
-class GlobalErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false, error: null, errorInfo: null };
-  }
-  static getDerivedStateFromError(error) { return { hasError: true, error }; }
-  componentDidCatch(error, errorInfo) {
-    console.error('[Fatal Error]', error, errorInfo);
-    this.setState({ errorInfo });
-  }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div style={{ padding: '40px', textAlign: 'center', color: 'var(--primary-700)', minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '20px' }}>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 700 }}>Une erreur est survenue</h2>
-          <p>L'application a rencontré un blocage inattendu.</p>
-          <pre style={{ textAlign: 'left', margin: '0 auto', maxWidth: 600, fontSize: '0.75rem', background: '#f8f8f8', padding: 16, borderRadius: 8, overflow: 'auto', maxHeight: 300, color: '#C53030' }}>
-            {this.state.error?.toString()}
-            {'\n\n'}
-            {this.state.errorInfo?.componentStack}
-          </pre>
-          <button className="btn btn-primary" onClick={() => window.location.href = '/'} style={{ alignSelf: 'center' }}>
-            Recharger l'application
-          </button>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
+// Pages publiques (accessibles sans authentification)
+const MentionsLegalesPage = lazy(() => import('./pages/public/MentionsLegalesPage'))
+const ConfidentialitePage = lazy(() => import('./pages/public/ConfidentialitePage'))
+const CguPage = lazy(() => import('./pages/public/CguPage'))
+const CookiesPage = lazy(() => import('./pages/public/CookiesPage'))
+const AccessibilitePage = lazy(() => import('./pages/public/AccessibilitePage'))
+
+// Routes publiques — rendues sans authentification
+const PUBLIC_ROUTES = ['/mentions-legales', '/confidentialite', '/cgu', '/cookies', '/accessibilite']
+
+/** Inline screen shown to Google-authenticated users not yet on the allowlist. */
+function PendingInviteScreen({ email, onSignOut }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      height: '100vh', background: 'var(--bg-main)'
+    }}>
+      <div style={{
+        textAlign: 'center', padding: '40px 32px', maxWidth: 440,
+        background: 'white', borderRadius: 16,
+        boxShadow: '0 4px 24px rgba(0,0,0,0.08)'
+      }}>
+        <div style={{ fontSize: '2.5rem', marginBottom: 16 }}>⏳</div>
+        <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--primary-700)', marginBottom: 8 }}>
+          En attente d'invitation
+        </h2>
+        <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 8 }}>
+          Votre compte <strong>{email}</strong> n'est pas encore autorisé.
+        </p>
+        <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 24 }}>
+          Contactez un administrateur pour demander l'accès.
+        </p>
+        <button
+          className="btn btn-secondary"
+          onClick={onSignOut}
+          style={{ width: '100%' }}
+        >
+          Se déconnecter
+        </button>
+      </div>
+    </div>
+  )
 }
 
 export default function App() {
@@ -60,12 +75,22 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [authError, setAuthError] = useState(null)
+  const [pendingEmail, setPendingEmail] = useState(null)
 
   // Sync Google user info to our users table
   async function syncUser(authUser) {
     if (!authUser) return null
     try {
       const meta = authUser.user_metadata || {}
+
+      // S-02 — Allowlist gate: verify email before any DB row creation.
+      const allowed = await isEmailAllowed(authUser.email)
+      if (!allowed) {
+        // TODO: wire pending_invites when Track C lands the table
+        console.info('[Auth] Non-allowlisted sign-in attempt:', authUser.email)
+        setPendingEmail(authUser.email)
+        return null
+      }
 
       // 1. Check if user already exists in DB
       const { data: existing, error: fetchError } = await supabase
@@ -156,6 +181,7 @@ export default function App() {
           if (mounted) {
             setUser(null)
             setShowOnboarding(false)
+            setPendingEmail(null)
           }
         }
       } catch (err) {
@@ -194,15 +220,111 @@ export default function App() {
     }
   }
 
+  const suspenseFallback = (
+    <div role="status" aria-live="polite" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '50vh' }}>
+      <div className="spinner" aria-hidden="true" />
+      <span className="sr-only">Chargement…</span>
+    </div>
+  )
+
+  return (
+    <ErrorBoundary>
+      <BrowserRouter>
+        <AppContent
+          loading={loading}
+          user={user}
+          authError={authError}
+          showOnboarding={showOnboarding}
+          setShowOnboarding={setShowOnboarding}
+          handleLogout={handleLogout}
+          pendingEmail={pendingEmail}
+          suspenseFallback={suspenseFallback}
+        />
+      </BrowserRouter>
+    </ErrorBoundary>
+  )
+}
+
+const IDLE_TIMEOUT_MS = 30 * 60_000   // 30 minutes
+const IDLE_WARNING_MS = 2 * 60_000    // warn 2 minutes before logout
+
+function AppContent({ loading, user, authError, showOnboarding, setShowOnboarding, handleLogout, pendingEmail, suspenseFallback }) {
+  const location = useLocation()
+  const isPublicRoute = PUBLIC_ROUTES.includes(location.pathname)
+
+  // Idle timeout state — only active when a user is logged in
+  const [idleWarningVisible, setIdleWarningVisible] = useState(false)
+  const [idleSecondsLeft, setIdleSecondsLeft] = useState(IDLE_WARNING_MS / 1000)
+  const idleCountdownRef = React.useRef(null)
+
+  const handleIdleWarn = useCallback(() => {
+    setIdleSecondsLeft(IDLE_WARNING_MS / 1000)
+    setIdleWarningVisible(true)
+    // Tick down the displayed countdown every second
+    idleCountdownRef.current = setInterval(() => {
+      setIdleSecondsLeft(s => Math.max(0, s - 1))
+    }, 1000)
+  }, [])
+
+  const handleIdleLogout = useCallback(() => {
+    clearInterval(idleCountdownRef.current)
+    setIdleWarningVisible(false)
+    handleLogout()
+  }, [handleLogout])
+
+  const handleStayConnected = useCallback(() => {
+    clearInterval(idleCountdownRef.current)
+    setIdleWarningVisible(false)
+    // The useIdleTimeout hook resets automatically on next user activity;
+    // clicking "Rester connecté" itself counts as activity.
+  }, [])
+
+  // Clean up countdown interval on unmount
+  useEffect(() => () => clearInterval(idleCountdownRef.current), [])
+
+  // Idle timer — only mount when user is authenticated and not on a public route
+  const idleActive = !!user && !isPublicRoute && !loading && !showOnboarding
+  useIdleTimeout(
+    idleActive ? IDLE_TIMEOUT_MS : Infinity,
+    IDLE_WARNING_MS,
+    handleIdleWarn,
+    handleIdleLogout
+  )
+
+  // Pages publiques — toujours accessibles, même sans authentification
+  if (isPublicRoute) {
+    return (
+      <Suspense fallback={suspenseFallback}>
+        <Routes>
+          <Route path="/mentions-legales" element={<MentionsLegalesPage />} />
+          <Route path="/confidentialite" element={<ConfidentialitePage />} />
+          <Route path="/cgu" element={<CguPage />} />
+          <Route path="/cookies" element={<CookiesPage />} />
+          <Route path="/accessibilite" element={<AccessibilitePage />} />
+        </Routes>
+      </Suspense>
+    )
+  }
+
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg-main)' }}>
+      <div role="status" aria-live="polite" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg-main)' }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ width: 40, height: 40, border: '3px solid var(--primary-200)', borderTopColor: 'var(--primary-600)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
+          <div aria-hidden="true" style={{ width: 40, height: 40, border: '3px solid var(--primary-200)', borderTopColor: 'var(--primary-600)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
+          <span className="sr-only">Chargement…</span>
           <p style={{ color: 'var(--text-secondary)' }}>Connexion en cours...</p>
         </div>
         <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
       </div>
+    )
+  }
+
+  if (pendingEmail) {
+    return (
+      <PendingInviteScreen
+        email={pendingEmail}
+        onSignOut={handleLogout}
+      />
     )
   }
 
@@ -215,36 +337,37 @@ export default function App() {
   }
 
   return (
-    <GlobalErrorBoundary>
-      <ToastProvider>
-        <ConfirmProvider>
-          <DataProvider user={user}>
-            <BrowserRouter>
-              <Layout user={user} onLogout={handleLogout}>
-                <Suspense fallback={
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '50vh' }}>
-                    <div className="spinner" />
-                  </div>
-                }>
-                  <Routes>
-                    <Route path="/" element={<DashboardPage user={user} />} />
-                    <Route path="/clients" element={<ClientsPage />} />
-                    <Route path="/clients/:id" element={<ClientDetailPage />} />
-                    <Route path="/sessions" element={<SessionsPage />} />
-                    <Route path="/finances" element={<FinancesPage />} />
-                    <Route path="/settings" element={<SettingsPage />} />
-                    <Route path="/help" element={<HelpPage />} />
-                    <Route path="/admin" element={user.role === 'admin' ? <AdminPage /> : <Navigate to="/" />} />
-                    <Route path="/admin/deleted-clients" element={user.role === 'admin' ? <DeletedClientsPage /> : <Navigate to="/" />} />
-                    <Route path="/admin/reseau-pro" element={user.role === 'admin' ? <ReseauProPage /> : <Navigate to="/" />} />
-                    <Route path="*" element={<Navigate to="/" />} />
-                  </Routes>
-                </Suspense>
-              </Layout>
-            </BrowserRouter>
-          </DataProvider>
-        </ConfirmProvider>
-      </ToastProvider>
-    </GlobalErrorBoundary>
+    <ToastProvider>
+      <ConfirmProvider>
+        <DataProvider user={user}>
+          <Layout user={user} onLogout={handleLogout}>
+            <Suspense fallback={suspenseFallback}>
+              <ErrorBoundary>
+              <Routes>
+                <Route path="/" element={<DashboardPage user={user} />} />
+                <Route path="/clients" element={<ClientsPage />} />
+                <Route path="/clients/:id" element={<ClientDetailPage />} />
+                <Route path="/sessions" element={<SessionsPage />} />
+                <Route path="/finances" element={<FinancesPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/help" element={<HelpPage />} />
+                <Route path="/admin" element={user.role === 'admin' ? <AdminPage /> : <Navigate to="/" />} />
+                <Route path="/admin/deleted-clients" element={user.role === 'admin' ? <DeletedClientsPage /> : <Navigate to="/" />} />
+                <Route path="/admin/reseau-pro" element={user.role === 'admin' ? <ReseauProPage /> : <Navigate to="/" />} />
+                <Route path="/admin/dsar" element={user.role === 'admin' ? <DsarRequestsPage /> : <Navigate to="/" />} />
+                <Route path="*" element={<Navigate to="/" />} />
+              </Routes>
+              </ErrorBoundary>
+            </Suspense>
+          </Layout>
+          <IdleWarningModal
+            visible={idleWarningVisible}
+            secondsLeft={idleSecondsLeft}
+            onStay={handleStayConnected}
+            onLogout={handleIdleLogout}
+          />
+        </DataProvider>
+      </ConfirmProvider>
+    </ToastProvider>
   )
 }

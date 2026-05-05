@@ -285,6 +285,7 @@ export default function ClientTimelinePanel({
                           onMouseEnter={e => { if (!item.done) { e.currentTarget.style.background = 'var(--success)'; e.currentTarget.style.color = 'white'; } }}
                           onMouseLeave={e => { if (!item.done) { e.currentTarget.style.background = item.done ? 'var(--success)' : 'transparent'; e.currentTarget.style.color = item.done ? 'white' : 'var(--success)'; } }}
                           title={item.done ? 'Marquer comme non effectué' : 'Confirmer comme effectué'}
+                          aria-label={item.done ? 'Marquer comme non effectué' : 'Confirmer comme effectué'}
                         >
                           <CheckCircle size={14} />
                         </button>
@@ -302,7 +303,8 @@ export default function ClientTimelinePanel({
                         transition: 'all 0.15s'
                       }} onMouseEnter={e => { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = 'var(--primary-600)'; }}
                         onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-tertiary)'; }}
-                        title="Modifier">
+                        title="Modifier"
+                        aria-label="Modifier ce contact">
                         <Edit3 size={12} />
                       </button>
                       <button onClick={() => handleDeleteContact(item.id)} style={{
@@ -312,7 +314,8 @@ export default function ClientTimelinePanel({
                         transition: 'all 0.15s'
                       }} onMouseEnter={e => { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = 'var(--error)'; }}
                         onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-tertiary)'; }}
-                        title="Supprimer">
+                        title="Supprimer"
+                        aria-label="Supprimer ce contact">
                         <Trash2 size={12} />
                       </button>
                     </div>

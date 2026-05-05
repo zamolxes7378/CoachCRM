@@ -1,6 +1,30 @@
 import { supabase } from '../lib/supabase.js'
 
 // ============================================
+// Access log — Art. 9 sensitive data reads
+// ============================================
+/**
+ * Emit an access_log row after a successful sensitive-data read.
+ * Non-fatal: failures are logged to console and do not propagate.
+ * In production this should be routed through a service_role-capable
+ * edge function; on the client it will be blocked by RLS for non-admin users.
+ *
+ * @param {string} entity     - e.g. 'report', 'client', 'session'
+ * @param {string} entity_id  - UUID of the accessed row
+ * @param {string} action     - e.g. 'read_report', 'read_notes', 'read_session_summary'
+ */
+async function logAccess(entity, entity_id, action) {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+  const { error } = await supabase
+    .from('access_log')
+    .insert({ user_id: user.id, entity, entity_id, action })
+  if (error) {
+    console.warn('[dataService] access_log write failed:', error.message)
+  }
+}
+
+// ============================================
 // Users
 // ============================================
 export async function getCurrentUser(email) {
@@ -8,8 +32,8 @@ export async function getCurrentUser(email) {
     .from('users')
     .select('*')
     .eq('email', email)
-    .single()
-  if (error) console.error('getUser error:', error.message)
+    .maybeSingle()
+  if (error) throw new Error(`getCurrentUser failed: ${error.message}`)
   return data
 }
 
@@ -19,7 +43,7 @@ export async function upsertUser({ id, name, email, role = 'therapist', photo_ur
     .upsert({ id, name, email, role, photo_url }, { onConflict: 'email' })
     .select()
     .single()
-  if (error) console.error('upsertUser error:', error.message)
+  if (error) throw new Error(`upsertUser failed: ${error.message}`)
   return data
 }
 
@@ -27,34 +51,14 @@ export async function upsertUser({ id, name, email, role = 'therapist', photo_ur
 // Clients
 // ============================================
 export async function getClients(userId) {
-  let allData = [];
-  let from = 0;
-  const step = 1000;
-  let fetchMore = true;
-
-  while (fetchMore) {
-    const { data, error } = await supabase
-      .from('clients')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .range(from, from + step - 1);
-
-    if (error) {
-      console.error('getClients error:', error.message);
-      break;
-    }
-
-    if (data && data.length > 0) {
-      allData = [...allData, ...data];
-    }
-    if (!data || data.length < step) {
-      fetchMore = false;
-    } else {
-      from += step;
-    }
-  }
-  return allData;
+  const { data, error } = await supabase
+    .from('clients')
+    .select('id, user_id, type, phase, status, source, start_date, created_at, updated_at, deleted_at, session_rate, session_frequency, billing_address, note_dynamique, note_axes, note_vigilance, note_objectifs, client_links, external_referrer, referred_by, prospect_stage, partner_a, partner_b')
+    .eq('user_id', userId)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+  if (error) throw new Error(`getClients failed: ${error.message}`)
+  return data || []
 }
 
 export async function getClient(clientId) {
@@ -63,7 +67,11 @@ export async function getClient(clientId) {
     .select('*')
     .eq('id', clientId)
     .single()
-  if (error) console.error('getClient error:', error.message)
+  if (error) throw new Error(`getClient failed: ${error.message}`)
+  // Emit access log for sensitive columns (notes, ai_synthesis) — Art. 9
+  if (data) {
+    await logAccess('client', clientId, 'read_client_sensitive')
+  }
   return data
 }
 
@@ -73,7 +81,7 @@ export async function createClient(client) {
     .insert(client)
     .select()
     .single()
-  if (error) console.error('createClient error:', error.message)
+  if (error) throw new Error(`createClient failed: ${error.message}`)
   return data
 }
 
@@ -84,53 +92,31 @@ export async function updateClient(clientId, updates) {
     .eq('id', clientId)
     .select()
     .single()
-  if (error) console.error('updateClient error:', error.message)
+  if (error) throw new Error(`updateClient failed: ${error.message}`)
   return data
 }
 
 export async function deleteClient(clientId) {
-  // Delete related data first (sessions, reports, contacts)
-  await supabase.from('reports').delete().eq('client_id', clientId)
-  await supabase.from('sessions').delete().eq('client_id', clientId)
-  await supabase.from('contacts').delete().eq('client_id', clientId)
-  // Delete the client
+  // ON DELETE CASCADE declared on reports.client_id, sessions.client_id, contacts.client_id
+  // in migration.sql — deleting the client row cascades to all children automatically.
   const { error } = await supabase.from('clients').delete().eq('id', clientId)
-  if (error) console.error('deleteClient error:', error.message)
-  return !error
+  if (error) throw new Error(`deleteClient failed: ${error.message}`)
+  return true
 }
 
 // ============================================
 // Sessions
 // ============================================
 export async function getSessions(userId) {
-  let allData = [];
-  let from = 0;
-  const step = 1000;
-  let fetchMore = true;
-
-  while (fetchMore) {
-    const { data, error } = await supabase
-      .from('sessions')
-      .select('*')
-      .eq('user_id', userId)
-      .order('date', { ascending: false })
-      .range(from, from + step - 1);
-
-    if (error) {
-      console.error('getSessions error:', error.message);
-      break;
-    }
-
-    if (data && data.length > 0) {
-      allData = [...allData, ...data];
-    }
-    if (!data || data.length < step) {
-      fetchMore = false;
-    } else {
-      from += step;
-    }
-  }
-  return allData;
+  // Join clients!inner so sessions belonging to soft-deleted clients are excluded server-side.
+  const { data, error } = await supabase
+    .from('sessions')
+    .select('*, clients!inner(deleted_at)')
+    .eq('user_id', userId)
+    .is('clients.deleted_at', null)
+    .order('date', { ascending: false })
+  if (error) throw new Error(`getSessions failed: ${error.message}`)
+  return (data || []).map(({ clients: _c, ...s }) => s)
 }
 
 export async function getSessionsByClient(clientId) {
@@ -139,7 +125,7 @@ export async function getSessionsByClient(clientId) {
     .select('*')
     .eq('client_id', clientId)
     .order('date', { ascending: true })
-  if (error) console.error('getSessionsByClient error:', error.message)
+  if (error) throw new Error(`getSessionsByClient failed: ${error.message}`)
   return data || []
 }
 
@@ -149,7 +135,7 @@ export async function createSession(session) {
     .insert(session)
     .select()
     .single()
-  if (error) console.error('createSession error:', error.message)
+  if (error) throw new Error(`createSession failed: ${error.message}`)
   return data
 }
 
@@ -160,7 +146,7 @@ export async function updateSession(sessionId, updates) {
     .eq('id', sessionId)
     .select()
     .single()
-  if (error) console.error('updateSession error:', error.message)
+  if (error) throw new Error(`updateSession failed: ${error.message}`)
   return data
 }
 
@@ -168,8 +154,8 @@ export async function deleteSession(sessionId) {
   // Delete related reports first
   await supabase.from('reports').delete().eq('session_id', sessionId)
   const { error } = await supabase.from('sessions').delete().eq('id', sessionId)
-  if (error) console.error('deleteSession error:', error.message)
-  return !error
+  if (error) throw new Error(`deleteSession failed: ${error.message}`)
+  return true
 }
 
 export async function deleteSessions(sessionIds) {
@@ -177,21 +163,28 @@ export async function deleteSessions(sessionIds) {
   // Delete related reports first
   await supabase.from('reports').delete().in('session_id', sessionIds)
   const { error } = await supabase.from('sessions').delete().in('id', sessionIds)
-  if (error) console.error('deleteSessions error:', error.message)
-  return !error
+  if (error) throw new Error(`deleteSessions failed: ${error.message}`)
+  return true
 }
 
 // ============================================
 // Reports
 // ============================================
 export async function getReports(userId) {
+  // Join clients!inner so reports for soft-deleted clients are excluded server-side.
+  // RLS on reports also enforces client_id IN (SELECT id FROM clients WHERE user_id = auth.uid()).
   const { data, error } = await supabase
     .from('reports')
-    .select('*, sessions!inner(user_id)')
-    .eq('sessions.user_id', userId)
+    .select('id, client_id, session_id, date, content, tags, client_name, session_number, narrative, themes, emotions_a, emotions_b, patterns, progress, vigilance, exercises, pedagogical_content, created_at, clients!inner(deleted_at)')
+    .is('clients.deleted_at', null)
     .order('date', { ascending: false })
-  if (error) console.error('getReports error:', error.message)
-  return data || []
+  if (error) throw new Error(`getReports failed: ${error.message}`)
+  const rows = (data || []).map(({ clients: _c, ...r }) => r)
+  // Emit one access_log row per report read (narrative + vigilance are Art. 9 sensitive)
+  for (const r of rows) {
+    await logAccess('report', r.id, 'read_report')
+  }
+  return rows
 }
 
 export async function createReport(report) {
@@ -200,7 +193,7 @@ export async function createReport(report) {
     .insert(report)
     .select()
     .single()
-  if (error) console.error('createReport error:', error.message)
+  if (error) throw new Error(`createReport failed: ${error.message}`)
   return data
 }
 
@@ -213,7 +206,7 @@ export async function getTherapyCycles(userId) {
     .select('*')
     .eq('user_id', userId)
     .order('start_date', { ascending: false })
-  if (error) console.error('getTherapyCycles error:', error.message)
+  if (error) throw new Error(`getTherapyCycles failed: ${error.message}`)
   return data || []
 }
 
@@ -223,7 +216,7 @@ export async function createTherapyCycle(cycle) {
     .insert(cycle)
     .select()
     .single()
-  if (error) console.error('createTherapyCycle error:', error.message)
+  if (error) throw new Error(`createTherapyCycle failed: ${error.message}`)
   return data
 }
 
@@ -234,7 +227,7 @@ export async function updateTherapyCycle(cycleId, updates) {
     .eq('id', cycleId)
     .select()
     .single()
-  if (error) console.error('updateTherapyCycle error:', error.message)
+  if (error) throw new Error(`updateTherapyCycle failed: ${error.message}`)
   return data
 }
 
@@ -243,8 +236,8 @@ export async function deleteTherapyCycle(cycleId) {
     .from('therapy_cycles')
     .delete()
     .eq('id', cycleId)
-  if (error) console.error('deleteTherapyCycle error:', error.message)
-  return !error
+  if (error) throw new Error(`deleteTherapyCycle failed: ${error.message}`)
+  return true
 }
 
 // ============================================
@@ -256,7 +249,7 @@ export async function getContacts(userId) {
     .select('*')
     .eq('user_id', userId)
     .order('date', { ascending: false })
-  if (error) console.error('getContacts error:', error.message)
+  if (error) throw new Error(`getContacts failed: ${error.message}`)
   return data || []
 }
 
@@ -266,7 +259,7 @@ export async function getContactsByClient(clientId) {
     .select('*')
     .eq('client_id', clientId)
     .order('date', { ascending: false })
-  if (error) console.error('getContactsByClient error:', error.message)
+  if (error) throw new Error(`getContactsByClient failed: ${error.message}`)
   return data || []
 }
 
@@ -276,7 +269,7 @@ export async function createContact(contact) {
     .insert(contact)
     .select()
     .single()
-  if (error) console.error('createContact error:', error.message)
+  if (error) throw new Error(`createContact failed: ${error.message}`)
   return data
 }
 
@@ -287,7 +280,7 @@ export async function updateContact(contactId, updates) {
     .eq('id', contactId)
     .select()
     .single()
-  if (error) console.error('updateContact error:', error.message)
+  if (error) throw new Error(`updateContact failed: ${error.message}`)
   return data
 }
 
@@ -296,8 +289,8 @@ export async function deleteContact(contactId) {
     .from('contacts')
     .delete()
     .eq('id', contactId)
-  if (error) console.error('deleteContact error:', error.message)
-  return !error
+  if (error) throw new Error(`deleteContact failed: ${error.message}`)
+  return true
 }
 
 // ============================================
@@ -308,8 +301,8 @@ export async function getSettings(userId) {
     .from('settings')
     .select('*')
     .eq('user_id', userId)
-    .single()
-  if (error && error.code !== 'PGRST116') console.error('getSettings error:', error.message)
+    .maybeSingle()
+  if (error) throw new Error(`getSettings failed: ${error.message}`)
   return data
 }
 
@@ -319,7 +312,7 @@ export async function upsertSettings(userId, settings) {
     .upsert({ user_id: userId, ...settings, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
     .select()
     .single()
-  if (error) console.error('upsertSettings error:', error.message)
+  if (error) throw new Error(`upsertSettings failed: ${error.message}`)
   return data
 }
 
@@ -332,7 +325,7 @@ export async function getProfessionals(userId) {
     .select('*')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
-  if (error) console.error('getProfessionals error:', error.message)
+  if (error) throw new Error(`getProfessionals failed: ${error.message}`)
   return data || []
 }
 
@@ -342,7 +335,7 @@ export async function createProfessional(professional) {
     .insert(professional)
     .select()
     .single()
-  if (error) console.error('createProfessional error:', error.message)
+  if (error) throw new Error(`createProfessional failed: ${error.message}`)
   return data
 }
 
@@ -353,7 +346,7 @@ export async function updateProfessional(professionalId, updates) {
     .eq('id', professionalId)
     .select()
     .single()
-  if (error) console.error('updateProfessional error:', error.message)
+  if (error) throw new Error(`updateProfessional failed: ${error.message}`)
   return data
 }
 
@@ -362,13 +355,13 @@ export async function deleteProfessional(professionalId) {
     .from('professionals')
     .delete()
     .eq('id', professionalId)
-  if (error) console.error('deleteProfessional error:', error.message)
-  return !error
+  if (error) throw new Error(`deleteProfessional failed: ${error.message}`)
+  return true
 }
 
 export async function deleteProfessionals(professionalIds) {
   if (!professionalIds?.length) return false
   const { error } = await supabase.from('professionals').delete().in('id', professionalIds)
-  if (error) console.error('deleteProfessionals error:', error.message)
-  return !error
+  if (error) throw new Error(`deleteProfessionals failed: ${error.message}`)
+  return true
 }

@@ -8,11 +8,17 @@ export default function LoginPage({ error }) {
 
   const handleGoogleLogin = async () => {
     setLoginError(null)
+    const redirectTo = import.meta.env.VITE_APP_URL || window.location.origin
+    const workspaceDomain = import.meta.env.VITE_GOOGLE_WORKSPACE_DOMAIN
+
+    const oauthOptions = { redirectTo }
+    if (workspaceDomain) {
+      oauthOptions.queryParams = { hd: workspaceDomain }
+    }
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/?callback=true`
-      }
+      options: oauthOptions
     })
     if (error) {
       console.error('Google login error:', error)
@@ -185,20 +191,22 @@ export default function LoginPage({ error }) {
           </p>
 
           {/* Google Login Button */}
-          {(error || loginError) && (
-              <div style={{
-                background: 'var(--red-50)',
-                color: 'var(--red-700)',
-                padding: 'var(--space-md)',
-                borderRadius: 'var(--radius-md)',
-                fontSize: '0.875rem',
-                marginBottom: 'var(--space-xl)',
-                borderLeft: '4px solid var(--red-500)',
-                animation: 'slideUp 0.3s ease-out'
-              }}>
-                {error || loginError}
-              </div>
-            )}
+          {error && (
+            <div id="login-error-msg" role="alert" style={{
+              padding: '12px', background: 'rgba(255, 68, 68, 0.1)', border: '1px solid rgba(255, 68, 68, 0.2)',
+              borderRadius: '8px', color: '#ff6b6b', fontSize: '0.857rem', marginBottom: '16px', textAlign: 'center'
+            }}>
+              {error}
+            </div>
+          )}
+          {loginError && (
+            <div id="login-error-msg" role="alert" style={{
+              padding: '12px', background: 'rgba(255, 68, 68, 0.1)', border: '1px solid rgba(255, 68, 68, 0.2)',
+              borderRadius: '8px', color: '#ff6b6b', fontSize: '0.857rem', marginBottom: '16px', textAlign: 'center'
+            }}>
+              {loginError}
+            </div>
+          )}
           <button
             onClick={handleGoogleLogin}
             style={{
@@ -212,7 +220,7 @@ export default function LoginPage({ error }) {
             onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.2)' }}
             onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.15)' }}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24">
+            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
               <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
               <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
@@ -230,9 +238,14 @@ export default function LoginPage({ error }) {
 
           {/* Email signup form */}
           <div style={{ marginBottom: 16 }}>
+            <label htmlFor="login-email" className="sr-only">Adresse email professionnelle</label>
             <input
+              id="login-email"
               type="email"
+              autoComplete="email"
               placeholder="Votre adresse email professionnelle"
+              aria-invalid={!!(error || loginError) || undefined}
+              aria-describedby={(error || loginError) ? 'login-error-msg' : undefined}
               style={{
                 width: '100%', padding: '12px 16px', borderRadius: 10,
                 background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
@@ -269,7 +282,7 @@ export default function LoginPage({ error }) {
           }}>
             {[
               { icon: CheckCircle, text: 'Gratuit jusqu\'à 5 clients, sans engagement' },
-              { icon: Shield, text: 'Données hébergées en France, conformes RGPD' },
+              { icon: Shield, text: 'Hébergement Supabase · région UE (eu-west-2, Londres — GDPR-adéquat)' },
               { icon: Sparkles, text: 'IA intégrée, aucune configuration requise' }
             ].map((item, i) => {
               const TrustIcon = item.icon
@@ -301,7 +314,7 @@ export default function LoginPage({ error }) {
 
           {/* Footer */}
           <p style={{ marginTop: 20, fontSize: '0.643rem', color: 'rgba(255,255,255,0.25)', lineHeight: 1.5 }}>
-            En vous connectant, vous acceptez nos <span style={{ color: 'rgba(218,165,32,0.6)', cursor: 'pointer' }}>conditions d'utilisation</span> et notre <span style={{ color: 'rgba(218,165,32,0.6)', cursor: 'pointer' }}>politique de confidentialité</span>.
+            En vous connectant, vous acceptez nos <a href="/cgu" style={{ color: 'rgba(218,165,32,0.6)' }}>conditions d'utilisation</a> et notre <a href="/confidentialite" style={{ color: 'rgba(218,165,32,0.6)' }}>politique de confidentialité</a>.
           </p>
 
 

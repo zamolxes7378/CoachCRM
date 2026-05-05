@@ -1,9 +1,13 @@
-import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useToast } from './ToastContext'
 import * as ds from '../services/dataService'
 import * as invService from '../services/invoiceService'
+import { supabase } from '../lib/supabase.js'
+import { reportError } from '../lib/errorReporter'
+import { emitAuditLog } from '../lib/auditLog'
 import { checkAllianceTransition, checkAllianceAfterBatchDelete, isAllianceValidated } from '../services/allianceService'
 import { adaptClient, adaptSession, adaptReport, adaptProfessional, adaptTherapyCycle, adaptContact, adaptInvoice, unadaptClient, unadaptSession, unadaptProfessional, unadaptTherapyCycle, unadaptContact } from '../data/adapters'
+import { applyUpdate, applyDelete, applyDeleteMany, applyInsert } from '../data/listUpdaters'
 import { Sprout, Search, Target, Award, UserPlus } from 'lucide-react'
 import {
   therapyPhases as defaultPhases, defaultTherapyConfig as defaultTherapyCfg,
@@ -28,6 +32,8 @@ export function DataProvider({ user, children }) {
   const { showToast } = useToast()
   const [rawClients, setRawClients] = useState([])
   const [rawSessions, setRawSessions] = useState([])
+  const rawSessionsRef = useRef(rawSessions)
+  useEffect(() => { rawSessionsRef.current = rawSessions }, [rawSessions])
   const [rawReports, setRawReports] = useState([])
   const [rawContacts, setRawContacts] = useState([])
   const [rawProfessionals, setRawProfessionals] = useState([])
@@ -35,6 +41,7 @@ export function DataProvider({ user, children }) {
   const [rawInvoices, setRawInvoices] = useState([])
   const [settings, setSettings] = useState(null)
   const [loading, setLoading] = useState(true)
+  const inflightRef = useRef(false)
 
   // Derived values — merge DB settings over defaults
   const sessionRates = useMemo(() => ({
@@ -54,6 +61,9 @@ export function DataProvider({ user, children }) {
 
   const loadData = useCallback(async () => {
     if (!user?.id) return
+    // H-06: inflight guard — skip if a load is already in progress
+    if (inflightRef.current) return
+    inflightRef.current = true
     setLoading(true)
     try {
       const [c, s, r, st, p, ct, tc, inv] = await Promise.all([
@@ -78,9 +88,10 @@ export function DataProvider({ user, children }) {
       setSettings(st)
       setRawProfessionals(p)
     } catch (err) {
-      console.error('DataProvider load error:', err)
+      reportError(err, { operation: 'loadData', entity: 'provider' })
       showToast('Erreur de chargement des données. Vérifiez votre connexion.', 'error')
     } finally {
+      inflightRef.current = false
       setLoading(false)
     }
   }, [user?.id])
@@ -122,7 +133,7 @@ export function DataProvider({ user, children }) {
       const endTime = new Date(new Date(s.date).getTime() + (s.duration || 60) * 60000)
       const isCompleted = now >= endTime
 
-      const client = clients?.find(c => c.id === s.clientId)
+      const client = clientById.get(s.clientId)
       const effectiveAmount = s.paymentAmount ?? sessionRates[client?.type] ?? null
       const isToConfirm = s.status === 'scheduled' && isCompleted && !s.paymentMethod && effectiveAmount !== 0
       const isConfirmed = (s.status === 'completed' || (isCompleted && (!!s.paymentMethod || effectiveAmount === 0))) && s.status !== 'cancelled'
@@ -135,12 +146,19 @@ export function DataProvider({ user, children }) {
         status: isConfirmed ? 'completed' : s.status
       }
     })
-  }, [rawSessions, clients, sessionRates])
+  }, [rawSessions, clientById, sessionRates])
   const reports = useMemo(() => rawReports.map(adaptReport), [rawReports])
   const contacts = useMemo(() => rawContacts.map(adaptContact), [rawContacts])
   const professionals = useMemo(() => rawProfessionals.map(adaptProfessional), [rawProfessionals])
   const therapyCycles = useMemo(() => rawTherapyCycles.map(adaptTherapyCycle), [rawTherapyCycles])
   const invoices = useMemo(() => rawInvoices.map(adaptInvoice), [rawInvoices])
+
+  // clientById: Map<id, client> — O(1) lookup, replaces .find() call sites
+  const clientById = useMemo(() => {
+    const m = new Map()
+    clients.forEach(c => m.set(c.id, c))
+    return m
+  }, [clients])
 
   // Invoice helpers — memoized lookup maps
   const invoiceBySessionId = useMemo(() => {
@@ -180,8 +198,19 @@ export function DataProvider({ user, children }) {
     return client.phase === 'prospect'
   }, [])
 
+  // ── Internal helper: refresh affected clients after an alliance check ──
+  // checkAllianceTransition / checkAllianceAfterBatchDelete call ds.updateClient
+  // internally; we must sync the returned DB rows back into local state.
+  const _refreshAllianceClients = useCallback(async (clientIds) => {
+    if (!clientIds?.length) return
+    const updated = await Promise.all(clientIds.map(id => ds.getClient(id)))
+    updated.forEach(row => {
+      if (row) setRawClients(prev => applyUpdate(prev, row.id, row))
+    })
+  }, [])
+
   const value = {
-    clients, sessions, reports, contacts, settings, loading, professionals, therapyCycles, invoices,
+    clients, clientById, sessions, reports, contacts, settings, loading, professionals, therapyCycles, invoices,
     sessionRates, recruitmentSources, therapyPhases, defaultTherapyConfig,
     phaseIcons, phaseColors, defaultPhaseKey, getPhaseColor, getPhaseIcon, isProspect,
     prospectStages,
@@ -190,14 +219,17 @@ export function DataProvider({ user, children }) {
     formatDate, formatTime, formatRelativeDate, formatDashboardDate, getTodaySessions,
     getInvoiceForSession, getInvoicesByClient,
     refreshData: loadData,
+
+    // ── Clients ──
     updateClient: async (id, updates) => {
       try {
-        const result = await ds.updateClient(id, unadaptClient(updates))
-        if (result) await loadData()
-        return result
+        const row = await ds.updateClient(id, unadaptClient(updates))
+        if (row) setRawClients(prev => applyUpdate(prev, id, row))
+        return row
       } catch (err) {
-        console.error('updateClient error:', err)
+        reportError(err, { operation: 'updateClient', entity: 'client', entity_id: id })
         showToast('Erreur lors de la mise à jour du client.', 'error')
+        return null
       }
     },
     createClient: async (client) => {
@@ -207,27 +239,33 @@ export function DataProvider({ user, children }) {
           return null
         }
         const payload = { ...unadaptClient(client), user_id: user.id }
-        const result = await ds.createClient(payload)
-        if (result) {
-          await loadData()
+        const row = await ds.createClient(payload)
+        if (row) {
+          setRawClients(prev => applyInsert(prev, row))
           showToast('Client créé avec succès.', 'success')
         }
-        return result
+        return row
       } catch (err) {
-        console.error('createClient error:', err)
+        reportError(err, { operation: 'createClient', entity: 'client' })
         showToast('Erreur lors de la création du client.', 'error')
       }
     },
     deleteClient: async (id) => {
       try {
-        const result = await ds.deleteClient(id)
-        if (result) await loadData()
-        return result
+        const ok = await ds.deleteClient(id)
+        if (ok) {
+          setRawClients(prev => applyDelete(prev, id))
+          await emitAuditLog({ entity: 'client', entity_id: id, action: 'delete_client' })
+        }
+        return ok
       } catch (err) {
-        console.error('deleteClient error:', err)
+        reportError(err, { operation: 'deleteClient', entity: 'client', entity_id: id })
         showToast('Erreur lors de la suppression du client.', 'error')
+        return null
       }
     },
+
+    // ── Sessions ──
     updateSession: async (id, updates) => {
       try {
         // Auto-persist completion for past sessions — only if payment condition met
@@ -244,15 +282,18 @@ export function DataProvider({ user, children }) {
             }
           }
         }
-        const result = await ds.updateSession(id, unadaptSession(updates))
-        if (result) {
-          await checkAllianceTransition(result, updates, rawClients, rawSessions, sessionRates, defaultPhaseKey)
-          await loadData()
+        const row = await ds.updateSession(id, unadaptSession(updates))
+        if (row) {
+          setRawSessions(prev => applyUpdate(prev, id, row))
+          // Alliance check may update one client's phase — re-fetch that client
+          await checkAllianceTransition(row, updates, rawClients, rawSessions, sessionRates, defaultPhaseKey)
+          if (row.client_id) await _refreshAllianceClients([row.client_id])
         }
-        return result
+        return row
       } catch (err) {
-        console.error('updateSession error:', err)
+        reportError(err, { operation: 'updateSession', entity: 'session', entity_id: id })
         showToast('Erreur lors de la mise à jour de la séance.', 'error')
+        return null
       }
     },
     createSession: async (session) => {
@@ -262,208 +303,315 @@ export function DataProvider({ user, children }) {
           return null
         }
         const payload = { ...unadaptSession(session), user_id: user.id }
-        const result = await ds.createSession(payload)
-        if (result) {
-          await checkAllianceTransition(result, session, rawClients, rawSessions, sessionRates, defaultPhaseKey)
-          await loadData()
+        const row = await ds.createSession(payload)
+        if (row) {
+          setRawSessions(prev => applyInsert(prev, row))
+          // Alliance check may update the client's phase — re-fetch that client
+          const updatedSessions = [row, ...rawSessions]
+          await checkAllianceTransition(row, session, rawClients, updatedSessions, sessionRates, defaultPhaseKey)
+          if (row.client_id) await _refreshAllianceClients([row.client_id])
           showToast('Séance créée avec succès.', 'success')
         }
-        return result
+        return row
       } catch (err) {
-        console.error('createSession error:', err)
+        reportError(err, { operation: 'createSession', entity: 'session' })
         showToast('Erreur lors de la création de la séance.', 'error')
         return null
       }
     },
-    createContact: async (contact) => {
-      const result = await ds.createContact(unadaptContact({ ...contact, userId: user.id }))
-      if (result) await loadData()
-      return result
-    },
-    updateContact: async (id, updates) => {
-      const result = await ds.updateContact(id, unadaptContact(updates))
-      if (result) await loadData()
-      return result
-    },
-    deleteContact: async (id) => {
-      const result = await ds.deleteContact(id)
-      if (result) await loadData()
-      return result
-    },
     deleteSession: async (id) => {
       try {
-        const result = await ds.deleteSession(id)
-        if (result) {
-          await checkAllianceAfterBatchDelete([id], rawSessions, rawClients, sessionRates)
-          await loadData()
+        // Snapshot before deletion for alliance check
+        const sessionsSnapshot = [...rawSessionsRef.current]
+        const ok = await ds.deleteSession(id)
+        if (ok) {
+          setRawSessions(prev => applyDelete(prev, id))
+          await emitAuditLog({ entity: 'session', entity_id: id, action: 'delete_session' })
+          await checkAllianceAfterBatchDelete([id], sessionsSnapshot, rawClients, sessionRates)
+          // Re-fetch clients that may have had their phase changed
+          const affectedClientIds = [...new Set(
+            sessionsSnapshot.filter(s => s.id === id).map(s => s.client_id).filter(Boolean)
+          )]
+          await _refreshAllianceClients(affectedClientIds)
           showToast('Séance supprimée.', 'success')
         }
-        return result
+        return ok
       } catch (err) {
-        console.error('deleteSession error:', err)
+        reportError(err, { operation: 'deleteSession', entity: 'session', entity_id: id })
         showToast('Erreur lors de la suppression.', 'error')
+        return null
       }
     },
     deleteSessions: async (ids) => {
       try {
         // Snapshot raw sessions BEFORE deletion for alliance check
-        const sessionsSnapshot = [...rawSessions]
-        const result = await ds.deleteSessions(ids)
-        if (result) {
+        const sessionsSnapshot = [...rawSessionsRef.current]
+        const ok = await ds.deleteSessions(ids)
+        if (ok) {
+          setRawSessions(prev => applyDeleteMany(prev, ids))
           await checkAllianceAfterBatchDelete(ids, sessionsSnapshot, rawClients, sessionRates)
-          await loadData()
+          // Re-fetch clients that may have had their phase changed
+          const deletedSet = new Set(ids)
+          const affectedClientIds = [...new Set(
+            sessionsSnapshot.filter(s => deletedSet.has(s.id)).map(s => s.client_id).filter(Boolean)
+          )]
+          await _refreshAllianceClients(affectedClientIds)
           showToast(`${ids.length} séance${ids.length > 1 ? 's' : ''} supprimée${ids.length > 1 ? 's' : ''}.`, 'success')
         }
-        return result
+        return ok
       } catch (err) {
-        console.error('deleteSessions error:', err)
+        reportError(err, { operation: 'deleteSessions', entity: 'session' })
         showToast('Erreur lors de la suppression groupée.', 'error')
+        return null
       }
     },
+
+    // ── Contacts ──
+    createContact: async (contact) => {
+      try {
+        const row = await ds.createContact(unadaptContact({ ...contact, userId: user.id }))
+        if (row) setRawContacts(prev => applyInsert(prev, row))
+        return row
+      } catch (err) {
+        reportError(err, { operation: 'createContact', entity: 'contact' })
+        showToast('Erreur lors de la création du contact.', 'error')
+      }
+    },
+    updateContact: async (id, updates) => {
+      try {
+        const row = await ds.updateContact(id, unadaptContact(updates))
+        if (row) setRawContacts(prev => applyUpdate(prev, id, row))
+        return row
+      } catch (err) {
+        reportError(err, { operation: 'updateContact', entity: 'contact', entity_id: id })
+        showToast('Erreur lors de la mise à jour du contact.', 'error')
+      }
+    },
+    deleteContact: async (id) => {
+      try {
+        const ok = await ds.deleteContact(id)
+        if (ok) setRawContacts(prev => applyDelete(prev, id))
+        return ok
+      } catch (err) {
+        reportError(err, { operation: 'deleteContact', entity: 'contact', entity_id: id })
+        showToast('Erreur lors de la suppression du contact.', 'error')
+      }
+    },
+
+    // ── Settings ──
     upsertSettings: async (settingsData) => {
       try {
         const result = await ds.upsertSettings(user.id, settingsData)
         if (result) { setSettings(result); showToast('Paramètres sauvegardés.', 'success') }
         return result
       } catch (err) {
-        console.error('upsertSettings error:', err)
+        reportError(err, { operation: 'upsertSettings', entity: 'settings' })
         showToast('Erreur lors de la sauvegarde des paramètres.', 'error')
+        return null
       }
     },
+
+    // ── Professionals ──
     createProfessional: async (professional) => {
       try {
-        const result = await ds.createProfessional({ ...unadaptProfessional(professional), user_id: user.id })
-        if (result) { await loadData(); showToast('Professionnel créé.', 'success') }
-        return result
+        const row = await ds.createProfessional({ ...unadaptProfessional(professional), user_id: user.id })
+        if (row) {
+          setRawProfessionals(prev => applyInsert(prev, row))
+          showToast('Professionnel créé.', 'success')
+        }
+        return row
       } catch (err) {
-        console.error('createProfessional error:', err)
+        reportError(err, { operation: 'createProfessional', entity: 'professional' })
         showToast('Erreur lors de la création du professionnel.', 'error')
+        return null
       }
     },
     updateProfessional: async (id, updates) => {
       try {
-        const result = await ds.updateProfessional(id, unadaptProfessional(updates))
-        if (result) await loadData()
-        return result
+        const row = await ds.updateProfessional(id, unadaptProfessional(updates))
+        if (row) setRawProfessionals(prev => applyUpdate(prev, id, row))
+        return row
       } catch (err) {
-        console.error('updateProfessional error:', err)
+        reportError(err, { operation: 'updateProfessional', entity: 'professional', entity_id: id })
         showToast('Erreur lors de la mise à jour du professionnel.', 'error')
+        return null
       }
     },
     deleteProfessional: async (id) => {
       try {
-        const result = await ds.deleteProfessional(id)
-        if (result) await loadData()
-        return result
+        const ok = await ds.deleteProfessional(id)
+        if (ok) setRawProfessionals(prev => applyDelete(prev, id))
+        return ok
       } catch (err) {
-        console.error('deleteProfessional error:', err)
+        reportError(err, { operation: 'deleteProfessional', entity: 'professional', entity_id: id })
         showToast('Erreur lors de la suppression du professionnel.', 'error')
+        return null
       }
     },
     deleteProfessionals: async (ids) => {
       try {
-        const result = await ds.deleteProfessionals(ids)
-        if (result) {
-          await loadData()
+        const ok = await ds.deleteProfessionals(ids)
+        if (ok) {
+          setRawProfessionals(prev => applyDeleteMany(prev, ids))
           showToast(`${ids.length} professionnel${ids.length > 1 ? 's' : ''} supprimé${ids.length > 1 ? 's' : ''}.`, 'success')
         }
-        return result
+        return ok
       } catch (err) {
-        console.error('deleteProfessionals error:', err)
+        reportError(err, { operation: 'deleteProfessionals', entity: 'professional' })
         showToast('Erreur lors de la suppression groupée.', 'error')
+        return null
       }
     },
+
+    // ── Therapy Cycles ──
     createTherapyCycle: async (cycle) => {
       try {
-        const result = await ds.createTherapyCycle({ ...unadaptTherapyCycle(cycle), user_id: user.id })
-        if (result) await loadData()
-        return result
+        const row = await ds.createTherapyCycle({ ...unadaptTherapyCycle(cycle), user_id: user.id })
+        if (row) setRawTherapyCycles(prev => applyInsert(prev, row))
+        return row
       } catch (err) {
-        console.error('createTherapyCycle error:', err)
+        reportError(err, { operation: 'createTherapyCycle', entity: 'therapy_cycle' })
         showToast('Erreur lors de la création du cycle.', 'error')
+        return null
       }
     },
     deleteTherapyCycle: async (id) => {
       try {
-        const result = await ds.deleteTherapyCycle(id)
-        if (result) await loadData()
-        return result
+        const ok = await ds.deleteTherapyCycle(id)
+        if (ok) setRawTherapyCycles(prev => applyDelete(prev, id))
+        return ok
       } catch (err) {
-        console.error('deleteTherapyCycle error:', err)
+        reportError(err, { operation: 'deleteTherapyCycle', entity: 'therapy_cycle', entity_id: id })
         showToast('Erreur lors de la suppression du cycle.', 'error')
+        return null
       }
     },
     updateTherapyCycle: async (id, updates) => {
       try {
-        const result = await ds.updateTherapyCycle(id, unadaptTherapyCycle(updates))
-        if (result) await loadData()
-        return result
+        const row = await ds.updateTherapyCycle(id, unadaptTherapyCycle(updates))
+        if (row) setRawTherapyCycles(prev => applyUpdate(prev, id, row))
+        return row
       } catch (err) {
-        console.error('updateTherapyCycle error:', err)
+        reportError(err, { operation: 'updateTherapyCycle', entity: 'therapy_cycle', entity_id: id })
         showToast('Erreur lors de la mise à jour du cycle.', 'error')
+        return null
       }
     },
-    // ── Invoice CRUD ──
+
+    // ── Invoices ──
     createInvoice: async ({ clientId, sessionIds, invoiceDate }) => {
       try {
-        const result = await invService.createInvoice({ userId: user.id, clientId, sessionIds, invoiceDate })
-        if (result) await loadData()
-        return result
+        const row = await invService.createInvoice({ userId: user.id, clientId, sessionIds, invoiceDate })
+        if (row) setRawInvoices(prev => applyInsert(prev, row))
+        return row
       } catch (err) {
-        console.error('createInvoice error:', err)
+        reportError(err, { operation: 'createInvoice', entity: 'invoice' })
         showToast('Erreur lors de la création de la facture.', 'error')
+        return null
       }
     },
     updateInvoice: async (id, updates) => {
       try {
-        const result = await invService.updateInvoice(id, updates)
-        if (result) await loadData()
-        return result
+        const row = await invService.updateInvoice(id, updates)
+        if (row) {
+          // Preserve existing invoice_sessions — updateInvoice only returns the invoice row
+          setRawInvoices(prev => prev.map(inv =>
+            inv.id === id ? { ...inv, ...row } : inv
+          ))
+        }
+        return row
       } catch (err) {
-        console.error('updateInvoice error:', err)
+        reportError(err, { operation: 'updateInvoice', entity: 'invoice', entity_id: id })
         showToast('Erreur lors de la mise à jour de la facture.', 'error')
+        return null
       }
     },
     emitInvoice: async (id) => {
       try {
-        const result = await invService.emitInvoice(id)
-        if (result) await loadData()
-        return result
+        const row = await invService.emitInvoice(id)
+        if (row) {
+          setRawInvoices(prev => prev.map(inv =>
+            inv.id === id ? { ...inv, ...row } : inv
+          ))
+        }
+        return row
       } catch (err) {
-        console.error('emitInvoice error:', err)
+        reportError(err, { operation: 'emitInvoice', entity: 'invoice', entity_id: id })
         showToast('Erreur lors de l\'émission de la facture.', 'error')
+        return null
       }
     },
     unemitInvoice: async (id) => {
       try {
-        const result = await invService.unemitInvoice(id)
-        if (result) await loadData()
-        return result
+        const row = await invService.unemitInvoice(id)
+        if (row) {
+          setRawInvoices(prev => prev.map(inv =>
+            inv.id === id ? { ...inv, ...row } : inv
+          ))
+        }
+        return row
       } catch (err) {
-        console.error('unemitInvoice error:', err)
+        reportError(err, { operation: 'unemitInvoice', entity: 'invoice', entity_id: id })
         showToast('Erreur lors de la modification de la facture.', 'error')
+        return null
       }
     },
     deleteInvoice: async (id) => {
       try {
-        const result = await invService.deleteInvoice(id)
-        if (result) await loadData()
-        return result
+        const ok = await invService.deleteInvoice(id)
+        if (ok) setRawInvoices(prev => applyDelete(prev, id))
+        return ok
       } catch (err) {
-        console.error('deleteInvoice error:', err)
+        reportError(err, { operation: 'deleteInvoice', entity: 'invoice', entity_id: id })
         showToast('Erreur lors de la suppression de la facture.', 'error')
+        return null
       }
     },
     setInvoiceSessions: async (invoiceId, sessionIds) => {
       try {
-        const result = await invService.setInvoiceSessions(invoiceId, sessionIds)
-        if (result) await loadData()
-        return result
+        const ok = await invService.setInvoiceSessions(invoiceId, sessionIds)
+        if (ok) {
+          // Construct the updated invoice_sessions locally — we know the exact new set
+          setRawInvoices(prev => prev.map(inv =>
+            inv.id === invoiceId
+              ? { ...inv, invoice_sessions: sessionIds.map(sid => ({ session_id: sid })) }
+              : inv
+          ))
+        }
+        return ok
       } catch (err) {
-        console.error('setInvoiceSessions error:', err)
+        reportError(err, { operation: 'setInvoiceSessions', entity: 'invoice', entity_id: invoiceId })
         showToast('Erreur lors de la mise à jour des séances facturées.', 'error')
+        return null
       }
-    }
+    },
+
+    // ── Reports ──
+    deleteReport: async (id) => {
+      try {
+        const { error } = await supabase.from('reports').delete().eq('id', id)
+        if (error) throw new Error(`deleteReport failed: ${error.message}`)
+        setRawReports(prev => applyDelete(prev, id))
+        await emitAuditLog({ entity: 'report', entity_id: id, action: 'delete_report' })
+        return true
+      } catch (err) {
+        reportError(err, { operation: 'deleteReport', entity: 'report', entity_id: id })
+        showToast('Erreur lors de la suppression du compte-rendu.', 'error')
+        return null
+      }
+    },
+
+    // ── Export ──
+    exportClientDossier: async (client, sessions, reports, formatDateFn, getPhaseLabelFn) => {
+      try {
+        const { exportClientDossierExcel } = await import('../services/exportService')
+        await exportClientDossierExcel(client, sessions, reports, formatDateFn, getPhaseLabelFn)
+        await emitAuditLog({ entity: 'client', entity_id: client.id, action: 'export_dossier' })
+      } catch (err) {
+        reportError(err, { operation: 'exportClientDossier', entity: 'client', entity_id: client?.id })
+        showToast('Erreur lors de l\'export du dossier.', 'error')
+      }
+    },
   }
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>

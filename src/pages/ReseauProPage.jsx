@@ -1,8 +1,11 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Briefcase, Phone, Mail, Calendar, Users, Search, Plus, X, Edit3, Trash2, Award, MapPin, Globe, Building2, FileText, Save, ChevronDown, ChevronUp, ArrowUpAZ, ArrowDownUp, LayoutGrid, List, ChevronsUpDown, UserPlus, Square, CheckSquare, Trash } from 'lucide-react'
 // professionals removed — now from DataContext
 import { useData } from '../context/DataContext'
+import { useConfirm } from '../context/ConfirmContext'
+import { useFocusTrap } from '../hooks/useFocusTrap'
+import { useEscapeKey } from '../hooks/useEscapeKey'
 
 // Field component defined OUTSIDE to avoid re-creation on each render
 function ProField({ icon: Icon, label, field, placeholder, type, editForm, setEditForm }) {
@@ -46,6 +49,10 @@ export default function ReseauProPage() {
   const [, forceUpdate] = useState(0)
 
   const navigate = useNavigate()
+  const confirm = useConfirm()
+  const createModalRef = useRef(null)
+  useFocusTrap(createModalRef, showCreateModal)
+  useEscapeKey(() => setShowCreateModal(false), showCreateModal)
 
   const { clients, professionals, createProfessional, updateProfessional: updatePro, deleteProfessionals, formatDate } = useData()
 
@@ -127,7 +134,11 @@ export default function ReseauProPage() {
   }
 
   const handleDeleteSelected = async () => {
-    if (window.confirm(`Supprimer ${selected.size} partenaire(s) professionnel(s) ?`)) {
+    const ok = await confirm(
+      `Supprimer ${selected.size} partenaire(s) professionnel(s) ?`,
+      { title: 'Confirmation de suppression', variant: 'danger' }
+    )
+    if (ok) {
       await deleteProfessionals(Array.from(selected))
       setSelected(new Set())
     }
@@ -189,6 +200,7 @@ export default function ReseauProPage() {
           className={`btn ${viewMode === 'cards' ? 'btn-primary' : 'btn-secondary'}`}
           onClick={() => setViewMode('cards')}
           title="Vue cartes"
+          aria-label="Vue cartes"
           style={{ padding: '6px 8px' }}
         >
           <LayoutGrid size={18} />
@@ -197,6 +209,7 @@ export default function ReseauProPage() {
           className={`btn ${viewMode === 'list' ? 'btn-primary' : 'btn-secondary'}`}
           onClick={() => setViewMode('list')}
           title="Vue liste"
+          aria-label="Vue liste"
           style={{ padding: '6px 8px' }}
         >
           <List size={18} />
@@ -268,6 +281,7 @@ export default function ReseauProPage() {
                       onMouseEnter={e => e.currentTarget.style.color = '#8B5CF6'}
                       onMouseLeave={e => e.currentTarget.style.color = 'var(--text-tertiary)'}
                       title="Modifier"
+                      aria-label="Modifier ce partenaire"
                     >
                       <Edit3 size={14} />
                     </button>
@@ -371,21 +385,23 @@ export default function ReseauProPage() {
         /* ===== LIST VIEW ===== */
         <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', border: '1px solid var(--border-light)' }}>
           <table className="table-standard">
+            <caption className="sr-only">Partenaires professionnels du réseau</caption>
             <thead>
               <tr>
-                <th style={{ width: 44 }}>
+                <th scope="col" style={{ width: 44 }}>
                   <button
                     onClick={toggleSelectAll}
+                    aria-label={selected.size === filtered.length && filtered.length > 0 ? 'Tout désélectionner' : 'Tout sélectionner'}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center', color: selected.size === filtered.length && filtered.length > 0 ? 'var(--error)' : 'var(--text-tertiary)' }}
                   >
                     {selected.size === filtered.length && filtered.length > 0 ? <CheckSquare size={18} /> : <Square size={18} />}
                   </button>
                 </th>
-                <th>Partenaire</th>
-                <th>Spécialité / Société</th>
-                <th style={{ textAlign: 'center' }}>Recommandations</th>
-                <th>Date d'ajout</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
+                <th scope="col">Partenaire</th>
+                <th scope="col">Spécialité / Société</th>
+                <th scope="col" style={{ textAlign: 'center' }}>Recommandations</th>
+                <th scope="col">Date d'ajout</th>
+                <th scope="col" style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -408,7 +424,7 @@ export default function ReseauProPage() {
                           {isChecked ? <CheckSquare size={18} /> : <Square size={18} />}
                         </button>
                       </td>
-                      <td>
+                      <th scope="row">
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <div style={{
                             width: 32, height: 32, borderRadius: '50%',
@@ -420,7 +436,7 @@ export default function ReseauProPage() {
                           </div>
                           <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{pro.firstName} {pro.lastName}</span>
                         </div>
-                      </td>
+                      </th>
                       <td>
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
                           <span style={{ fontSize: '0.857rem', color: 'var(--text-secondary)' }}>{pro.specialty || 'Professionnel'}</span>
@@ -447,6 +463,7 @@ export default function ReseauProPage() {
                             onClick={() => setExpandedIds(prev => { const next = new Set(prev); if (next.has(pro.id)) next.delete(pro.id); else next.add(pro.id); return next })}
                             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 4 }}
                             title="Détails"
+                            aria-label={isExpanded ? 'Réduire les détails' : 'Afficher les détails'}
                           >
                             {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                           </button>
@@ -454,6 +471,7 @@ export default function ReseauProPage() {
                             onClick={() => startEdit(pro)}
                             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 4 }}
                             title="Modifier"
+                            aria-label="Modifier ce partenaire"
                           >
                             <Edit3 size={16} />
                           </button>
@@ -585,14 +603,19 @@ export default function ReseauProPage() {
           onClick={() => setShowCreateModal(false)}
         >
           <div
+            ref={createModalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="create-pro-title"
+            tabIndex={-1}
             onClick={e => e.stopPropagation()}
             style={{ background: 'white', borderRadius: 'var(--radius-lg)', padding: 'var(--space-lg)', width: 520, maxHeight: '80vh', overflow: 'auto', boxShadow: '0 25px 60px rgba(0,0,0,0.25)' }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-md)' }}>
-              <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span id="create-pro-title" style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Briefcase size={20} style={{ color: '#8B5CF6' }} /> Nouveau Partenaire Pro
               </span>
-              <button onClick={() => setShowCreateModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
+              <button onClick={() => setShowCreateModal(false)} aria-label="Fermer" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
                 <X size={18} />
               </button>
             </div>

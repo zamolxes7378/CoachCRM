@@ -1,27 +1,40 @@
-import React from 'react'
+import React, { useRef } from 'react'
 import { Trash2 } from 'lucide-react'
+import { useFocusTrap } from '../../hooks/useFocusTrap'
+import { useEscapeKey } from '../../hooks/useEscapeKey'
 
 export default function DeleteConfirmModal({ client, clientName, onConfirm, onCancel }) {
+  const dialogRef = useRef(null)
+  useFocusTrap(dialogRef, true)
+  useEscapeKey(onCancel, true)
   return (
     <div className="modal-overlay" style={{ zIndex: 10001 }} onClick={onCancel}>
-      <div onClick={e => e.stopPropagation()} style={{
-        width: '100%', maxWidth: 400,
-        background: 'var(--bg-card)',
-        borderRadius: 'var(--radius-xl)',
-        boxShadow: '0 24px 64px rgba(0,0,0,0.3)',
-        padding: '32px',
-        textAlign: 'center',
-        animation: 'fadeIn 0.2s ease-out'
-      }}>
+      <div
+        ref={dialogRef}
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="delete-confirm-title"
+        tabIndex={-1}
+        onClick={e => e.stopPropagation()}
+        style={{
+          width: '100%', maxWidth: 400,
+          background: 'var(--bg-card)',
+          borderRadius: 'var(--radius-xl)',
+          boxShadow: '0 24px 64px rgba(0,0,0,0.3)',
+          padding: '32px',
+          textAlign: 'center',
+          animation: 'fadeIn 0.2s ease-out'
+        }}
+      >
         <div style={{
           width: 56, height: 56, borderRadius: 'var(--radius-full)',
           background: '#FEE2E2', color: 'var(--error)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           margin: '0 auto var(--space-md)'
-        }}>
+        }} aria-hidden="true">
           <Trash2 size={28} />
         </div>
-        <h3 style={{ fontSize: '1.143rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>
+        <h3 id="delete-confirm-title" style={{ fontSize: '1.143rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>
           Supprimer ce client ?
         </h3>
         <p style={{ fontSize: '0.857rem', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 'var(--space-lg)' }}>
