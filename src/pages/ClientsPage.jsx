@@ -172,10 +172,6 @@ export default function ClientsPage() {
             valA = (a.partnerA?.lastName || '').toLowerCase();
             valB = (b.partnerA?.lastName || '').toLowerCase();
             break;
-          case 'type':
-            valA = getClientType(a);
-            valB = getClientType(b);
-            break;
           case 'phase':
             valA = a.phase || '';
             valB = b.phase || '';
@@ -376,7 +372,7 @@ export default function ClientsPage() {
                       )}
                     </div>
                     <span className="caption" style={{ color: 'var(--text-secondary)' }}>
-                      {`${getSessionsCount(client.id)}/${client.totalSessions} séances`}
+                      {`${getSessionsCount(client.id)}${client.totalSessions ? `/${client.totalSessions}` : ''} séances`}
                     </span>
                   </div>
                 )}
@@ -570,7 +566,7 @@ export default function ClientsPage() {
                   </button>
                 </th>
                 <th style={{ width: 300, cursor: 'pointer' }} onClick={() => handleSort('lastName')}>NOM <SortIcon colKey="lastName" /></th>
-                <th style={{ cursor: 'pointer' }} onClick={() => handleSort('type')}>TYPE <SortIcon colKey="type" /></th>
+                <th>TYPE</th>
                 {activeTab === 'clients' ? (<>
                   <th style={{ cursor: 'pointer' }} onClick={() => handleSort('phase')}>PHASE <SortIcon colKey="phase" /></th>
                   <th style={{ cursor: 'pointer' }} onClick={() => handleSort('sessions')}>SÉANCES <SortIcon colKey="sessions" /></th>
@@ -628,7 +624,7 @@ export default function ClientsPage() {
                           <span style={{ color: pc, fontWeight: 500, fontSize: '0.786rem' }}>{client.phase === 'completed' ? 'Terminé' : getPhaseLabel(client.phase)}</span>
                         </div>
                       </td>
-                      <td style={{ color: 'var(--text-secondary)' }}>{getSessionsCount(client.id)}/{client.totalSessions}</td>
+                      <td style={{ color: 'var(--text-secondary)' }}>{getSessionsCount(client.id)}{client.totalSessions ? `/${client.totalSessions}` : ''}</td>
                       <td style={{ color: 'var(--text-secondary)' }}>{getLastSession(client.id) ? formatDate(getLastSession(client.id)) : '—'}</td>
                       <td style={{ color: 'var(--text-secondary)' }}>{getNextSession(client.id) ? formatDate(getNextSession(client.id)) : '—'}</td>
                       <td>
