@@ -1,0 +1,30 @@
+vite v8.0.1 building client environment for production...
+[2Ktransforming...✓ 1833 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                 1.12 kB │ gzip:   0.56 kB
+dist/assets/index-C5EsQF1J.css                 20.28 kB │ gzip:   4.46 kB
+dist/assets/SessionsPage-DFo0D3Rq.js            0.23 kB │ gzip:   0.17 kB
+dist/assets/supabase-B7bWOQn3.js                0.23 kB │ gzip:   0.20 kB
+dist/assets/ViewSwitcher-kSPfPtxW.js            0.83 kB │ gzip:   0.52 kB
+dist/assets/rolldown-runtime-DMSa_6bj.js        0.94 kB │ gzip:   0.55 kB
+dist/assets/AdminPage-0diX_yki.js               5.74 kB │ gzip:   1.62 kB
+dist/assets/DeletedClientsPage-Bo6xR4qx.js      7.45 kB │ gzip:   2.45 kB
+dist/assets/SessionCard-CN-GR970.js            10.42 kB │ gzip:   3.32 kB
+dist/assets/ReferrerSection-DcALTo9i.js        14.74 kB │ gzip:   4.25 kB
+dist/assets/HelpPage-C9hG8_ni.js               16.25 kB │ gzip:   5.06 kB
+dist/assets/SettingsPage-BDCfSYPv.js           18.40 kB │ gzip:   4.42 kB
+dist/assets/ReseauProPage-wsbTzNQT.js          23.76 kB │ gzip:   5.03 kB
+dist/assets/DashboardPage-Bo4WT8Y7.js          32.26 kB │ gzip:   8.39 kB
+dist/assets/FinancesPage-Df-A1B2R.js           35.54 kB │ gzip:   8.46 kB
+dist/assets/ClientsPage-D_lratn3.js            36.35 kB │ gzip:   9.32 kB
+dist/assets/index-jKd2ZwXk.js                  70.24 kB │ gzip:  18.07 kB
+dist/assets/ClientDetailPage-Bh6FmmwU.js      124.32 kB │ gzip:  27.92 kB
+dist/assets/vendor-CxQnrvWj.js              1,350.67 kB │ gzip: 380.80 kB
+
+✓ built in 832ms
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.

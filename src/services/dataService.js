@@ -27,13 +27,34 @@ export async function upsertUser({ id, name, email, role = 'therapist', photo_ur
 // Clients
 // ============================================
 export async function getClients(userId) {
-  const { data, error } = await supabase
-    .from('clients')
-    .select('*')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-  if (error) console.error('getClients error:', error.message)
-  return data || []
+  let allData = [];
+  let from = 0;
+  const step = 1000;
+  let fetchMore = true;
+
+  while (fetchMore) {
+    const { data, error } = await supabase
+      .from('clients')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .range(from, from + step - 1);
+
+    if (error) {
+      console.error('getClients error:', error.message);
+      break;
+    }
+
+    if (data && data.length > 0) {
+      allData = [...allData, ...data];
+    }
+    if (!data || data.length < step) {
+      fetchMore = false;
+    } else {
+      from += step;
+    }
+  }
+  return allData;
 }
 
 export async function getClient(clientId) {
@@ -82,13 +103,34 @@ export async function deleteClient(clientId) {
 // Sessions
 // ============================================
 export async function getSessions(userId) {
-  const { data, error } = await supabase
-    .from('sessions')
-    .select('*')
-    .eq('user_id', userId)
-    .order('date', { ascending: false })
-  if (error) console.error('getSessions error:', error.message)
-  return data || []
+  let allData = [];
+  let from = 0;
+  const step = 1000;
+  let fetchMore = true;
+
+  while (fetchMore) {
+    const { data, error } = await supabase
+      .from('sessions')
+      .select('*')
+      .eq('user_id', userId)
+      .order('date', { ascending: false })
+      .range(from, from + step - 1);
+
+    if (error) {
+      console.error('getSessions error:', error.message);
+      break;
+    }
+
+    if (data && data.length > 0) {
+      allData = [...allData, ...data];
+    }
+    if (!data || data.length < step) {
+      fetchMore = false;
+    } else {
+      from += step;
+    }
+  }
+  return allData;
 }
 
 export async function getSessionsByClient(clientId) {

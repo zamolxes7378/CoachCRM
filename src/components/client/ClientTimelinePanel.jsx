@@ -8,7 +8,7 @@ export default function ClientTimelinePanel({
   contacts,
   sessions,
   therapyCycles,
-  setTherapyCycles,
+  updateTherapyCycle,
   getSessionCycle,
   getClientName,
   contactIcons,
@@ -198,7 +198,7 @@ export default function ClientTimelinePanel({
                         e.target.value = item.startDate;
                         return;
                       }
-                      setTherapyCycles(prev => prev.map(c => c.id === item.cycleId ? { ...c, startDate: newDate } : c));
+                      updateTherapyCycle(item.cycleId, { startDate: newDate });
                     }}
                     style={{
                       border: 'none', background: 'transparent', fontWeight: 700,

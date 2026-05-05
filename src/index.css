@@ -1199,7 +1199,7 @@ select:focus {
 }
 
 .table-standard th {
-  padding: 10px 14px;
+  padding: 7px 10px;
   font-size: 0.714rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -1209,7 +1209,7 @@ select:focus {
 }
 
 .table-standard td {
-  padding: 10px 14px;
+  padding: 7px 10px;
   border-bottom: 1px solid var(--border-light);
   font-size: 0.875rem;
   vertical-align: middle;

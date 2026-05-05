@@ -62,7 +62,8 @@ COULEURS PRINCIPALES
     ├── Success:  #38A169  (vert uniquement pour validation, discret)
     ├── Warning:  #D69E2E  (doré)
     ├── Error:    #C53030  (rouge doux)
-    └── Info:     #3182CE  (bleu informatif)
+    ├── Info:     #3182CE  (bleu informatif)
+    └── Finances: #58718E  (bleu marine intense pour les graphiques de CA)
 ```
 
 ### Mode Sombre (option)
@@ -549,6 +550,12 @@ Le format « Tableau Standard » s'applique à **tous** les tableaux de l'applic
 
 ### Structure et Conteneur
 - **Enveloppe** : Le tableau doit être contenu dans une `card` avec `overflow: hidden` et `border: 1px solid var(--border-light)`.
+- **Densité UI** : Pour permettre une lecture rapide de gros volumes de données, le padding des cellules est réduit de **30%** par rapport aux standards web classiques.
+  - `padding: 7px 10px` pour les lignes (`td`).
+- **En-têtes Interactifs** :
+  - `cursor: pointer` au survol des colonnes triables.
+  - Affichage d'une icône `ArrowDownUp` en opacité réduite (0.3) pour signaler l'interactivité.
+  - Affichage d'une icône pleine en cas de tri actif sur la colonne.
 - **Largeur** : Toujours `width: 100%` avec `border-collapse: collapse`.
 
 ### En-tête (Header)
@@ -573,7 +580,9 @@ Le format « Tableau Standard » s'applique à **tous** les tableaux de l'applic
 
 ### Flexibilité des colonnes
 - La structure des colonnes doit s'adapter aux besoins (ex: « Dernier RDV », « Spécialité »).
-- Les colonnes `NOM` (avec avatar) et `PHASE` (avec badge) restent les points d'ancrage visuels quand elles sont présentes.
+- Les colonnes `NOM` (avec avatar) et `TYPE` (avec badge `ClientTypeBadge`) sont les points d'ancrage visuels.
+- **Règle de sobriété** : L'icône `User` à droite du nom est supprimée pour éviter le double emploi avec la colonne `TYPE`.
+- **Règle de visibilité** : La colonne « Prochain RDV » est priorisée dans l'onglet Prospects (placée avant la date de premier contact).
 
 ### Notifications & Alertes
 

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Plus, Search, Users, User, TrendingUp, X, ArrowDownUp, ArrowUpAZ, Calendar, Globe, Phone, UserCheck, CheckCircle, XCircle, HelpCircle, Link2, Award, LayoutGrid, LayoutList, Star, Baby, Trash2, Briefcase, Sprout, UserPlus, CheckSquare, Square, Archive } from 'lucide-react'
+import { Plus, Search, Users, User, TrendingUp, X, ArrowDownUp, ArrowUpAZ, ArrowUp, ArrowDown, Calendar, Globe, Phone, UserCheck, CheckCircle, XCircle, HelpCircle, Link2, Award, LayoutGrid, LayoutList, Star, Baby, Trash2, Briefcase, Sprout, UserPlus, CheckSquare, Square, Archive, ChevronLeft, ChevronRight } from 'lucide-react'
 // professionals removed — now from DataContext
 import { useData } from '../context/DataContext'
 import { useConfirm } from '../context/ConfirmContext'
@@ -9,6 +9,7 @@ import DuplicateAlert from '../components/DuplicateAlert'
 import ReferrerSection from '../components/client/ReferrerSection'
 import NewClientButton from '../components/NewClientButton'
 import ViewSwitcher from '../components/layout/ViewSwitcher'
+import ClientTypeBadge from '../components/ClientTypeBadge'
 
 
 
@@ -20,7 +21,7 @@ export default function ClientsPage() {
   const { clients, sessions, professionals, recruitmentSources, therapyPhases: therapyPhasesData, phaseIcons, phaseColors: centralPhaseColors, defaultPhaseKey, getPhaseColor, getPhaseIcon, isProspect, getClientName, getClientInitials, getPhaseLabel, getStatusLabel, getComputedStatus, getProspectStageInfo, formatDate, getClientType, createClient, updateClient, createProfessional: createPro } = useData()
   const confirm = useConfirm()
   const [search, setSearch] = useState('')
-  const [sortMode, setSortMode] = useState('none')
+  const [sortConfig, setSortConfig] = useState({ key: 'lastName', direction: 'asc' })
   const [showModal, setShowModal] = useState(false)
   const [newSource, setNewSource] = useState('')
   const [newPhase, setNewPhase] = useState(therapyPhasesData[0]?.key || 'debut')
@@ -30,7 +31,7 @@ export default function ClientsPage() {
   const [externalReferrer, setExternalReferrer] = useState(null)
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'clients')
   const [statusFilter, setStatusFilter] = useState('all')
-  const [viewMode, setViewMode] = useState(searchParams.get('view') || 'cards')
+  const [viewMode, setViewMode] = useState(searchParams.get('view') || 'list')
   const [selected, setSelected] = useState(new Set())
   const [archiving, setArchiving] = useState(false)
   const [wizardStep, setWizardStep] = useState(0)
@@ -47,6 +48,9 @@ export default function ClientsPage() {
   const [billingAddressB, setBillingAddressB] = useState('')
   const [newNotes, setNewNotes] = useState('')
   const [createError, setCreateError] = useState(null)
+  
+  const [currentPage, setCurrentPage] = useState(1)
+  const ITEMS_PER_PAGE = 50
 
   const duplicateMatches = useMemo(() => {
     if (duplicateDismissed || !newLastName.trim()) return []
@@ -79,20 +83,39 @@ export default function ClientsPage() {
     if (viewParam) setViewMode(viewParam)
   }, [searchParams])
 
-  const activeClients = clients.filter(c => !c.deleted)
-  const prospectCount = activeClients.filter(c => isProspect(c)).length
-  const clientCount = activeClients.filter(c => c.phase !== 'prospect').length
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [activeTab, search, statusFilter])
 
-  // Compute next/last session from real session data
-  const now = new Date()
-  const sessionsByClient = {}
-  sessions.forEach(s => {
-    if (s.status === 'cancelled') return
-    if (!sessionsByClient[s.clientId]) sessionsByClient[s.clientId] = { past: [], future: [] }
-    const d = new Date(s.date)
-    if (d <= now) sessionsByClient[s.clientId].past.push(s)
-    else sessionsByClient[s.clientId].future.push(s)
-  })
+  const activeClients = useMemo(() => clients.filter(c => !c.deleted), [clients])
+  
+  // Base results for tabs, sensitive to search
+  const searchResults = useMemo(() => {
+    if (!search.trim()) return activeClients
+    const s = search.toLowerCase()
+    return activeClients.filter(c => getClientName(c).toLowerCase().includes(s))
+  }, [activeClients, search, getClientName])
+
+  const prospectCount = searchResults.filter(c => isProspect(c)).length
+  const clientCount = searchResults.filter(c => !isProspect(c)).length
+
+  // Compute sessions mapping and counts from real session data
+  const sessionsByClient = useMemo(() => {
+    const map = {}
+    const now = new Date()
+    sessions.forEach(s => {
+      if (s.status === 'cancelled') return
+      if (!map[s.clientId]) map[s.clientId] = { past: [], future: [], doneCount: 0 }
+      const d = new Date(s.date)
+      if (d <= now) map[s.clientId].past.push(s)
+      else map[s.clientId].future.push(s)
+      
+      if (s.status === 'completed') map[s.clientId].doneCount++
+    })
+    return map
+  }, [sessions])
+
   const getNextSession = (clientId) => {
     const s = sessionsByClient[clientId]
     if (!s || s.future.length === 0) return null
@@ -103,39 +126,113 @@ export default function ClientsPage() {
     if (!s || s.past.length === 0) return null
     return s.past.sort((a, b) => b.date.localeCompare(a.date))[0].date
   }
-
-  let filtered = activeClients
-    .filter(c => activeTab === 'prospects' ? isProspect(c) : !isProspect(c))
-    .filter(c => getClientName(c).toLowerCase().includes(search.toLowerCase()))
-
-  if (statusFilter === 'individual') {
-    filtered = filtered.filter(c => getClientType(c) === 'individual')
-  } else if (statusFilter === 'client') {
-    filtered = filtered.filter(c => getClientType(c) === 'client')
-  } else if (statusFilter === 'family') {
-    filtered = filtered.filter(c => getClientType(c) === 'family')
-  } else if (statusFilter === 'parrains') {
-    filtered = filtered.filter(c => (c.clientLinks || []).some(l => l.type === 'parrainage' && l.role === 'parrain'))
-  } else if (statusFilter === 'filleuls') {
-    filtered = filtered.filter(c => (c.clientLinks || []).some(l => l.type === 'parrainage' && l.role === 'filleul'))
-  } else if (statusFilter !== 'all') {
-    filtered = filtered.filter(c => getComputedStatus(c) === statusFilter)
+  const getSessionsCount = (clientId) => {
+    return sessionsByClient[clientId]?.doneCount || 0
   }
 
-  if (sortMode === 'alpha-asc') {
-    filtered = [...filtered].sort((a, b) => (a.partnerA?.lastName || '').localeCompare(b.partnerA?.lastName || '', 'fr'))
-  } else if (sortMode === 'alpha-desc') {
-    filtered = [...filtered].sort((a, b) => (b.partnerA?.lastName || '').localeCompare(a.partnerA?.lastName || '', 'fr'))
-  } else if (sortMode === 'recent') {
-    filtered = [...filtered].sort((a, b) => {
-      const dateA = activeTab === 'prospects' ? (a.startDate || '') : (a.lastSession || '')
-      const dateB = activeTab === 'prospects' ? (b.startDate || '') : (b.lastSession || '')
-      return dateB.localeCompare(dateA)
-    })
+  const tabFiltered = useMemo(() => 
+    searchResults.filter(c => activeTab === 'prospects' ? isProspect(c) : !isProspect(c)),
+    [searchResults, activeTab, isProspect]
+  )
+
+  const filterCounts = useMemo(() => {
+    return {
+      all: tabFiltered.length,
+      active: tabFiltered.filter(c => getComputedStatus(c) === 'active').length,
+      inactive: tabFiltered.filter(c => getComputedStatus(c) === 'inactive').length,
+      individual: tabFiltered.filter(c => getClientType(c) === 'individual').length,
+      client: tabFiltered.filter(c => getClientType(c) === 'client').length,
+      family: tabFiltered.filter(c => getClientType(c) === 'family').length,
+      parrains: tabFiltered.filter(c => (c.clientLinks || []).some(l => l.type === 'parrainage' && l.role === 'parrain')).length,
+      filleuls: tabFiltered.filter(c => (c.clientLinks || []).some(l => l.type === 'parrainage' && l.role === 'filleul')).length,
+    }
+  }, [tabFiltered, getComputedStatus, getClientType])
+
+  const filtered = useMemo(() => {
+    let list = tabFiltered
+    if (statusFilter === 'individual') {
+      list = list.filter(c => getClientType(c) === 'individual')
+    } else if (statusFilter === 'client') {
+      list = list.filter(c => getClientType(c) === 'client')
+    } else if (statusFilter === 'family') {
+      list = list.filter(c => getClientType(c) === 'family')
+    } else if (statusFilter === 'parrains') {
+      list = list.filter(c => (c.clientLinks || []).some(l => l.type === 'parrainage' && l.role === 'parrain'))
+    } else if (statusFilter === 'filleuls') {
+      list = list.filter(c => (c.clientLinks || []).some(l => l.type === 'parrainage' && l.role === 'filleul'))
+    } else if (statusFilter !== 'all') {
+      list = list.filter(c => getComputedStatus(c) === statusFilter)
+    }
+
+    if (sortConfig.key) {
+      list = [...list].sort((a, b) => {
+        let valA, valB;
+        switch (sortConfig.key) {
+          case 'lastName':
+            valA = (a.partnerA?.lastName || '').toLowerCase();
+            valB = (b.partnerA?.lastName || '').toLowerCase();
+            break;
+          case 'type':
+            valA = getClientType(a);
+            valB = getClientType(b);
+            break;
+          case 'phase':
+            valA = a.phase || '';
+            valB = b.phase || '';
+            break;
+          case 'sessions':
+            valA = getSessionsCount(a.id);
+            valB = getSessionsCount(b.id);
+            break;
+          case 'lastSession':
+            valA = getLastSession(a.id) || '';
+            valB = getLastSession(b.id) || '';
+            break;
+          case 'nextSession':
+            valA = getNextSession(a.id) || '';
+            valB = getNextSession(b.id) || '';
+            break;
+          case 'startDate':
+            valA = a.startDate || '';
+            valB = b.startDate || '';
+            break;
+          case 'source':
+            valA = a.source || '';
+            valB = b.source || '';
+            break;
+          default:
+            valA = '';
+            valB = '';
+        }
+
+        if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return list
+  }, [tabFiltered, statusFilter, sortConfig, activeTab, getClientType, getComputedStatus, getSessionsCount, getLastSession, getNextSession])
+
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
+  const paginatedItems = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
+
+  const handleSort = (key) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+    }))
   }
+
+  const SortIcon = ({ colKey }) => {
+    if (sortConfig.key !== colKey) return <ArrowDownUp size={12} style={{ opacity: 0.3, marginLeft: 4, verticalAlign: -1 }} />
+    return sortConfig.direction === 'asc' ? <ArrowUp size={12} style={{ marginLeft: 4, verticalAlign: -1, color: 'var(--primary-600)' }} /> : <ArrowDown size={12} style={{ marginLeft: 4, verticalAlign: -1, color: 'var(--primary-600)' }} />
+  }
+
+  const sortButtonActive = (keys) => keys.includes(sortConfig.key)
 
   return (
-    <div>
+    <div className="page-container">
       <div className="page-header">
         <h1 className="page-title">Mes Clients</h1>
         <NewClientButton onClick={() => { setWizardStep(0); setNewClientType(''); setNewChildren([]); setShowModal(true) }} />
@@ -158,7 +255,7 @@ export default function ClientsPage() {
             onClick={() => setStatusFilter(val)}
             style={{ fontSize: '0.857rem', padding: '4px 12px' }}
           >
-            {label}
+            {label} ({filterCounts[val]})
           </button>
         ))}
         <span style={{ width: 1, height: 24, background: 'var(--primary-300)', margin: '0 4px' }} />
@@ -169,7 +266,7 @@ export default function ClientsPage() {
             onClick={() => setStatusFilter(statusFilter === val ? 'all' : val)}
             style={{ fontSize: '0.857rem', padding: '4px 12px' }}
           >
-            {label}
+            {label} ({filterCounts[val]})
           </button>
         ))}
         <span style={{ width: 1, height: 24, background: 'var(--primary-300)', margin: '0 4px' }} />
@@ -178,14 +275,14 @@ export default function ClientsPage() {
           onClick={() => setStatusFilter(statusFilter === 'parrains' ? 'all' : 'parrains')}
           style={{ fontSize: '0.857rem', padding: '4px 12px', display: 'flex', alignItems: 'center', gap: 4 }}
         >
-          <Award size={14} /> Parrains
+          <Award size={14} /> Parrains ({filterCounts.parrains})
         </button>
         <button
           className={`btn ${statusFilter === 'filleuls' ? 'btn-primary' : 'btn-ghost'}`}
           onClick={() => setStatusFilter(statusFilter === 'filleuls' ? 'all' : 'filleuls')}
           style={{ fontSize: '0.857rem', padding: '4px 12px' }}
         >
-          Filleuls
+          Filleuls ({filterCounts.filleuls})
         </button>
       </div>
 
@@ -200,15 +297,15 @@ export default function ClientsPage() {
           />
         </div>
         <button
-          className={`btn ${sortMode === 'alpha-asc' || sortMode === 'alpha-desc' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setSortMode(sortMode === 'none' || sortMode === 'recent' ? 'alpha-asc' : sortMode === 'alpha-asc' ? 'alpha-desc' : 'none')}
+          className={`btn ${sortButtonActive(['lastName']) ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => handleSort('lastName')}
           title="Trier par nom de famille"
         >
-          <ArrowUpAZ size={18} /> {sortMode === 'alpha-desc' ? 'Z→A' : 'A→Z'}
+          <ArrowUpAZ size={18} /> {sortConfig.key === 'lastName' && sortConfig.direction === 'desc' ? 'Z→A' : 'A→Z'}
         </button>
         <button
-          className={`btn ${sortMode === 'recent' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setSortMode(sortMode === 'recent' ? 'none' : 'recent')}
+          className={`btn ${sortButtonActive(['lastSession']) ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => handleSort('lastSession')}
           title="Trier par dernier rendez-vous"
         >
           <ArrowDownUp size={18} /> Plus récent
@@ -225,9 +322,9 @@ export default function ClientsPage() {
         />
       </div>
 
-      {viewMode === 'cards' ? (
+      {viewMode === 'cards' ? (<>
         <div className="grid-3">
-          {filtered.map(client => {
+          {paginatedItems.map(client => {
             const PhaseIcon = getPhaseIcon(client.phase)
             return (
               <div className={`card card-clickable ${getComputedStatus(client) === 'inactive' || getComputedStatus(client) === 'completed' ? 'card-inactive' : ''}`} key={client.id} onClick={() => navigate(`/clients/${client.id}`)} style={{ position: 'relative' }}>
@@ -279,7 +376,7 @@ export default function ClientsPage() {
                       )}
                     </div>
                     <span className="caption" style={{ color: 'var(--text-secondary)' }}>
-                      {`${client.sessionsCount}/${client.totalSessions} séances`}
+                      {`${getSessionsCount(client.id)}/${client.totalSessions} séances`}
                     </span>
                   </div>
                 )}
@@ -323,29 +420,35 @@ export default function ClientsPage() {
                   )
                 })()}
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)', marginTop: 'var(--space-sm)' }}>
-                  {client.phase === 'prospect' && client.source ? (() => {
-                    const SourceIcon = sourceIcons[client.source] || Globe
-                    return (<>
-                      <SourceIcon size={14} style={{ color: '#6B46C1' }} />
-                      <span className="caption" style={{ color: 'var(--text-secondary)' }}>
-                        Source : {(() => { if (client.referrerType === 'particulier') return 'Parrain externe'; const hasExternalParrain = (client.clientLinks || []).some(l => l.type === 'parrainage' && l.role === 'filleul' && (() => { const ref = clients.find(c => c.id === l.clientId); return ref?.referrerType === 'particulier' })()); return hasExternalParrain ? 'Parrain externe' : (recruitmentSources.find(s => s.key === client.source) || {}).label || client.source })()}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 'var(--space-sm)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
+                    {client.phase === 'prospect' ? (() => {
+                      const SourceIcon = sourceIcons[client.source] || Globe
+                      return (<>
+                        <SourceIcon size={14} style={{ color: '#6B46C1' }} />
+                        <span className="caption" style={{ color: 'var(--text-secondary)' }}>
+                          Source : {(() => { if (client.referrerType === 'particulier') return 'Parrain externe'; const hasExternalParrain = (client.clientLinks || []).some(l => l.type === 'parrainage' && l.role === 'filleul' && (() => { const ref = clients.find(c => c.id === l.clientId); return ref?.referrerType === 'particulier' })()); return hasExternalParrain ? 'Parrain externe' : (recruitmentSources.find(s => s.key === client.source) || {}).label || client.source || 'Inconnue' })()}
+                        </span>
+                      </>)
+                    })() : (<>
+                      <Calendar size={14} style={{ color: getComputedStatus(client) === 'inactive' || client.phase === 'completed' ? 'var(--text-tertiary)' : 'var(--primary-500)' }} />
+                      <span className="caption" style={{ color: getComputedStatus(client) === 'inactive' || client.phase === 'completed' ? 'var(--text-tertiary)' : 'var(--text-secondary)' }}>
+                        {getComputedStatus(client) === 'inactive' || client.phase === 'completed'
+                          ? (getLastSession(client.id) ? `Dernier RDV : ${formatDate(getLastSession(client.id))}` : 'Aucun RDV')
+                          : (getNextSession(client.id) ? `Prochain RDV : ${formatDate(getNextSession(client.id))}` : getLastSession(client.id) ? `Dernier RDV : ${formatDate(getLastSession(client.id))}` : 'Aucun RDV')
+                        }
                       </span>
-                    </>)
-                  })() : client.phase === 'prospect' && !client.source ? (<>
-                    <HelpCircle size={14} style={{ color: 'var(--text-tertiary)' }} />
-                    <span className="caption" style={{ color: 'var(--text-tertiary)' }}>
-                      Source non renseignée
-                    </span>
-                  </>) : (<>
-                    <Calendar size={14} style={{ color: getComputedStatus(client) === 'inactive' || client.phase === 'completed' ? 'var(--text-tertiary)' : 'var(--primary-500)' }} />
-                    <span className="caption" style={{ color: getComputedStatus(client) === 'inactive' || client.phase === 'completed' ? 'var(--text-tertiary)' : 'var(--text-secondary)' }}>
-                      {getComputedStatus(client) === 'inactive' || client.phase === 'completed'
-                        ? (getLastSession(client.id) ? `Dernier RDV : ${formatDate(getLastSession(client.id))}` : 'Aucun RDV')
-                        : (getNextSession(client.id) ? `Prochain RDV : ${formatDate(getNextSession(client.id))}` : getLastSession(client.id) ? `Dernier RDV : ${formatDate(getLastSession(client.id))}` : 'Aucun RDV')
-                      }
-                    </span>
-                  </>)}
+                    </>)}
+                  </div>
+                  
+                  {client.phase === 'prospect' && getNextSession(client.id) && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
+                      <Calendar size={14} style={{ color: 'var(--primary-500)' }} />
+                      <span className="caption" style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>
+                        RDV fixé : {formatDate(getNextSession(client.id))}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Client links (parrainage + dossier) */}
@@ -383,7 +486,72 @@ export default function ClientsPage() {
             )
           })}
         </div>
-      ) : (<>
+
+        {totalPages > 1 && (
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            gap: 'var(--space-md)', 
+            marginTop: 'var(--space-xl)',
+            padding: 'var(--space-md)',
+            borderTop: '1px solid var(--border-light)'
+          }}>
+            <button 
+              className="btn btn-secondary" 
+              disabled={currentPage === 1}
+              onClick={() => { setCurrentPage(p => p - 1); window.scrollTo(0, 0); }}
+              style={{ padding: 0, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <ChevronLeft size={18} />
+            </button>
+            
+            <div style={{ display: 'flex', gap: 'var(--space-xs)', alignItems: 'center' }}>
+              {[...Array(totalPages)].map((_, i) => {
+                const page = i + 1;
+                if (totalPages > 7) {
+                  if (page !== 1 && page !== totalPages && Math.abs(page - currentPage) > 1) {
+                    if (page === 2 || page === totalPages - 1) return <span key={page} style={{ color: 'var(--text-tertiary)' }}>...</span>;
+                    return null;
+                  }
+                }
+                return (
+                  <button
+                    key={page}
+                    onClick={() => { setCurrentPage(page); window.scrollTo(0, 0); }}
+                    className={`btn ${currentPage === page ? 'btn-primary' : 'btn-ghost'}`}
+                    style={{ 
+                      minWidth: 36, 
+                      height: 36, 
+                      padding: 0, 
+                      borderRadius: 'var(--radius-md)',
+                      fontWeight: currentPage === page ? 700 : 400,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    {page}
+                  </button>
+                );
+              })}
+            </div>
+
+            <button 
+              className="btn btn-secondary" 
+              disabled={currentPage === totalPages}
+              onClick={() => { setCurrentPage(p => p + 1); window.scrollTo(0, 0); }}
+              style={{ padding: 0, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <ChevronRight size={18} />
+            </button>
+            
+            <div style={{ marginLeft: 'var(--space-md)', fontSize: '0.857rem', color: 'var(--text-tertiary)', fontWeight: 500 }}>
+              {Math.min(filtered.length, (currentPage - 1) * ITEMS_PER_PAGE + 1)}-{Math.min(filtered.length, currentPage * ITEMS_PER_PAGE)} sur {filtered.length}
+            </div>
+          </div>
+        )}
+      </>) : (<>
         {/* LIST VIEW */}
         <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', border: '1px solid var(--border-light)' }}>
           <table className="table-standard">
@@ -401,27 +569,30 @@ export default function ClientsPage() {
                     {selected.size === filtered.length && filtered.length > 0 ? <CheckSquare size={16} /> : <Square size={16} />}
                   </button>
                 </th>
-                <th>Nom</th>
+                <th style={{ width: 300, cursor: 'pointer' }} onClick={() => handleSort('lastName')}>NOM <SortIcon colKey="lastName" /></th>
+                <th style={{ cursor: 'pointer' }} onClick={() => handleSort('type')}>TYPE <SortIcon colKey="type" /></th>
                 {activeTab === 'clients' ? (<>
-                  <th>Phase</th>
-                  <th>Séances</th>
-                  <th>Dernier RDV</th>
-                  <th>Prochain RDV</th>
-                  <th>Parrain de</th>
+                  <th style={{ cursor: 'pointer' }} onClick={() => handleSort('phase')}>PHASE <SortIcon colKey="phase" /></th>
+                  <th style={{ cursor: 'pointer' }} onClick={() => handleSort('sessions')}>SÉANCES <SortIcon colKey="sessions" /></th>
+                  <th style={{ cursor: 'pointer' }} onClick={() => handleSort('lastSession')}>DERNIER RDV <SortIcon colKey="lastSession" /></th>
+                  <th style={{ cursor: 'pointer' }} onClick={() => handleSort('nextSession')}>PROCHAIN RDV <SortIcon colKey="nextSession" /></th>
+                  <th>RECOMMANDATION</th>
                 </>) : (<>
-                  <th>Premier contact</th>
-                  <th>Source</th>
-                  <th>Recommandé par</th>
+                  <th style={{ cursor: 'pointer' }} onClick={() => handleSort('nextSession')}>PROCHAIN RDV <SortIcon colKey="nextSession" /></th>
+                  <th style={{ cursor: 'pointer' }} onClick={() => handleSort('startDate')}>PREMIER CONTACT <SortIcon colKey="startDate" /></th>
+                  <th style={{ cursor: 'pointer' }} onClick={() => handleSort('source')}>SOURCE <SortIcon colKey="source" /></th>
+                  <th>RECOMMANDÉ PAR</th>
                 </>)}
               </tr>
             </thead>
             <tbody>
-              {filtered.map(client => {
+              {paginatedItems.map(client => {
                 const PhaseIcon = getPhaseIcon(client.phase)
                 const pc = getPhaseColor(client.phase)?.color || 'var(--primary-600)'
                 const referrals = clients.filter(c => c.referredBy === client.id)
                 const referrer = client.referredBy ? clients.find(c => c.id === client.referredBy) : null
                 const isChecked = selected.has(client.id)
+                const sc = getComputedStatus(client)
                 return (
                   <tr key={client.id} style={{
                     cursor: 'pointer',
@@ -439,14 +610,16 @@ export default function ClientsPage() {
                         {isChecked ? <CheckSquare size={16} /> : <Square size={16} />}
                       </button>
                     </td>
-                    <td style={{ fontWeight: 600 }} onClick={() => navigate(`/clients/${client.id}`)}>
+                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }} onClick={() => navigate(`/clients/${client.id}`)}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <div className="client-avatar" style={{ width: 32, height: 32, fontSize: '0.714rem', ...(getComputedStatus(client) === 'inactive' || client.phase === 'completed' ? { background: 'var(--primary-200)', color: 'white' } : client.phase === 'prospect' ? { background: '#E8D8FE', color: '#6B46C1' } : {}) }}>
                           {getClientInitials(client)}
                         </div>
                         {getClientName(client)}
-                        {!client.partnerB && <User size={14} style={{ color: 'var(--text-tertiary)' }} />}
                       </div>
+                    </td>
+                    <td>
+                      <ClientTypeBadge type={getClientType(client)} size={28} />
                     </td>
                     {activeTab === 'clients' ? (<>
                       <td>
@@ -455,7 +628,7 @@ export default function ClientsPage() {
                           <span style={{ color: pc, fontWeight: 500, fontSize: '0.786rem' }}>{client.phase === 'completed' ? 'Terminé' : getPhaseLabel(client.phase)}</span>
                         </div>
                       </td>
-                      <td style={{ color: 'var(--text-secondary)' }}>{client.sessionsCount}/{client.totalSessions}</td>
+                      <td style={{ color: 'var(--text-secondary)' }}>{getSessionsCount(client.id)}/{client.totalSessions}</td>
                       <td style={{ color: 'var(--text-secondary)' }}>{getLastSession(client.id) ? formatDate(getLastSession(client.id)) : '—'}</td>
                       <td style={{ color: 'var(--text-secondary)' }}>{getNextSession(client.id) ? formatDate(getNextSession(client.id)) : '—'}</td>
                       <td>
@@ -467,6 +640,7 @@ export default function ClientsPage() {
                         ) : '—'}
                       </td>
                     </>) : (<>
+                      <td style={{ color: 'var(--text-secondary)' }}>{getNextSession(client.id) ? formatDate(getNextSession(client.id)) : '—'}</td>
                       <td style={{ color: 'var(--text-secondary)' }}>{formatDate(client.startDate)}</td>
                       <td style={{ color: 'var(--text-secondary)' }}>{(() => { if (client.referrerType === 'particulier') return 'Parrain externe'; const hasExternalParrain = (client.clientLinks || []).some(l => l.type === 'parrainage' && l.role === 'filleul' && (() => { const ref = clients.find(c => c.id === l.clientId); return ref?.referrerType === 'particulier' })()); return hasExternalParrain ? 'Parrain externe' : (recruitmentSources.find(s => s.key === client.source) || {}).label || client.source || '—' })()}</td>
                       <td>
@@ -484,6 +658,71 @@ export default function ClientsPage() {
             </tbody>
           </table>
         </div>
+
+        {totalPages > 1 && (
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            gap: 'var(--space-md)', 
+            marginTop: 'var(--space-xl)',
+            padding: 'var(--space-md)',
+            borderTop: '1px solid var(--border-light)'
+          }}>
+            <button 
+              className="btn btn-secondary" 
+              disabled={currentPage === 1}
+              onClick={() => { setCurrentPage(p => p - 1); window.scrollTo(0, 0); }}
+              style={{ padding: 0, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <ChevronLeft size={18} />
+            </button>
+            
+            <div style={{ display: 'flex', gap: 'var(--space-xs)', alignItems: 'center' }}>
+              {[...Array(totalPages)].map((_, i) => {
+                const page = i + 1;
+                if (totalPages > 7) {
+                  if (page !== 1 && page !== totalPages && Math.abs(page - currentPage) > 1) {
+                    if (page === 2 || page === totalPages - 1) return <span key={page} style={{ color: 'var(--text-tertiary)' }}>...</span>;
+                    return null;
+                  }
+                }
+                return (
+                  <button
+                    key={page}
+                    onClick={() => { setCurrentPage(page); window.scrollTo(0, 0); }}
+                    className={`btn ${currentPage === page ? 'btn-primary' : 'btn-ghost'}`}
+                    style={{ 
+                      minWidth: 36, 
+                      height: 36, 
+                      padding: 0, 
+                      borderRadius: 'var(--radius-md)',
+                      fontWeight: currentPage === page ? 700 : 400,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    {page}
+                  </button>
+                );
+              })}
+            </div>
+
+            <button 
+              className="btn btn-secondary" 
+              disabled={currentPage === totalPages}
+              onClick={() => { setCurrentPage(p => p + 1); window.scrollTo(0, 0); }}
+              style={{ padding: 0, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <ChevronRight size={18} />
+            </button>
+            
+            <div style={{ marginLeft: 'var(--space-md)', fontSize: '0.857rem', color: 'var(--text-tertiary)', fontWeight: 500 }}>
+              {Math.min(filtered.length, (currentPage - 1) * ITEMS_PER_PAGE + 1)}-{Math.min(filtered.length, currentPage * ITEMS_PER_PAGE)} sur {filtered.length}
+            </div>
+          </div>
+        )}
 
         {/* Floating bulk action bar */}
         {selected.size > 0 && (

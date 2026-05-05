@@ -87,8 +87,35 @@ export function DataProvider({ user, children }) {
 
   useEffect(() => { loadData() }, [loadData])
 
+  // Application de la règle 41 : Cohérence Phase/Séances (Audit dynamique au chargement)
+  const confirmedSessionsMap = useMemo(() => {
+    const map = {}
+    rawSessions.forEach(s => {
+      const now = new Date()
+      const endTime = new Date(new Date(s.date).getTime() + (s.duration || 60) * 60000)
+      const isCompleted = now >= endTime
+      // On utilise rawClients pour éviter la dépendance circulaire avec clients adapté
+      const rClient = rawClients.find(c => c.id === s.client_id)
+      const effectiveAmount = s.payment_amount ?? sessionRates[rClient?.type] ?? null
+      const isConfirmed = (s.status === 'completed' || (isCompleted && (!!s.payment_method || effectiveAmount === 0))) && s.status !== 'cancelled'
+      if (isConfirmed) {
+        map[s.client_id] = (map[s.client_id] || 0) + 1
+      }
+    })
+    return map
+  }, [rawSessions, rawClients, sessionRates])
+
   // Adapted data (camelCase, compatible with existing pages)
-  const clients = useMemo(() => rawClients.map(adaptClient), [rawClients])
+  const clients = useMemo(() => {
+    return rawClients.map(adaptClient).map(c => {
+      // Règle 41 : Tout client non-prospect n'ayant aucune séance validée est réinitialisé en prospect
+      if (c.phase !== 'prospect' && !confirmedSessionsMap[c.id]) {
+        return { ...c, phase: 'prospect' }
+      }
+      return c
+    })
+  }, [rawClients, confirmedSessionsMap])
+
   const sessions = useMemo(() => {
     return rawSessions.map(adaptSession).map(s => {
       const now = new Date()

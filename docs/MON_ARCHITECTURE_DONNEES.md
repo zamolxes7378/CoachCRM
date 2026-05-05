@@ -53,8 +53,8 @@ Un « client » peut être un couple, un individu, ou une famille. C'est le doss
 | `phase` | text | Phase thérapeutique actuelle (par défaut `prospect`) |
 | `source` | text | Source de recrutement (ex: "Site web", "Parrainage") |
 | `status` | text | `active`, `inactive`, ou `completed` |
-| `start_date` | date | Date de début de suivi |
-| `sessions_count` | integer | Nombre de séances réalisées (défaut 0) |
+| `start_date` | date | Date de début de suivi (reset à NULL si < 1950) |
+| `sessions_count` | integer | Nombre de séances (Valeur legacy — la UI recalcule cette valeur dynamiquement) |
 | `total_sessions` | integer | Objectif de séances (défaut 20) |
 | `next_session` | timestamptz | Prochain RDV planifié |
 | `last_session` | timestamptz | Dernier RDV réalisé |
@@ -204,8 +204,18 @@ Stocke les préférences personnalisées de chaque thérapeute (tarifs, sources,
 | `therapy_config` | JSONB | Configuration : `{ "totalSessions": 20 }` |
 | `therapy_phases` | JSONB | Phases thérapeutiques personnalisées |
 | `default_therapy_config` | JSONB | Configuration par défaut si non spécifié |
+| `revenue_objectives` | JSONB | Objectifs de CA par année/mois : `{ "2026": { "0": 2000, "1": 2500 } }` |
 | `created_at` | timestamptz | Date de création |
 | `updated_at` | timestamptz | Dernière modification |
+
+#### Structure JSONB `revenue_objectives`
+Les clés du premier niveau sont les années (string). Le second niveau contient les index des mois (0-11) et leurs montants respectifs.
+```json
+{
+  "2024": { "0": 1500, "1": 1500 },
+  "2025": { "0": 2000, "11": 3000 }
+}
+```
 ### 8. `therapy_cycles` — Cycles de thérapie
 
 Stocke les différents cycles de suivi pour un même client.

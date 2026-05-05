@@ -11,7 +11,7 @@ export default function LoginPage({ error }) {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin
+        redirectTo: `${window.location.origin}/?callback=true`
       }
     })
     if (error) {
@@ -185,22 +185,20 @@ export default function LoginPage({ error }) {
           </p>
 
           {/* Google Login Button */}
-          {error && (
-            <div style={{
-              padding: '12px', background: 'rgba(255, 68, 68, 0.1)', border: '1px solid rgba(255, 68, 68, 0.2)',
-              borderRadius: '8px', color: '#ff6b6b', fontSize: '0.857rem', marginBottom: '16px', textAlign: 'center'
-            }}>
-              {error}
-            </div>
-          )}
-          {loginError && (
-            <div style={{
-              padding: '12px', background: 'rgba(255, 68, 68, 0.1)', border: '1px solid rgba(255, 68, 68, 0.2)',
-              borderRadius: '8px', color: '#ff6b6b', fontSize: '0.857rem', marginBottom: '16px', textAlign: 'center'
-            }}>
-              {loginError}
-            </div>
-          )}
+          {(error || loginError) && (
+              <div style={{
+                background: 'var(--red-50)',
+                color: 'var(--red-700)',
+                padding: 'var(--space-md)',
+                borderRadius: 'var(--radius-md)',
+                fontSize: '0.875rem',
+                marginBottom: 'var(--space-xl)',
+                borderLeft: '4px solid var(--red-500)',
+                animation: 'slideUp 0.3s ease-out'
+              }}>
+                {error || loginError}
+              </div>
+            )}
           <button
             onClick={handleGoogleLogin}
             style={{

@@ -40,8 +40,13 @@ stateDiagram-v2
 - **Déclencheur** : chargement de l'application (`loadData`).
 - **Logique** : l'application vérifie systématiquement la cohérence Phase/Séances. Tout client non-prospect n'ayant aucune séance validée est réinitialisé en `prospect`.
 
-> **Alliance thérapeutique** = au moins 1 séance `completed` + (`paymentMethod` renseigné OU montant de la séance = **0€**).
+> Alliance thérapeutique = au moins 1 séance `completed` + (`paymentMethod` renseigné OU montant de la séance = **0€**).
 > *Note : Le montant d'une séance est déterminé par `payment_amount` (si saisi), sinon par le `session_rate` spécifique du client, sinon par le tarif par défaut du système.*
+
+### Comptage des séances (Logique dynamique)
+- **Source de vérité** : Le nombre de séances effectuées n'est plus lu directement depuis la colonne `sessions_count` de la table `clients` (jugée non fiable après des imports massifs). 
+- **Calcul UI** : Le compteur (ex: "4/20") est calculé dynamiquement par l'interface en filtrant les séances dont le statut est `completed`.
+- **Exclusion historique** : Toute séance datée avant le **01/01/1950** est ignorée dans les calculs et les listes (purgatoire des données "1900" issues d'erreurs d'import Excel).
 
 ### Statuts des séances (Suivi Financier)
 Le statut affiché est une synthèse dynamique de l'état en base et de la réalité comptable :
@@ -70,6 +75,15 @@ Le statut affiché est une synthèse dynamique de l'état en base et de la réal
 - **Calcul du CA** : Le chiffre d'affaires global et mensuel inclut les séances `completed` ET les séances `cancelled` ayant un montant supérieur à zéro.
 - **Alertes Impayés** : Les séances annulées facturées non encaissées déclenchent les mêmes alertes visuelles (montant rouge) et notifications que les séances réalisées.
 - **Alliance Thérapeutique** : Une annulation, même payée, **ne valide jamais** l'alliance thérapeutique. Le prospect ne devient Client qu'après une séance `completed` et payée/offerte.
+- **Slugs de Phase** : Les phases doivent être enregistrées sans accents (ex: `debut` et non `début`) pour assurer la cohérence avec le code applicatif.
+- **Audit de Transition** : En cas d'import de données, un audit doit être réalisé pour passer en phase `debut` tout client ayant au moins une séance terminée (`completed`) et validée financièrement (payée ou offerte à 0€).
+- **Objectifs financiers** : Les objectifs mensuels de CA sont persistés par année dans la table `settings` (JSONB `revenue_objectives`). Ils peuvent varier d'une année sur l'autre.
+
+### Diagnostic et Correction (Cas Philippe Peluchon)
+Philippe est resté "Prospect" malgré ses séances à cause d'une incohérence de données importées :
+1. Les séances étaient marquées `début` (avec accent) alors que le code attend `debut`.
+2. La phase par défaut à l'import était `prospect`.
+3. Solution : Harmonisation SQL des phases et mise à jour de la logique d'import pour utiliser `debut`.
 - **Progression** : Une séance annulée ne consomme pas de numéro de séance (ex: si la S4 est annulée, la séance suivante reste la S4).
 - **Libellé Facture** : Toute annulation facturée porte la mention **"Annulation facturée"** (automatiquement renseignée dans le champ raison d'annulation).
 
@@ -599,6 +613,19 @@ flowchart LR
 | Administration | `/admin` | Vue d'ensemble des inscrits (Admin) |
 | Paramètres | `/settings` | Préférences personnelles du thérapeute |
 | Aide | `/help` | Guide d'utilisation et aide |
+
+## Standards de l'Interface (Comportement UI)
+
+### 1. Compteurs de résultats
+- **Règle** : Tout bouton de filtrage (onglet, bouton de statut, bouton de type) **doit** afficher entre parenthèses le nombre d'éléments concernés par ce filtre, en tenant compte de la recherche textuelle active.
+- **Format** : `Libellé (N)` (ex: `Clients (12)`, `Actifs (8)`).
+- **Réactivité** : Les compteurs doivent se mettre à jour en temps réel lors de la saisie dans le champ de recherche.
+
+### 2. Système de Tri et Pagination
+- **Pagination** : Pour garantir la performance de l'interface, l'affichage est limité à **50 éléments par page**. La navigation se fait via un composant de pagination centré en bas de liste.
+- **Tri Dynamique** : Toutes les colonnes des tableaux (Nom, Type, Phase, Séances, Dates) sont triables par clic sur l'en-tête.
+- **Cycle de Tri** : Clic 1 (Ascendant) → Clic 2 (Descendant) → Clic 3 (Ascendant).
+- **Indicateur visuel** : Une icône `ArrowUp` ou `ArrowDown` colorée (`var(--primary-600)`) indique la colonne et la direction actives.
 
 ## Conformité RGPD et Protection des Données (Données de Santé)
 

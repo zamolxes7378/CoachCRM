@@ -95,9 +95,7 @@ export default function ClientDetailPage({ clientIdProp, sessionIdProp, onClose 
     return therapyCycles[0]
   }
 
-  useEffect(() => {
-    if (editingTotal && totalInputRef.current) totalInputRef.current.focus()
-  }, [editingTotal])
+
 
   // Auto-expand session from query param or prop
   useEffect(() => {
@@ -310,7 +308,7 @@ export default function ClientDetailPage({ clientIdProp, sessionIdProp, onClose 
             contacts={contacts}
             sessions={sessions}
             therapyCycles={therapyCycles}
-            setTherapyCycles={setTherapyCycles}
+            updateTherapyCycle={updateTherapyCycle}
             getSessionCycle={getSessionCycle}
             getClientName={getClientName}
             contactIcons={contactIcons}

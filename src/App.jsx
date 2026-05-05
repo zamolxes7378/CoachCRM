@@ -108,15 +108,18 @@ export default function App() {
   useEffect(() => {
     let mounted = true
 
-    // Consumption of OAuth hash
-    const clearHash = () => {
-      if (window.location.hash && (window.location.hash.includes('access_token') || window.location.hash.includes('error'))) {
-        window.history.replaceState(null, '', window.location.pathname + window.location.search)
+    // Consumption of OAuth hash or code query param
+    const clearAuthParams = () => {
+      if (
+        (window.location.hash && (window.location.hash.includes('access_token') || window.location.hash.includes('error'))) ||
+        (window.location.search && window.location.search.includes('code='))
+      ) {
+        window.history.replaceState(null, '', window.location.pathname)
       }
     }
 
     // Only show loading spinner if we're processing an OAuth callback
-    const isOAuthCallback = window.location.hash.includes('access_token')
+    const isOAuthCallback = window.location.hash.includes('access_token') || window.location.search.includes('code=') || window.location.hash.includes('error') || window.location.search.includes('error')
     if (!isOAuthCallback) {
       setLoading(false)
     }
@@ -127,6 +130,14 @@ export default function App() {
         setLoading(false)
       }
     }, 10000)
+
+    // Force session initialization to trigger code exchange/parsing
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        console.error('Initial getSession error:', error)
+        setAuthError(`Erreur session: ${error.message}`)
+      }
+    })
 
     // Single auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -139,7 +150,7 @@ export default function App() {
             setUser(dbUser)
             const onboardingDone = localStorage.getItem('coachcrm_onboarding_done')
             if (!onboardingDone) setShowOnboarding(true)
-            clearHash()
+            clearAuthParams()
           }
         } else if (event === 'SIGNED_OUT') {
           if (mounted) {
@@ -150,7 +161,9 @@ export default function App() {
       } catch (err) {
         console.error('[Auth] Process error:', err)
       } finally {
-        if (mounted) setLoading(false)
+        if (mounted) {
+          setLoading(false)
+        }
       }
     })
 

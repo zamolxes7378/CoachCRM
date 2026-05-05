@@ -18,6 +18,11 @@ const AbsenceDash = () => (
 
 const renderCell = (val) => val === '—' ? <AbsenceDash /> : val
 
+const formatAmount = (val) => {
+  if (val === undefined || val === null || isNaN(val)) return '0'
+  return new Intl.NumberFormat('fr-FR').format(Math.round(val))
+}
+
 function getDefaultRate(clientId, clients, sessionRates) {
   const c = clients.find(x => x.id === clientId)
   if (!c) return sessionRates?.client || 75
@@ -25,7 +30,8 @@ function getDefaultRate(clientId, clients, sessionRates) {
 }
 
 export default function FinancesPage() {
-  const { clients, sessions: allSessions, recruitmentSources, sessionRates, getInvoiceForSession } = useData()
+  const { clients, sessions: allSessions, recruitmentSources, sessionRates, getInvoiceForSession, settings, upsertSettings } = useData()
+  const revenueObjectives = settings?.revenue_objectives || {}
 
 
   // Moved outside component if possible, but keeping it inside for now to access useData or passing params
@@ -80,9 +86,32 @@ export default function FinancesPage() {
   const now = new Date()
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth())
   const [selectedYear, setSelectedYear] = useState(now.getFullYear())
-  const [objectifCAByYear, setObjectifCAByYear] = useState({ 2025: 2000, 2026: 2000 })
-  const objectifCA = objectifCAByYear[selectedYear] || 2000
-  const setObjectifCA = (v) => setObjectifCAByYear(prev => ({ ...prev, [selectedYear]: v }))
+
+  // Current objective for the specific month/year
+  const objectifCA = useMemo(() => {
+    const yearObj = revenueObjectives[selectedYear] || {}
+    // If we have a specific month value, use it. Otherwise fallback to a general year default if it exists (for backward compatibility)
+    // or the global default of 2000.
+    if (yearObj[selectedMonth] !== undefined) return yearObj[selectedMonth]
+    if (typeof yearObj === 'number') return yearObj // legacy support
+    return 2000
+  }, [revenueObjectives, selectedYear, selectedMonth])
+
+  const saveObjectifCA = async (newVal) => {
+    const currentYearObjs = revenueObjectives[selectedYear] || {}
+    const updatedYearObjs = typeof currentYearObjs === 'number'
+      ? { [selectedMonth]: newVal } // converting legacy
+      : { ...currentYearObjs, [selectedMonth]: newVal }
+
+    await upsertSettings({
+      ...settings,
+      revenue_objectives: {
+        ...revenueObjectives,
+        [selectedYear]: updatedYearObjs
+      }
+    })
+  }
+
   const [viewPeriod, setViewPeriod] = useState('month') // month, quarter, semester, year
   const [topModal, setTopModal] = useState(null) // 'ca' | 'referrals' | null
   const [expandedAlert, setExpandedAlert] = useState(null) // 'unpaid' | 'deferred' | 'invoices' | null
@@ -107,10 +136,10 @@ export default function FinancesPage() {
 
     // CA Réalisé inclut les sessions complétées ET les annulations facturées
     const billable = ms.filter(s => s.status === 'completed' || (s.status === 'cancelled' && s.paymentAmount > 0))
-    const caRealise = billable.reduce((sum, s) => sum + (s.paymentAmount || getDefaultRate(s.clientId, clients, sessionRates)), 0)
-    const caPrev = caRealise + scheduled.reduce((sum, s) => sum + getDefaultRate(s.clientId, clients, sessionRates), 0)
+    const caRealise = Math.round(billable.reduce((sum, s) => sum + (s.paymentAmount || getDefaultRate(s.clientId, clients, sessionRates)), 0))
+    const caPrev = Math.round(caRealise + scheduled.reduce((sum, s) => sum + getDefaultRate(s.clientId, clients, sessionRates), 0))
     const paid = billable.filter(s => s.paymentReceived && s.paymentMethod)
-    const encaisse = paid.reduce((sum, s) => sum + (s.paymentAmount || getDefaultRate(s.clientId, clients, sessionRates)), 0)
+    const encaisse = Math.round(paid.reduce((sum, s) => sum + (s.paymentAmount || getDefaultRate(s.clientId, clients, sessionRates)), 0))
 
     // Nouveaux clients: 1ère séance de ce client est dans ce mois
     const clientIds = [...new Set(ms.map(s => s.clientId))]
@@ -223,18 +252,39 @@ export default function FinancesPage() {
           const scheduled = ys.filter(s => s.status === 'scheduled')
 
           const billable = ys.filter(s => s.status === 'completed' || (s.status === 'cancelled' && s.paymentAmount > 0))
-          const ca = billable.reduce((sum, s) => sum + (s.paymentAmount || getDefaultRate(s.clientId, clients, sessionRates)), 0)
-          const caPlanned = ca + scheduled.reduce((sum, s) => sum + getDefaultRate(s.clientId, clients, sessionRates), 0)
+          const ca = Math.round(billable.reduce((sum, s) => sum + (s.paymentAmount || getDefaultRate(s.clientId, clients, sessionRates)), 0))
+          const caPlanned = Math.round(ca + scheduled.reduce((sum, s) => sum + getDefaultRate(s.clientId, clients, sessionRates), 0))
           const clientIds = [...new Set(ys.filter(s => s.status !== 'cancelled').map(s => s.clientId))]
           const newClients = clientIds.filter(cid => {
             const all = sessions.filter(s => s.clientId === cid && s.status !== 'cancelled').sort((a, b) => (a.date || '').localeCompare(b.date || ''))
             return all.length > 0 && all[0].date && new Date(all[0].date).getFullYear() === y
           })
           const paid = billable.filter(s => s.paymentReceived && s.paymentMethod)
-          const encaisse = paid.reduce((sum, s) => sum + (s.paymentAmount || getDefaultRate(s.clientId, clients, sessionRates)), 0)
+          const encaisse = Math.round(paid.reduce((sum, s) => sum + (s.paymentAmount || getDefaultRate(s.clientId, clients, sessionRates)), 0))
           const txAnnulation = (completed.length + cancelled.length) > 0
             ? Math.round((cancelled.length / (completed.length + cancelled.length)) * 100) : 0
-          return { ca, caPlanned, completed, cancelled, scheduled, clientIds, newClients, encaisse, txAnnulation, allSessions: ys, billable }
+
+          // YTD (Year-To-Date) logic for accurate prorata comparison
+          const nowMonth = now.getMonth()
+          const nowDate = now.getDate()
+          const isYTD = (s) => {
+            const d = new Date(s.date)
+            if (d.getMonth() < nowMonth) return true
+            if (d.getMonth() === nowMonth && d.getDate() <= nowDate) return true
+            return false
+          }
+          
+          const ysYTD = ys.filter(isYTD)
+          const completedYTD = ysYTD.filter(s => s.status === 'completed')
+          const billableYTD = ysYTD.filter(s => s.status === 'completed' || (s.status === 'cancelled' && s.paymentAmount > 0))
+          const caYTD = Math.round(billableYTD.reduce((sum, s) => sum + (s.paymentAmount || getDefaultRate(s.clientId, clients, sessionRates)), 0))
+          const clientIdsYTD = [...new Set(ysYTD.filter(s => s.status !== 'cancelled').map(s => s.clientId))]
+          const newClientsYTD = clientIdsYTD.filter(cid => {
+            const all = sessions.filter(s => s.clientId === cid && s.status !== 'cancelled').sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+            return all.length > 0 && all[0].date && new Date(all[0].date).getFullYear() === y && isYTD(all[0])
+          })
+
+          return { ca, caPlanned, completed, cancelled, scheduled, clientIds, newClients, encaisse, txAnnulation, allSessions: ys, billable, caYTD, completedYTD, clientIdsYTD, newClientsYTD }
         }
 
         // Monthly breakdown for a year
@@ -243,8 +293,8 @@ export default function FinancesPage() {
           const billable = ms.filter(s => s.status === 'completed' || (s.status === 'cancelled' && s.paymentAmount > 0))
           const completed = ms.filter(s => s.status === 'completed')
           const scheduled = ms.filter(s => s.status === 'scheduled')
-          const ca = billable.reduce((sum, s) => sum + (s.paymentAmount || getDefaultRate(s.clientId, clients, sessionRates)), 0)
-          const caPlanned = scheduled.reduce((sum, s) => sum + getDefaultRate(s.clientId, clients, sessionRates), 0)
+          const ca = Math.round(billable.reduce((sum, s) => sum + (s.paymentAmount || getDefaultRate(s.clientId, clients, sessionRates)), 0))
+          const caPlanned = Math.round(scheduled.reduce((sum, s) => sum + getDefaultRate(s.clientId, clients, sessionRates), 0))
           return { month: m, ca, caPlanned, sessions: completed.length }
         })
 
@@ -280,18 +330,18 @@ export default function FinancesPage() {
             {/* Annual KPIs */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 'var(--space-sm)', marginBottom: 'var(--space-md)' }}>
               {[
-                { label: 'CA réalisé', value: `${selYearStats.ca}€`, prev: prevYearStats.ca, current: selYearStats.ca, color: '#276749', icon: Euro },
-                { label: 'CA planifié', value: `${selYearStats.caPlanned}€`, prev: prevYearStats.caPlanned, current: selYearStats.caPlanned, color: 'var(--primary-600)', icon: TrendingUp },
-                { label: 'Séances', value: selYearStats.completed.length, prev: prevYearStats.completed.length, current: selYearStats.completed.length, color: '#2B6CB0', icon: Calendar },
-                { label: 'Clients actifs', value: selYearStats.clientIds.length, prev: prevYearStats.clientIds.length, current: selYearStats.clientIds.length, color: '#805AD5', icon: Users },
-                { label: 'Nouveaux clients', value: selYearStats.newClients.length, prev: prevYearStats.newClients.length, current: selYearStats.newClients.length, color: '#805AD5', icon: UserPlus },
-                { label: 'Moy./mois', value: `${avgMonthlyCA}€`, prev: prevYearStats.ca > 0 ? Math.round(prevYearStats.ca / (prevMonthly.filter(m => m.ca > 0).length || 1)) : 0, current: avgMonthlyCA, color: '#D69E2E', icon: BarChart3 },
+                { label: 'CA réalisé', value: `${formatAmount(selYearStats.ca)}€`, prev: selectedYear === currentYear ? prevYearStats.caYTD : prevYearStats.ca, current: selectedYear === currentYear ? selYearStats.caYTD : selYearStats.ca, color: '#2A4365', icon: Euro },
+                { label: 'CA planifié', value: `${formatAmount(selYearStats.caPlanned)}€`, prev: prevYearStats.caPlanned, current: selYearStats.caPlanned, color: 'var(--primary-600)', icon: TrendingUp, hideTrend: true },
+                { label: 'Séances', value: selYearStats.completed.length, prev: selectedYear === currentYear ? prevYearStats.completedYTD.length : prevYearStats.completed.length, current: selectedYear === currentYear ? selYearStats.completedYTD.length : selYearStats.completed.length, color: '#2B6CB0', icon: Calendar },
+                { label: 'Clients actifs', value: selYearStats.clientIds.length, prev: selectedYear === currentYear ? prevYearStats.clientIdsYTD.length : prevYearStats.clientIds.length, current: selectedYear === currentYear ? selYearStats.clientIdsYTD.length : selYearStats.clientIds.length, color: '#805AD5', icon: Users },
+                { label: 'Nouveaux clients', value: selYearStats.newClients.length, prev: selectedYear === currentYear ? prevYearStats.newClientsYTD.length : prevYearStats.newClients.length, current: selectedYear === currentYear ? selYearStats.newClientsYTD.length : selYearStats.newClients.length, color: '#805AD5', icon: UserPlus },
+                { label: 'Moy./mois', value: `${formatAmount(avgMonthlyCA)}€`, prev: prevYearStats.ca > 0 ? Math.round(prevYearStats.ca / (prevMonthly.filter(m => m.ca > 0).length || 1)) : 0, current: avgMonthlyCA, color: '#D69E2E', icon: BarChart3 },
               ].map((k, i) => (
                 <div key={i} style={{ textAlign: 'center', padding: 'var(--space-xs)', borderRadius: 'var(--radius-md)', background: '#FAFAFA', border: '1px solid var(--border-light)' }}>
                   <k.icon size={20} style={{ color: k.color, marginBottom: 2 }} />
                   <div style={{ fontSize: '1.1rem', fontWeight: 700, color: k.color, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
                     {k.value}
-                    <TrendBadge current={k.current} previous={k.prev} />
+                    {!k.hideTrend && <TrendBadge current={k.current} previous={k.prev} />}
                   </div>
                   <div style={{ fontSize: '0.571rem', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>{k.label}</div>
                 </div>
@@ -302,7 +352,7 @@ export default function FinancesPage() {
             <div style={{ marginBottom: 'var(--space-sm)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.643rem', color: 'var(--text-tertiary)' }}>
-                  <div style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--primary-500)' }} /> {selectedYear}
+                  <div style={{ width: 10, height: 10, borderRadius: 2, background: '#58718E' }} /> {selectedYear}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.643rem', color: 'var(--text-tertiary)' }}>
                   <div style={{ width: 10, height: 10, borderRadius: 2, background: '#CBD5E0', opacity: 0.6 }} /> {selectedYear - 1}
@@ -311,7 +361,7 @@ export default function FinancesPage() {
                   <div style={{ width: 10, height: 10, borderRadius: 2, background: '#E3F2FD' }} /> CA planifié
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.643rem', color: 'var(--text-tertiary)' }}>
-                  <div style={{ width: 10, height: 2, background: '#D69E2E', borderRadius: 1, borderTop: '1px dashed #D69E2E' }} /> Objectif ({objectifCA}€)
+                  <div style={{ width: 10, height: 2, background: '#D69E2E', borderRadius: 1, borderTop: '1px dashed #D69E2E' }} /> Objectif ({formatAmount(objectifCA)}€)
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 140, position: 'relative' }}>
@@ -336,12 +386,12 @@ export default function FinancesPage() {
                         {/* CA label on hover/selected */}
                         {isSelected && (selCA > 0 || selPlanned > 0) && (
                           <div style={{ position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)', fontSize: '0.714rem', fontWeight: 700, color: 'var(--primary-700)', whiteSpace: 'nowrap', zIndex: 5, background: 'white', padding: '1px 6px', borderRadius: 'var(--radius-sm)', boxShadow: '0 1px 4px rgba(0,0,0,0.1)' }}>
-                            {selCA}{selPlanned > 0 ? `+${selPlanned}` : ''}€
-                            {prevCA > 0 && <span style={{ fontSize: '0.571rem', fontWeight: 500, color: '#999', marginLeft: 4 }}>({prevCA}€)</span>}
+                            {formatAmount(selCA)}{selPlanned > 0 ? `+${formatAmount(selPlanned)}` : ''}€
+                            {prevCA > 0 && <span style={{ fontSize: '0.571rem', fontWeight: 500, color: '#999', marginLeft: 4 }}>({formatAmount(prevCA)}€)</span>}
                           </div>
                         )}
                         {/* Current year bar — stacked: completed + planned */}
-                        <div style={{ width: '55%', display: 'flex', flexDirection: 'column', alignItems: 'stretch', outline: isSelected ? '2px solid var(--primary-700)' : 'none', outlineOffset: 1, borderRadius: '3px 3px 0 0', height: Math.max((totalSelH / 100) * 120, 1) }}>
+                        <div style={{ width: '45%', display: 'flex', flexDirection: 'column', alignItems: 'stretch', outline: isSelected ? '2px solid var(--primary-700)' : 'none', outlineOffset: 1, borderRadius: '3px 3px 0 0', height: Math.max((totalSelH / 100) * 120, 1) }}>
                           {/* Planned CA (top, light blue) */}
                           {selPlanned > 0 && (
                             <div style={{
@@ -353,7 +403,7 @@ export default function FinancesPage() {
                           {/* Completed CA (bottom) */}
                           <div style={{
                             flex: 1, minHeight: selCA > 0 ? 2 : 0,
-                            background: isFuture ? '#E2E8F0' : selCA >= objectifCA ? 'linear-gradient(180deg, #68D391, #38A169)' : 'var(--primary-500)',
+                            background: isFuture ? '#E2E8F0' : selCA >= objectifCA ? 'linear-gradient(180deg, #718096, #58718E)' : '#58718E',
                             opacity: isFuture ? 0.4 : 1,
                             borderRadius: selPlanned > 0 ? '0' : '3px 3px 0 0',
                             transition: 'height 0.3s'
@@ -361,7 +411,7 @@ export default function FinancesPage() {
                         </div>
                         {/* Previous year bar */}
                         <div style={{
-                          width: '35%',
+                          width: '45%',
                           height: Math.max((prevH / 100) * 120, prevCA > 0 ? 2 : 0),
                           background: '#CBD5E0',
                           opacity: 0.5,
@@ -394,8 +444,10 @@ export default function FinancesPage() {
                 <span style={{ fontWeight: 600 }}>Objectif/mois :</span>
                 <input
                   type="number" min="0" step="100"
-                  value={objectifCAByYear[selectedYear] || 2000}
-                  onChange={e => setObjectifCAByYear(prev => ({ ...prev, [selectedYear]: Number(e.target.value) }))}
+                  defaultValue={objectifCA}
+                  key={`${selectedYear}-${selectedMonth}-${objectifCA}`} // force refresh when period/data changes
+                  onBlur={e => saveObjectifCA(Number(e.target.value))}
+                  onKeyDown={e => { if (e.key === 'Enter') saveObjectifCA(Number(e.target.value)) }}
                   className="input"
                   style={{ fontSize: '0.714rem', fontWeight: 700, textAlign: 'center', width: 70, padding: '2px 4px' }}
                 />
@@ -406,11 +458,132 @@ export default function FinancesPage() {
         )
       })()}
 
+      {/* Source Performance Widget + Parrainage Widget — Moved Up */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-sm)', marginTop: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
+        {/* Source Performance */}
+        {(() => {
+          const sourceCounts = countClientsBySource(clients, selectedYear, recruitmentSources)
+          const sourceLabels = {}
+          recruitmentSources.forEach(s => { sourceLabels[s.key] = s.label })
+          sourceLabels['unknown'] = 'Non renseigné'
+          const entries = Object.entries(sourceCounts).sort((a, b) => b[1] - a[1])
+          const maxCount = entries.length > 0 ? entries[0][1] : 1
+          const totalClients = entries.reduce((sum, [, count]) => sum + count, 0)
+          return (
+            <div className="card" style={{ padding: 'var(--space-md)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 'var(--space-md)' }}>
+                <PieChart size={16} style={{ color: 'var(--primary-500)' }} />
+                <span style={{ fontSize: '0.786rem', fontWeight: 700, color: 'var(--text-primary)' }}>Canaux d'acquisition</span>
+                <span style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)', marginLeft: 'auto' }}>{selectedYear} · {totalClients} client{totalClients > 1 ? 's' : ''}</span>
+              </div>
+              {entries.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: 'var(--space-md)', color: 'var(--text-tertiary)', fontSize: '0.786rem' }}>Aucune donnée</div>
+              ) : entries.map(([key, count]) => {
+                const pct = totalClients > 0 ? Math.round((count / totalClients) * 100) : 0
+                return (
+                  <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <span style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-secondary)', minWidth: 90, textAlign: 'right' }}>
+                      {sourceLabels[key] || key}
+                    </span>
+                    <div style={{ flex: 1, height: 14, background: '#F0F0F0', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%', borderRadius: 'var(--radius-sm)',
+                        background: '#A0AEC0',
+                        width: `${(count / maxCount) * 100}%`,
+                        transition: 'width 0.4s ease'
+                      }} />
+                    </div>
+                    <span style={{ fontSize: '0.786rem', fontWeight: 700, color: '#A0AEC0', minWidth: 24, textAlign: 'right' }}>{count}</span>
+                    <span style={{ fontSize: '0.571rem', fontWeight: 600, color: 'var(--text-tertiary)', minWidth: 28 }}>{pct}%</span>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })()}
+
+        {/* Répartition par type de client */}
+        {(() => {
+          const activeClients = clients.filter(c => {
+            const clientSessions = sessions.filter(s => s.clientId === c.id && s.status !== 'cancelled' && new Date(s.date).getFullYear() === selectedYear)
+            return clientSessions.length > 0
+          })
+          const typeCounts = { couple: 0, individuel: 0, famille: 0 }
+          activeClients.forEach(c => {
+            const t = getClientType(c.id)
+            if (typeCounts[t] !== undefined) typeCounts[t]++
+            else typeCounts.couple++
+          })
+          const typeConfig = [
+            { key: 'couple', label: 'Couple', color: '#EC4899', bg: '#FBCFE8' },
+            { key: 'individuel', label: 'Individuel', color: '#6366F1', bg: '#C7D2FE' },
+            { key: 'famille', label: 'Famille', color: '#F59E0B', bg: '#FDE68A' },
+          ]
+          const totalTypes = Object.values(typeCounts).reduce((s, v) => s + v, 0)
+          const maxTypeCount = Math.max(...Object.values(typeCounts), 1)
+          return (
+            <div className="card" style={{ padding: 'var(--space-md)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 'var(--space-md)' }}>
+                <Users size={16} style={{ color: 'var(--primary-500)' }} />
+                <span style={{ fontSize: '0.786rem', fontWeight: 700, color: 'var(--text-primary)' }}>Types de clients</span>
+                <span style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)', marginLeft: 'auto' }}>{selectedYear} · {totalTypes} client{totalTypes > 1 ? 's' : ''}</span>
+              </div>
+              {totalTypes === 0 ? (
+                <div style={{ textAlign: 'center', padding: 'var(--space-md)', color: 'var(--text-tertiary)', fontSize: '0.786rem' }}>Aucune donnée</div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', padding: 'var(--space-xs)' }}>
+                  {/* The Donut Chart */}
+                  <div style={{
+                    width: 100, height: 100, borderRadius: '50%', flexShrink: 0,
+                    background: `conic-gradient(${(() => {
+                      let current = 0
+                      return typeConfig.map(config => {
+                        const count = typeCounts[config.key]
+                        const pct = totalTypes > 0 ? (count / totalTypes) * 100 : 0
+                        if (pct === 0) return null
+                        const start = current
+                        current += pct
+                        return `${config.bg} ${start}% ${current}%`
+                      }).filter(Boolean).join(', ')
+                    })()})`,
+                    position: 'relative',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    border: '1px solid var(--border-light)',
+                    boxShadow: 'inset 0 0 10px rgba(0,0,0,0.02)'
+                  }}>
+                    {/* Inner hole for donut effect */}
+                    <div style={{ width: '60%', height: '60%', background: 'white', borderRadius: '50%', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }} />
+                  </div>
+
+                  {/* Legend */}
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {typeConfig.map(({ key, label, color, bg }) => {
+                      const count = typeCounts[key]
+                      const pct = totalTypes > 0 ? Math.round((count / totalTypes) * 100) : 0
+                      if (count === 0) return null
+                      return (
+                        <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ width: 10, height: 10, borderRadius: '3px', background: bg, border: `1px solid ${color}40` }} />
+                          <span style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-secondary)', flex: 1 }}>{label}</span>
+                          <span style={{ fontSize: '0.786rem', fontWeight: 700, color: color }}>{count}</span>
+                          <span style={{ fontSize: '0.643rem', fontWeight: 600, color: 'var(--text-tertiary)', minWidth: 28 }}>{pct}%</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })()}
+      </div>
+
       {/* Zone 3 — Détail mensuel (KPIs + Tableau) */}
       <div className="card" style={{ padding: 'var(--space-md)' }}>
+
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-md)' }}>
           <span style={{ fontSize: '0.857rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-            Vue détaillée du mois
+            Vue détaillée — {MONTHS_FR[selectedMonth]} {selectedYear}
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <button onClick={goToPrevMonth} disabled={selectedYear <= MIN_YEAR && selectedMonth === 0} style={{ background: 'white', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)', padding: '4px', cursor: selectedYear <= MIN_YEAR && selectedMonth === 0 ? 'not-allowed' : 'pointer', display: 'flex', opacity: selectedYear <= MIN_YEAR && selectedMonth === 0 ? 0.3 : 1 }}>
@@ -428,19 +601,19 @@ export default function FinancesPage() {
         {/* KPIs mensuels */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 'var(--space-sm)', marginBottom: 'var(--space-md)' }}>
           {[
-            { label: 'CA réalisé', value: `${currentStats.caRealise}€`, prev: prevStats.caRealise, current: currentStats.caRealise, color: '#276749', icon: Euro },
-            { label: 'CA planifié', value: `${currentStats.caPrev}€`, prev: prevStats.caPrev, current: currentStats.caPrev, color: 'var(--primary-600)', icon: TrendingUp },
+            { label: 'CA réalisé', value: `${formatAmount(currentStats.caRealise)}€`, prev: prevStats.caRealise, current: currentStats.caRealise, color: '#2A4365', icon: Euro },
+            { label: 'CA planifié', value: `${formatAmount(currentStats.caPrev)}€`, prev: prevStats.caPrev, current: currentStats.caPrev, color: 'var(--primary-600)', icon: TrendingUp, hideTrend: true },
             { label: 'Séances', value: null, customRender: true, color: '#2B6CB0', icon: Calendar },
             { label: 'Nouveaux clients', value: currentStats.nouveaux.length, prev: prevStats.nouveaux.length, current: currentStats.nouveaux.length, color: '#805AD5', icon: UserPlus },
-            { label: 'Panier moyen', value: `${currentStats.panierMoyen}€`, prev: prevStats.panierMoyen, current: currentStats.panierMoyen, color: '#D69E2E', icon: BarChart3 },
-            { label: 'Taux encaissement', value: `${currentStats.caRealise > 0 ? Math.round((currentStats.encaisse / currentStats.caRealise) * 100) : 0}%`, prev: prevStats.caRealise > 0 ? Math.round((prevStats.encaisse / prevStats.caRealise) * 100) : 0, current: currentStats.caRealise > 0 ? Math.round((currentStats.encaisse / currentStats.caRealise) * 100) : 0, color: currentStats.caRealise > 0 && currentStats.encaisse >= currentStats.caRealise ? '#276749' : '#D69E2E', icon: Download },
+            { label: 'Panier moyen', value: `${formatAmount(currentStats.panierMoyen)}€`, prev: prevStats.panierMoyen, current: currentStats.panierMoyen, color: '#D69E2E', icon: BarChart3 },
+            { label: 'Taux encaissement', value: `${currentStats.caRealise > 0 ? Math.round((currentStats.encaisse / currentStats.caRealise) * 100) : 0}%`, prev: prevStats.caRealise > 0 ? Math.round((prevStats.encaisse / prevStats.caRealise) * 100) : 0, current: currentStats.caRealise > 0 ? Math.round((currentStats.encaisse / currentStats.caRealise) * 100) : 0, color: currentStats.caRealise > 0 && currentStats.encaisse >= currentStats.caRealise ? '#2A4365' : '#D69E2E', icon: Download },
             { label: 'Taux annulation', value: `${currentStats.txAnnulation}%`, prev: prevStats.txAnnulation, current: currentStats.txAnnulation, color: 'var(--error)', icon: XCircle, invert: true },
           ].map((kpi, i) => (
             <div key={i} style={{ textAlign: 'center', padding: 'var(--space-xs)', borderRadius: 'var(--radius-md)', background: '#FAFAFA', border: '1px solid var(--border-light)' }}>
               <kpi.icon size={20} style={{ color: kpi.color, marginBottom: 2 }} />
               {kpi.customRender ? (
                 <div style={{ fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
-                  <span style={{ color: '#276749' }}>{currentStats.completed.length}</span>
+                  <span style={{ color: '#2A4365' }}>{currentStats.completed.length}</span>
                   {currentStats.scheduled.length > 0 && (
                     <>
                       <span style={{ fontSize: '0.786rem', color: 'var(--text-tertiary)', fontWeight: 400 }}>+</span>
@@ -451,7 +624,7 @@ export default function FinancesPage() {
               ) : (
                 <div style={{ fontSize: '1.1rem', fontWeight: 700, color: kpi.color, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
                   {kpi.value}
-                  <TrendBadge current={kpi.current} previous={kpi.prev} invert={kpi.invert} />
+                  {!kpi.hideTrend && <TrendBadge current={kpi.current} previous={kpi.prev} invert={kpi.invert} />}
                 </div>
               )}
               <div style={{ fontSize: '0.571rem', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>{kpi.label}</div>
@@ -537,7 +710,7 @@ export default function FinancesPage() {
                       </span>
                     </td>
                     <td style={{ textAlign: 'center', fontWeight: 700, color: isPaid ? 'var(--text-primary)' : (isScheduled && !isToConfirm ? 'var(--text-tertiary)' : 'var(--error)') }}>
-                      {s.paymentAmount === 0 ? <AbsenceDash /> : `${s.paymentAmount ?? getDefaultRate(s.clientId, clients, sessionRates)}€`}
+                      {s.paymentAmount === 0 ? <AbsenceDash /> : `${formatAmount(s.paymentAmount ?? getDefaultRate(s.clientId, clients, sessionRates))}€`}
                     </td>
                     <td style={{ textAlign: 'center' }}>
                       {s.paymentMethod ? (
@@ -548,7 +721,7 @@ export default function FinancesPage() {
                     </td>
                     <td style={{ textAlign: 'center' }}>
                       {(isScheduled || isToConfirm || (isCancelled && !s.paymentAmount) || s.paymentAmount === 0) ? <AbsenceDash /> : isPaid ? (
-                        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: '50%', background: '#C6F6D5', color: '#276749', fontSize: '0.714rem', fontWeight: 700 }} title="Encaissé">€</div>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: '50%', background: '#C6F6D5', color: '#2A4365', fontSize: '0.714rem', fontWeight: 700 }} title="Encaissé">€</div>
                       ) : (
                         <Hourglass size={14} style={{ color: 'var(--error)' }} title="En attente d'encaissement" />
                       )}
@@ -570,8 +743,8 @@ export default function FinancesPage() {
                 <td colSpan={5} style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.786rem' }}>
                   Total — {MONTHS_FR[selectedMonth]}
                 </td>
-                <td style={{ fontWeight: 800, color: '#276749', fontSize: '0.857rem' }}>
-                  {currentStats.caRealise}€
+                <td style={{ fontWeight: 800, color: '#2A4365', fontSize: '0.857rem' }}>
+                  {formatAmount(currentStats.caRealise)}€
                 </td>
                 <td colSpan={2} style={{ fontSize: '0.714rem', color: 'var(--text-tertiary)' }}>
                   {currentStats.paid.length}/{currentStats.billable.length} encaissé{currentStats.paid.length > 1 ? 's' : ''}
@@ -588,8 +761,8 @@ export default function FinancesPage() {
 
 
 
-      {/* Export section — two exports side by side */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-sm)', marginTop: 'var(--space-md)' }}>
+      {/* Export section — moved to bottom */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-sm)', marginTop: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
         {/* Export clients */}
         <div className="card" style={{ padding: 'var(--space-md)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 'var(--space-sm)' }}>
@@ -688,104 +861,6 @@ export default function FinancesPage() {
         </div>
       </div>
 
-      {/* Source Performance Widget + Parrainage Export */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-sm)', marginTop: 'var(--space-sm)' }}>
-        {/* Source Performance */}
-        {(() => {
-          const sourceCounts = countClientsBySource(clients, selectedYear, recruitmentSources)
-          const sourceLabels = {}
-          recruitmentSources.forEach(s => { sourceLabels[s.key] = s.label })
-          sourceLabels['unknown'] = 'Non renseigné'
-          const entries = Object.entries(sourceCounts).sort((a, b) => b[1] - a[1])
-          const maxCount = entries.length > 0 ? entries[0][1] : 1
-          const totalClients = entries.reduce((sum, [, count]) => sum + count, 0)
-          return (
-            <div className="card" style={{ padding: 'var(--space-md)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 'var(--space-md)' }}>
-                <PieChart size={16} style={{ color: 'var(--primary-500)' }} />
-                <span style={{ fontSize: '0.786rem', fontWeight: 700, color: 'var(--text-primary)' }}>Canaux d'acquisition</span>
-                <span style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)', marginLeft: 'auto' }}>{selectedYear} · {totalClients} client{totalClients > 1 ? 's' : ''}</span>
-              </div>
-              {entries.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: 'var(--space-md)', color: 'var(--text-tertiary)', fontSize: '0.786rem' }}>Aucune donnée</div>
-              ) : entries.map(([key, count]) => {
-                const pct = totalClients > 0 ? Math.round((count / totalClients) * 100) : 0
-                return (
-                  <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <span style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-secondary)', minWidth: 90, textAlign: 'right' }}>
-                      {sourceLabels[key] || key}
-                    </span>
-                    <div style={{ flex: 1, height: 14, background: '#F0F0F0', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
-                      <div style={{
-                        height: '100%', borderRadius: 'var(--radius-sm)',
-                        background: '#A0AEC0',
-                        width: `${(count / maxCount) * 100}%`,
-                        transition: 'width 0.4s ease'
-                      }} />
-                    </div>
-                    <span style={{ fontSize: '0.786rem', fontWeight: 700, color: '#A0AEC0', minWidth: 24, textAlign: 'right' }}>{count}</span>
-                    <span style={{ fontSize: '0.571rem', fontWeight: 600, color: 'var(--text-tertiary)', minWidth: 28 }}>{pct}%</span>
-                  </div>
-                )
-              })}
-            </div>
-          )
-        })()}
-
-        {/* Répartition par type de client */}
-        {(() => {
-          const activeClients = clients.filter(c => {
-            const clientSessions = sessions.filter(s => s.clientId === c.id && s.status !== 'cancelled' && new Date(s.date).getFullYear() === selectedYear)
-            return clientSessions.length > 0
-          })
-          const typeCounts = { couple: 0, individuel: 0, famille: 0 }
-          activeClients.forEach(c => {
-            const t = getClientType(c.id)
-            if (typeCounts[t] !== undefined) typeCounts[t]++
-            else typeCounts.couple++
-          })
-          const typeConfig = [
-            { key: 'couple', label: 'Couple', color: '#2B6CB0', icon: Users },
-            { key: 'individuel', label: 'Individuel', color: '#38A169', icon: User },
-            { key: 'famille', label: 'Famille', color: '#805AD5', icon: Users },
-          ]
-          const totalTypes = Object.values(typeCounts).reduce((s, v) => s + v, 0)
-          const maxTypeCount = Math.max(...Object.values(typeCounts), 1)
-          return (
-            <div className="card" style={{ padding: 'var(--space-md)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 'var(--space-md)' }}>
-                <Users size={16} style={{ color: 'var(--primary-500)' }} />
-                <span style={{ fontSize: '0.786rem', fontWeight: 700, color: 'var(--text-primary)' }}>Types de clients</span>
-                <span style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)', marginLeft: 'auto' }}>{selectedYear} · {totalTypes} client{totalTypes > 1 ? 's' : ''}</span>
-              </div>
-              {totalTypes === 0 ? (
-                <div style={{ textAlign: 'center', padding: 'var(--space-md)', color: 'var(--text-tertiary)', fontSize: '0.786rem' }}>Aucune donnée</div>
-              ) : typeConfig.map(({ key, label, color }) => {
-                const count = typeCounts[key]
-                const pct = totalTypes > 0 ? Math.round((count / totalTypes) * 100) : 0
-                return (
-                  <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <span style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-secondary)', minWidth: 90, textAlign: 'right' }}>
-                      {label}
-                    </span>
-                    <div style={{ flex: 1, height: 14, background: '#F0F0F0', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
-                      <div style={{
-                        height: '100%', borderRadius: 'var(--radius-sm)',
-                        background: '#A0AEC0',
-                        width: `${(count / maxTypeCount) * 100}%`,
-                        transition: 'width 0.4s ease'
-                      }} />
-                    </div>
-                    <span style={{ fontSize: '0.786rem', fontWeight: 700, color: '#A0AEC0', minWidth: 24, textAlign: 'right' }}>{count}</span>
-                    <span style={{ fontSize: '0.571rem', fontWeight: 600, color: 'var(--text-tertiary)', minWidth: 28 }}>{pct}%</span>
-                  </div>
-                )
-              })}
-            </div>
-          )
-        })()}
-      </div>
-
 
       {/* Modal — Client Detail */}
       {/* Top Modal */}
@@ -831,7 +906,7 @@ export default function FinancesPage() {
                     <div style={{ width: 80, height: 5, background: '#E2E8F0', borderRadius: 3 }}>
                       <div style={{ height: '100%', borderRadius: 3, background: '#38A169', width: `${(c.ca / maxCA) * 100}%` }} />
                     </div>
-                    <span style={{ fontSize: '0.857rem', fontWeight: 800, color: '#276749', minWidth: 50, textAlign: 'right' }}>{c.ca}€</span>
+                    <span style={{ fontSize: '0.857rem', fontWeight: 800, color: '#2A4365', minWidth: 50, textAlign: 'right' }}>{formatAmount(c.ca)}€</span>
                   </div>
                 ))
               })() : (() => {
