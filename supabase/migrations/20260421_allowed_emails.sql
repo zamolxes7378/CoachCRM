@@ -33,12 +33,13 @@ DROP POLICY IF EXISTS "allowed_emails_self_check" ON allowed_emails;
 DROP POLICY IF EXISTS "allowed_emails_admin_all"  ON allowed_emails;
 
 -- Any authenticated user may check whether their own email is
--- in the allowlist (needed during login / sync-user flow).
+-- in the allowlist. Since the users table row might not exist yet,
+-- we check auth.jwt() email claim.
 CREATE POLICY "allowed_emails_self_check"
   ON allowed_emails
   FOR SELECT
   USING (
-    email = (SELECT email FROM users WHERE id = auth.uid())
+    email = auth.jwt()->>'email'
   );
 
 -- Admins have full read + write access.

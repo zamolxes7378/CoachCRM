@@ -577,6 +577,7 @@ Les éléments suivants sont systématiquement persistés en base de données (S
 
 ### Accès et Rôles
 - **Admin** : Accès complet aux outils d'administration via `/admin`.
+- **Accès Garanti (Bypass Admin)** : Les adresses emails d'administration (`claudia@kotech.ai`, `samuel@kotech.ai`) disposent d'un bypass technique "en dur" (hardcoded). Même en cas de défaillance réseau, de la base de données, d'erreur de variable d'environnement ou de problème CORS, la synchronisation utilisateur leur garantit un accès immédiat avec le rôle `admin`. Ce mécanisme prévient toute boucle de redirection infinie ou blocage de connexion en production.
 - **Thérapeute** : Accès limité à ses propres clients et séances.
 - Les pages `/admin`, `/admin/deleted-clients` et `/admin/reseau-pro` sont protégées par une vérification du rôle en base de données.
 
