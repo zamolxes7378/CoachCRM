@@ -42,9 +42,7 @@ export async function isEmailAllowed(email) {
 
   // Stopgap: consult VITE_ALLOWED_EMAILS (comma-separated list) or hardcoded fallbacks
   const fallbackEmails = [
-    'claudia@kotech.ai',
-    'anne-chantal.meyer@gmail.com',
-    'samuel@kotech.ai'
+    'claudia@kotech.ai'
   ]
   
   const envList = import.meta.env.VITE_ALLOWED_EMAILS || fallbackEmails.join(',')
