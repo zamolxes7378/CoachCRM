@@ -14,11 +14,11 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          react: ['react', 'react-dom', 'react-router-dom'],
-          supabase: ['@supabase/supabase-js'],
-          icons: ['lucide-react'],
-          excel: ['exceljs']
+        manualChunks(id) {
+          if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) return 'react';
+          if (id.includes('@supabase/supabase-js')) return 'supabase';
+          if (id.includes('lucide-react')) return 'icons';
+          if (id.includes('exceljs')) return 'excel';
         }
       }
     }
