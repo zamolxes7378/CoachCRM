@@ -77,8 +77,19 @@ export default function App() {
   const [authError, setAuthError] = useState(null)
   const [pendingEmail, setPendingEmail] = useState(null)
 
+  const [debugLogs, setDebugLogs] = useState([])
+  window.__DEBUG_LOGS__ = window.__DEBUG_LOGS__ || []
+  const logDebug = (msg) => {
+    const ts = new Date().toISOString().split('T')[1].slice(0, 11)
+    const entry = `[${ts}] ${msg}`
+    console.log(entry)
+    window.__DEBUG_LOGS__.push(entry)
+    setDebugLogs([...window.__DEBUG_LOGS__])
+  }
+
   // Sync Google user info to our users table
   async function syncUser(authUser) {
+    logDebug(`syncUser started for ${authUser?.email}`)
     if (!authUser) return null
     try {
       const meta = authUser.user_metadata || {}
@@ -90,10 +101,12 @@ export default function App() {
 
       // ADMIN GUARANTEE: Force allow admins
       if (normalizedEmailTop === 'claudia@kotech.ai' || normalizedEmailTop === 'samuel@kotech.ai') {
+        logDebug(`Admin bypass Top for: ${normalizedEmailTop}`)
         allowed = true;
       }
 
       if (!allowed) {
+        logDebug(`Not allowed: ${authUser.email}`)
         // TODO: wire pending_invites when Track C lands the table
         console.info('[Auth] Non-allowlisted sign-in attempt:', authUser.email)
         setPendingEmail(authUser.email)
@@ -123,16 +136,20 @@ export default function App() {
       }
 
       // 2. New user — default to therapist
+      logDebug(`Calling upsertUser for ${authUser.email}`)
       const dbUser = await upsertUser({
         id: authUser.id,
         name: meta.full_name || meta.name || authUser.email,
         email: authUser.email,
-        role: 'therapist',
+        role: 'therapist', // fallback, backend dictates real role
         photo_url: meta.avatar_url || meta.picture || null
       })
+      logDebug(`upsertUser success for ${authUser.email}`)
 
+      // If existing user had a role, keep it, otherwise set fallback
       return dbUser || { id: authUser.id, email: authUser.email, role: 'therapist' }
     } catch (err) {
+      logDebug(`[Auth] syncUser catch block: ${err.message || err}`)
       console.error('[Auth] Error synchronizing user:', err)
       
       const normalizedEmail = authUser?.email?.trim().toLowerCase()
@@ -181,6 +198,7 @@ export default function App() {
 
     // Force session initialization to trigger code exchange/parsing
     supabase.auth.getSession().then(({ data: { session }, error }) => {
+      logDebug(`Initial getSession: session=${!!session}, err=${error?.message}`)
       if (error) {
         console.error('Initial getSession error:', error)
         setAuthError(`Erreur session: ${error.message}`)
@@ -189,12 +207,19 @@ export default function App() {
 
     // Single auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!mounted) return
+      logDebug(`onAuthStateChange event=${event}, user=${session?.user?.email}`)
+      if (!mounted) {
+        logDebug(`onAuthStateChange ignored: not mounted`)
+        return
+      }
 
       try {
         if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
+          logDebug(`Calling syncUser...`)
           const dbUser = await syncUser(session.user)
+          logDebug(`syncUser returned: ${!!dbUser}`)
           if (mounted && dbUser) {
+            logDebug(`setUser called`)
             setUser(dbUser)
             const onboardingDone = localStorage.getItem('coachcrm_onboarding_done')
             if (!onboardingDone) setShowOnboarding(true)
@@ -262,6 +287,7 @@ export default function App() {
           handleLogout={handleLogout}
           pendingEmail={pendingEmail}
           suspenseFallback={suspenseFallback}
+          debugLogs={debugLogs}
         />
       </BrowserRouter>
     </ErrorBoundary>
@@ -271,7 +297,7 @@ export default function App() {
 const IDLE_TIMEOUT_MS = 30 * 60_000   // 30 minutes
 const IDLE_WARNING_MS = 2 * 60_000    // warn 2 minutes before logout
 
-function AppContent({ loading, user, authError, showOnboarding, setShowOnboarding, handleLogout, pendingEmail, suspenseFallback }) {
+function AppContent({ loading, user, authError, showOnboarding, setShowOnboarding, handleLogout, pendingEmail, suspenseFallback, debugLogs }) {
   const location = useLocation()
   const isPublicRoute = PUBLIC_ROUTES.includes(location.pathname)
 
@@ -352,7 +378,7 @@ function AppContent({ loading, user, authError, showOnboarding, setShowOnboardin
   }
 
   if (!user) {
-    return <LoginPage error={authError} />
+    return <LoginPage error={authError} debugLogs={debugLogs} />
   }
 
   if (showOnboarding) {

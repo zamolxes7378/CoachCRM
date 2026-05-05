@@ -2,7 +2,7 @@ import { Heart, Shield, Sparkles, Users, Euro, Calendar, ArrowRight, CheckCircle
 import { supabase } from '../lib/supabase'
 import { useState } from 'react'
 
-export default function LoginPage({ error }) {
+export default function LoginPage({ error, debugLogs = [] }) {
   const [hoveredFeature, setHoveredFeature] = useState(null)
   const [loginError, setLoginError] = useState(null)
 
@@ -317,8 +317,22 @@ export default function LoginPage({ error }) {
             En vous connectant, vous acceptez nos <a href="/cgu" style={{ color: 'rgba(218,165,32,0.6)' }}>conditions d'utilisation</a> et notre <a href="/confidentialite" style={{ color: 'rgba(218,165,32,0.6)' }}>politique de confidentialité</a>.
           </p>
 
-
-
+          {/* DEBUG LOGS */}
+          {debugLogs.length > 0 && (
+            <div style={{
+              marginTop: 40, padding: 12, background: 'rgba(0,0,0,0.5)',
+              border: '1px solid #ff4444', borderRadius: 8,
+              textAlign: 'left', overflowX: 'auto', maxWidth: '100%',
+              fontSize: '0.7rem', color: '#00ff00', fontFamily: 'monospace'
+            }}>
+              <h4 style={{ color: '#ff4444', margin: '0 0 8px 0', fontSize: '0.8rem' }}>⚠️ DEBUG LOGS (Screenshot this!)</h4>
+              {debugLogs.map((log, idx) => (
+                <div key={idx} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', marginBottom: 2 }}>
+                  {log}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
