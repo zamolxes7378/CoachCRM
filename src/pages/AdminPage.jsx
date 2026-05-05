@@ -228,7 +228,7 @@ export default function AdminPage() {
   }, [])
 
   useEffect(() => {
-    if (mfaState !== 'ok') return
+    if (mfaState === 'checking') return
 
     // AbortController: cancel in-flight fetch if component unmounts or mfaState changes
     const controller = new AbortController()
@@ -253,45 +253,9 @@ export default function AdminPage() {
     return () => controller.abort()
   }, [mfaState])
 
-  // ── MFA gates ────────────────────────────────────────────────────────────
-
-  if (mfaState === 'checking') {
-    return (
-      <div role="status" aria-live="polite" style={{ padding: 'var(--space-xl)', textAlign: 'center', color: 'var(--text-secondary)' }}>
-        <div className="spinner" style={{ margin: '0 auto 16px' }} aria-hidden="true" />
-        <span className="sr-only">Chargement…</span>
-        Vérification de la sécurité…
-      </div>
-    )
-  }
-
-  if (mfaState === 'needs_enroll') {
-    return (
-      <div>
-        <div className="page-header">
-          <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
-            <Shield size={24} style={{ color: '#DAA520' }} /> Sécurité requise
-          </h1>
-        </div>
-        <div className="card" style={{ maxWidth: 520 }}>
-          <div className="card-header">
-            <QrCode size={20} style={{ color: '#DAA520' }} />
-            <h3>Configuration de l'authentification à deux facteurs</h3>
-          </div>
-          <TotpEnrollPanel onEnrolled={() => setMfaState('ok')} />
-        </div>
-      </div>
-    )
-  }
-
-  if (mfaState === 'needs_challenge') {
-    return (
-      <TotpChallengePanel
-        factorId={totpFactorId}
-        onVerified={() => setMfaState('ok')}
-      />
-    )
-  }
+  // ── MFA: soft warning instead of hard block ──────────────────────────────
+  const mfaPending = mfaState === 'needs_enroll' || mfaState === 'needs_challenge'
+  const [showMfaSetup, setShowMfaSetup] = useState(false)
 
   // ── Normal admin UI (mfaState === 'ok') ──────────────────────────────────
 
@@ -341,6 +305,34 @@ export default function AdminPage() {
           <Crown size={24} style={{ color: 'var(--accent-main)' }} /> Administration
         </h1>
       </div>
+
+      {/* MFA soft warning banner */}
+      {mfaPending && (
+        <div className="card" style={{ marginBottom: 'var(--space-lg)', border: '1px solid #DAA520', background: 'linear-gradient(135deg, #FFFDF5, #FFF8E7)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', padding: 'var(--space-md)' }}>
+            <Shield size={20} style={{ color: '#DAA520', flexShrink: 0 }} />
+            <div style={{ flex: 1 }}>
+              <strong style={{ color: '#92700C' }}>Authentification à deux facteurs recommandée</strong>
+              <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                Pour renforcer la sécurité de votre compte administrateur, activez le TOTP (Google Authenticator, Authy…).
+              </p>
+            </div>
+            <button
+              className="btn btn-secondary"
+              style={{ flexShrink: 0, fontSize: '0.85rem' }}
+              onClick={() => setShowMfaSetup(v => !v)}
+            >
+              {showMfaSetup ? 'Masquer' : 'Configurer'}
+            </button>
+          </div>
+          {showMfaSetup && (
+            <div style={{ padding: '0 var(--space-md) var(--space-md)', borderTop: '1px solid rgba(218,165,32,0.2)' }}>
+              {mfaState === 'needs_enroll' && <TotpEnrollPanel onEnrolled={() => setMfaState('ok')} />}
+              {mfaState === 'needs_challenge' && <TotpChallengePanel factorId={totpFactorId} onVerified={() => setMfaState('ok')} />}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid-3" style={{ marginBottom: 'var(--space-xl)' }}>
