@@ -569,7 +569,7 @@ export default function ClientsPage() {
                 <th>TYPE</th>
                 {activeTab === 'clients' ? (<>
                   <th style={{ cursor: 'pointer' }} onClick={() => handleSort('phase')}>PHASE <SortIcon colKey="phase" /></th>
-                  <th style={{ cursor: 'pointer' }} onClick={() => handleSort('sessions')}>SÉANCES <SortIcon colKey="sessions" /></th>
+                  <th style={{ cursor: 'pointer', textAlign: 'center' }} onClick={() => handleSort('sessions')}>SÉANCES <SortIcon colKey="sessions" /></th>
                   <th style={{ cursor: 'pointer' }} onClick={() => handleSort('lastSession')}>DERNIER RDV <SortIcon colKey="lastSession" /></th>
                   <th style={{ cursor: 'pointer' }} onClick={() => handleSort('nextSession')}>PROCHAIN RDV <SortIcon colKey="nextSession" /></th>
                   <th>RECOMMANDATION</th>
@@ -624,7 +624,7 @@ export default function ClientsPage() {
                           <span style={{ color: pc, fontWeight: 500, fontSize: '0.786rem' }}>{client.phase === 'completed' ? 'Terminé' : getPhaseLabel(client.phase)}</span>
                         </div>
                       </td>
-                      <td style={{ color: 'var(--text-secondary)' }}>{getSessionsCount(client.id)}{client.totalSessions ? `/${client.totalSessions}` : ''}</td>
+                      <td style={{ color: 'var(--text-secondary)', textAlign: 'center' }}>{getSessionsCount(client.id)}{client.totalSessions ? `/${client.totalSessions}` : ''}</td>
                       <td style={{ color: 'var(--text-secondary)' }}>{getLastSession(client.id) ? formatDate(getLastSession(client.id)) : '—'}</td>
                       <td style={{ color: 'var(--text-secondary)' }}>{getNextSession(client.id) ? formatDate(getNextSession(client.id)) : '—'}</td>
                       <td>
