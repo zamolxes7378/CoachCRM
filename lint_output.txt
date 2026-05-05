@@ -1,0 +1,348 @@
+
+> coachcrm@1.0.0 lint
+> eslint .
+
+
+/home/zamolxes/devs/CoachCRM/src/App.jsx
+  127:14  warning  'err' is defined but never used                                                                             no-unused-vars
+  160:48  warning  'session' is defined but never used                                                                         no-unused-vars
+  201:6   warning  React Hook useEffect has a missing dependency: 'loading'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/home/zamolxes/devs/CoachCRM/src/components/ClientTypeBadge.jsx
+  10:14  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/home/zamolxes/devs/CoachCRM/src/components/DuplicateAlert.jsx
+  8:51  warning  'onView' is defined but never used         no-unused-vars
+  8:78  warning  'type' is assigned a value but never used  no-unused-vars
+
+/home/zamolxes/devs/CoachCRM/src/components/IdleWarningModal.jsx
+  1:10  warning  'useEffect' is defined but never used  no-unused-vars
+  1:21  warning  'useState' is defined but never used   no-unused-vars
+
+/home/zamolxes/devs/CoachCRM/src/components/OnboardingWizard.jsx
+  23:7  error  'requestAnimationFrame' is not defined   no-undef
+  56:5  error  Missing "key" prop for element in array  react/jsx-key
+  57:5  error  Missing "key" prop for element in array  react/jsx-key
+  58:5  error  Missing "key" prop for element in array  react/jsx-key
+  59:5  error  Missing "key" prop for element in array  react/jsx-key
+
+/home/zamolxes/devs/CoachCRM/src/components/UrgencyCard.jsx
+  18:39  warning  'id' is defined but never used     no-unused-vars
+  18:50  warning  'count' is defined but never used  no-unused-vars
+
+/home/zamolxes/devs/CoachCRM/src/components/client/ClientFinancialPanel.jsx
+   9:3  warning  'client' is defined but never used                  no-unused-vars
+  11:3  warning  'activeCycle' is defined but never used             no-unused-vars
+  19:3  warning  'sessionRates' is defined but never used            no-unused-vars
+  42:9  warning  'totalForecast' is assigned a value but never used  no-unused-vars
+
+/home/zamolxes/devs/CoachCRM/src/components/client/ClientTimelinePanel.jsx
+   2:56  warning  'HelpCircle' is defined but never used          no-unused-vars
+  38:3   warning  'recordingSessionId' is defined but never used  no-unused-vars
+
+/home/zamolxes/devs/CoachCRM/src/components/client/DeleteConfirmModal.jsx
+  6:46  warning  'client' is defined but never used  no-unused-vars
+
+/home/zamolxes/devs/CoachCRM/src/components/client/EditIdentityModal.jsx
+    3:19   warning  'Sprout' is defined but never used                                 no-unused-vars
+    3:47   warning  'Edit3' is defined but never used                                  no-unused-vars
+    3:54   warning  'Save' is defined but never used                                   no-unused-vars
+    4:3    warning  'ChevronDown' is defined but never used                            no-unused-vars
+    4:16   warning  'ChevronUp' is defined but never used                              no-unused-vars
+    4:58   warning  'UserPlus' is defined but never used                               no-unused-vars
+    7:8    warning  'DeleteConfirmModal' is defined but never used                     no-unused-vars
+   27:5    warning  'showDeleteConfirm' is assigned a value but never used             no-unused-vars
+   28:49   warning  'modalShowReferrerDropdown' is assigned a value but never used     no-unused-vars
+   34:55   warning  'setModalShowReferrerDropdown' is assigned a value but never used  no-unused-vars
+   35:18   warning  'resetToOriginal' is assigned a value but never used               no-unused-vars
+   37:42   warning  'phaseIcons' is assigned a value but never used                    no-unused-vars
+   37:54   warning  'phaseColors' is assigned a value but never used                   no-unused-vars
+   39:11   warning  'updateClient' is assigned a value but never used                  no-unused-vars
+   39:25   warning  'createClient' is assigned a value but never used                  no-unused-vars
+   39:39   warning  'updatePro' is assigned a value but never used                     no-unused-vars
+   39:50   warning  'createPro' is assigned a value but never used                     no-unused-vars
+   39:120  warning  'findDuplicateClients' is assigned a value but never used          no-unused-vars
+   39:142  warning  'findDuplicatePros' is assigned a value but never used             no-unused-vars
+   39:161  warning  'DuplicateAlert' is assigned a value but never used                no-unused-vars
+  711:53   error    'crypto' is not defined                                            no-undef
+
+/home/zamolxes/devs/CoachCRM/src/components/client/SessionDetailModal.jsx
+    6:59   warning  'Receipt' is defined but never used               no-unused-vars
+    7:3    warning  'Sprout' is defined but never used                no-unused-vars
+    7:11   warning  'Calendar' is defined but never used              no-unused-vars
+    7:21   warning  'Clock' is defined but never used                 no-unused-vars
+   26:147  warning  'allSessions' is assigned a value but never used  no-unused-vars
+   34:59   warning  'phaseIcons' is assigned a value but never used   no-unused-vars
+   34:71   warning  'phaseColors' is assigned a value but never used  no-unused-vars
+   38:9    warning  'hasReport' is assigned a value but never used    no-unused-vars
+  447:104  error    Duplicate key 'marginBottom'                      no-dupe-keys
+
+/home/zamolxes/devs/CoachCRM/src/components/clients/ClientsList.jsx
+   3:10  warning  'Users' is defined but never used          no-unused-vars
+  17:3   warning  'getClientType' is defined but never used  no-unused-vars
+
+/home/zamolxes/devs/CoachCRM/src/components/dashboard/ActionDetailPanel.jsx
+  16:22  error  React Hook "useRef" is called conditionally. React Hooks must be called in the exact same order in every component render        react-hooks/rules-of-hooks
+  17:5   error  React Hook "useFocusTrap" is called conditionally. React Hooks must be called in the exact same order in every component render  react-hooks/rules-of-hooks
+  18:5   error  React Hook "useEscapeKey" is called conditionally. React Hooks must be called in the exact same order in every component render  react-hooks/rules-of-hooks
+
+/home/zamolxes/devs/CoachCRM/src/components/dashboard/CalendarView.jsx
+  2:49  warning  'CalendarIcon' is defined but never used  no-unused-vars
+
+/home/zamolxes/devs/CoachCRM/src/components/layout/Sidebar.jsx
+  2:23  warning  'Mic' is defined but never used       no-unused-vars
+  2:28  warning  'FileText' is defined but never used  no-unused-vars
+  2:38  warning  'BookOpen' is defined but never used  no-unused-vars
+  2:92  warning  'Menu' is defined but never used      no-unused-vars
+  2:98  warning  'X' is defined but never used         no-unused-vars
+
+/home/zamolxes/devs/CoachCRM/src/components/layout/ViewSwitcher.jsx
+  2:10  warning  'LayoutList' is defined but never used  no-unused-vars
+  2:22  warning  'Calendar' is defined but never used    no-unused-vars
+  2:32  warning  'LayoutGrid' is defined but never used  no-unused-vars
+  2:44  warning  'List' is defined but never used        no-unused-vars
+
+/home/zamolxes/devs/CoachCRM/src/components/session/SessionCard.jsx
+   3:19  warning  'CheckCircle' is defined but never used           no-unused-vars
+   3:32  warning  'HelpCircle' is defined but never used            no-unused-vars
+  27:3   warning  'sessionRate' is assigned a value but never used  no-unused-vars
+
+/home/zamolxes/devs/CoachCRM/src/context/ConfirmContext.jsx
+  8:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/home/zamolxes/devs/CoachCRM/src/context/DataContext.jsx
+   8:66  warning  'isAllianceValidated' is defined but never used                                                                                 no-unused-vars
+  25:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+  97:6   warning  React Hook useCallback has a missing dependency: 'showToast'. Either include it or remove the dependency array                  react-hooks/exhaustive-deps
+
+/home/zamolxes/devs/CoachCRM/src/context/ToastContext.jsx
+  6:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/home/zamolxes/devs/CoachCRM/src/hooks/useFocusTrap.js
+  25:17  error  'requestAnimationFrame' is not defined  no-undef
+  64:7   error  'cancelAnimationFrame' is not defined   no-undef
+
+/home/zamolxes/devs/CoachCRM/src/lib/allowlist.js
+  39:12  warning  '_' is defined but never used  no-unused-vars
+
+/home/zamolxes/devs/CoachCRM/src/lib/xlsxExport.js
+   9:23  error  'TextEncoder' is not defined  no-undef
+  10:21  error  'crypto' is not defined       no-undef
+
+/home/zamolxes/devs/CoachCRM/src/pages/AdminPage.jsx
+   39:14  warning  'e' is defined but never used     no-unused-vars
+  141:14  warning  'e' is defined but never used     no-unused-vars
+  234:28  error    'AbortController' is not defined  no-undef
+  307:14  warning  'e' is defined but never used     no-unused-vars
+
+/home/zamolxes/devs/CoachCRM/src/pages/ClientDetailPage.jsx
+    1:38   warning  'useRef' is defined but never used                                                                                       no-unused-vars
+    4:21   warning  'TrendingUp' is defined but never used                                                                                   no-unused-vars
+    4:33   warning  'PenTool' is defined but never used                                                                                      no-unused-vars
+    4:42   warning  'CheckCircle' is defined but never used                                                                                  no-unused-vars
+    4:55   warning  'XCircle' is defined but never used                                                                                      no-unused-vars
+    4:64   warning  'Clock' is defined but never used                                                                                        no-unused-vars
+    4:71   warning  'AlertTriangle' is defined but never used                                                                                no-unused-vars
+    4:96   warning  'Mic' is defined but never used                                                                                          no-unused-vars
+    4:101  warning  'MicOff' is defined but never used                                                                                       no-unused-vars
+    4:109  warning  'Loader' is defined but never used                                                                                       no-unused-vars
+    4:117  warning  'CreditCard' is defined but never used                                                                                   no-unused-vars
+    4:129  warning  'Landmark' is defined but never used                                                                                     no-unused-vars
+    4:139  warning  'Banknote' is defined but never used                                                                                     no-unused-vars
+    4:191  warning  'Edit3' is defined but never used                                                                                        no-unused-vars
+    4:198  warning  'Sparkles' is defined but never used                                                                                     no-unused-vars
+    4:208  warning  'RefreshCw' is defined but never used                                                                                    no-unused-vars
+    4:226  warning  'Hourglass' is defined but never used                                                                                    no-unused-vars
+    4:237  warning  'Euro' is defined but never used                                                                                         no-unused-vars
+    4:243  warning  'X' is defined but never used                                                                                            no-unused-vars
+    4:246  warning  'Trash2' is defined but never used                                                                                       no-unused-vars
+    4:254  warning  'BookOpen' is defined but never used                                                                                     no-unused-vars
+    4:264  warning  'ChevronRight' is defined but never used                                                                                 no-unused-vars
+    4:278  warning  'Heart' is defined but never used                                                                                        no-unused-vars
+    4:285  warning  'AlertCircle' is defined but never used                                                                                  no-unused-vars
+    4:298  warning  'Crosshair' is defined but never used                                                                                    no-unused-vars
+    4:309  warning  'Check' is defined but never used                                                                                        no-unused-vars
+    4:328  warning  'Link2' is defined but never used                                                                                        no-unused-vars
+    4:335  warning  'Users' is defined but never used                                                                                        no-unused-vars
+    4:342  warning  'User' is defined but never used                                                                                         no-unused-vars
+    4:348  warning  'Star' is defined but never used                                                                                         no-unused-vars
+    4:354  warning  'Baby' is defined but never used                                                                                         no-unused-vars
+    4:360  warning  'Briefcase' is defined but never used                                                                                    no-unused-vars
+    4:371  warning  'Sprout' is defined but never used                                                                                       no-unused-vars
+    4:379  warning  'Search' is defined but never used                                                                                       no-unused-vars
+    4:387  warning  'Target' is defined but never used                                                                                       no-unused-vars
+    4:402  warning  'UserPlus' is defined but never used                                                                                     no-unused-vars
+    5:8    warning  'ReportIcon' is defined but never used                                                                                   no-unused-vars
+    6:10   warning  'ClientTypeIcon' is defined but never used                                                                               no-unused-vars
+   19:8    warning  'SessionCard' is defined but never used                                                                                  no-unused-vars
+   20:8    warning  'ConfirmBadge' is defined but never used                                                                                 no-unused-vars
+   21:8    warning  'PaymentBadge' is defined but never used                                                                                 no-unused-vars
+   42:320  warning  'getStatusLabel' is assigned a value but never used                                                                      no-unused-vars
+   42:635  warning  'deleteTherapyCycle' is assigned a value but never used                                                                  no-unused-vars
+   42:677  warning  'getInvoicesByClient' is assigned a value but never used                                                                 no-unused-vars
+   47:9    warning  'sanitizedClientLinks' is assigned a value but never used                                                                no-unused-vars
+   68:46   warning  'rateOverrides' is assigned a value but never used                                                                       no-unused-vars
+   68:81   warning  'recordingStep' is assigned a value but never used                                                                       no-unused-vars
+   68:96   warning  'editingCoveredSessions' is assigned a value but never used                                                              no-unused-vars
+   68:120  warning  'editingInvoiceSessions' is assigned a value but never used                                                              no-unused-vars
+   69:11   warning  'setSessionUpdates' is assigned a value but never used                                                                   no-unused-vars
+   69:52   warning  'setRateOverrides' is assigned a value but never used                                                                    no-unused-vars
+   69:70   warning  'setEditingCoveredSessions' is assigned a value but never used                                                           no-unused-vars
+   69:97   warning  'setEditingInvoiceSessions' is assigned a value but never used                                                           no-unused-vars
+   69:133  warning  'handleStartRecording' is assigned a value but never used                                                                no-unused-vars
+   69:155  warning  'handleSaveCR' is assigned a value but never used                                                                        no-unused-vars
+   73:11   warning  'editPartnerA' is assigned a value but never used                                                                        no-unused-vars
+   73:25   warning  'editPartnerB' is assigned a value but never used                                                                        no-unused-vars
+   73:39   warning  'editChildren' is assigned a value but never used                                                                        no-unused-vars
+   73:53   warning  'editType' is assigned a value but never used                                                                            no-unused-vars
+   73:63   warning  'editReferents' is assigned a value but never used                                                                       no-unused-vars
+   73:78   warning  'editSource' is assigned a value but never used                                                                          no-unused-vars
+   73:124  warning  'modalShowAddLink' is assigned a value but never used                                                                    no-unused-vars
+   73:142  warning  'modalAddLinkSearch' is assigned a value but never used                                                                  no-unused-vars
+   73:162  warning  'modalReferrerSearch' is assigned a value but never used                                                                 no-unused-vars
+   73:183  warning  'modalSelectedReferrer' is assigned a value but never used                                                               no-unused-vars
+   73:206  warning  'modalShowReferrerDropdown' is assigned a value but never used                                                           no-unused-vars
+   73:233  warning  'modalExternalReferrer' is assigned a value but never used                                                               no-unused-vars
+   74:75   warning  'setEditReferents' is assigned a value but never used                                                                    no-unused-vars
+   74:93   warning  'setEditSource' is assigned a value but never used                                                                       no-unused-vars
+   74:148  warning  'setModalShowAddLink' is assigned a value but never used                                                                 no-unused-vars
+   74:169  warning  'setModalAddLinkSearch' is assigned a value but never used                                                               no-unused-vars
+   74:192  warning  'setModalReferrerSearch' is assigned a value but never used                                                              no-unused-vars
+   74:216  warning  'setModalSelectedReferrer' is assigned a value but never used                                                            no-unused-vars
+   74:242  warning  'setModalShowReferrerDropdown' is assigned a value but never used                                                        no-unused-vars
+   74:272  warning  'setModalExternalReferrer' is assigned a value but never used                                                            no-unused-vars
+   80:23   warning  'setPhaseFilter' is assigned a value but never used                                                                      no-unused-vars
+  100:10   warning  'addLinkType' is assigned a value but never used                                                                         no-unused-vars
+  100:23   warning  'setAddLinkType' is assigned a value but never used                                                                      no-unused-vars
+  148:6    warning  React Hook useEffect has a missing dependency: 'setExpandedSessionId'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  164:9    warning  'PhaseIcon' is assigned a value but never used                                                                           no-unused-vars
+  167:11   warning  'sortedSessions' is assigned a value but never used                                                                      no-unused-vars
+  178:6    warning  React Hook useMemo has a missing dependency: 'getSessionCycle'. Either include it or remove the dependency array         react-hooks/exhaustive-deps
+  181:110  warning  React Hook useMemo has a missing dependency: 'getSessionCycle'. Either include it or remove the dependency array         react-hooks/exhaustive-deps
+  197:9    warning  'nextSessionDate' is assigned a value but never used                                                                     no-unused-vars
+  198:9    warning  'lastSessionDate' is assigned a value but never used                                                                     no-unused-vars
+  213:9    warning  'handleEditContact' is assigned a value but never used                                                                   no-unused-vars
+
+/home/zamolxes/devs/CoachCRM/src/pages/ClientsPage.jsx
+    3:37   warning  'TrendingUp' is defined but never used                                                                           no-unused-vars
+    3:144  warning  'XCircle' is defined but never used                                                                              no-unused-vars
+    3:153  warning  'HelpCircle' is defined but never used                                                                           no-unused-vars
+    3:223  warning  'Briefcase' is defined but never used                                                                            no-unused-vars
+    3:234  warning  'Sprout' is defined but never used                                                                               no-unused-vars
+   21:99   warning  'phaseIcons' is assigned a value but never used                                                                  no-unused-vars
+   21:124  warning  'centralPhaseColors' is assigned a value but never used                                                          no-unused-vars
+   21:144  warning  'defaultPhaseKey' is assigned a value but never used                                                             no-unused-vars
+   21:286  warning  'getProspectStageInfo' is assigned a value but never used                                                        no-unused-vars
+   27:10   warning  'newPhase' is assigned a value but never used                                                                    no-unused-vars
+   58:6    warning  React Hook useMemo has a missing dependency: 'getClientName'. Either include it or remove the dependency array   react-hooks/exhaustive-deps
+   75:18   warning  'e' is defined but never used                                                                                    no-unused-vars
+  215:6    warning  React Hook useMemo has an unnecessary dependency: 'activeTab'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+  595:23   warning  'sc' is assigned a value but never used                                                                          no-unused-vars
+
+/home/zamolxes/devs/CoachCRM/src/pages/DashboardPage.jsx
+    1:20   warning  'useMemo' is defined but never used                          no-unused-vars
+    4:10   warning  'UserPlus' is defined but never used                         no-unused-vars
+    4:97   warning  'PenTool' is defined but never used                          no-unused-vars
+    4:106  warning  'FileText' is defined but never used                         no-unused-vars
+    4:116  warning  'ArrowRight' is defined but never used                       no-unused-vars
+    4:128  warning  'Mic' is defined but never used                              no-unused-vars
+    4:146  warning  'XCircle' is defined but never used                          no-unused-vars
+    4:155  warning  'CreditCard' is defined but never used                       no-unused-vars
+    4:167  warning  'Landmark' is defined but never used                         no-unused-vars
+    4:177  warning  'Banknote' is defined but never used                         no-unused-vars
+    4:187  warning  'Receipt' is defined but never used                          no-unused-vars
+    4:217  warning  'Award' is defined but never used                            no-unused-vars
+    4:240  warning  'HelpCircle' is defined but never used                       no-unused-vars
+    4:273  warning  'ChevronRight' is defined but never used                     no-unused-vars
+    4:287  warning  'Phone' is defined but never used                            no-unused-vars
+    4:294  warning  'MessageSquare' is defined but never used                    no-unused-vars
+    4:309  warning  'Mail' is defined but never used                             no-unused-vars
+    4:315  warning  'MessageCircle' is defined but never used                    no-unused-vars
+    4:330  warning  'Globe' is defined but never used                            no-unused-vars
+    4:337  warning  'Share2' is defined but never used                           no-unused-vars
+   22:41   warning  'user' is defined but never used                             no-unused-vars
+   25:42   warning  'reports' is assigned a value but never used                 no-unused-vars
+   25:51   warning  'contacts' is assigned a value but never used                no-unused-vars
+   25:61   warning  'phaseIcons' is assigned a value but never used              no-unused-vars
+   25:73   warning  'phaseColors' is assigned a value but never used             no-unused-vars
+   69:9    warning  'allSessions' is assigned a value but never used             no-unused-vars
+  112:9    warning  'pendingReports' is assigned a value but never used          no-unused-vars
+  113:9    warning  'pendingInvoiceCount' is assigned a value but never used     no-unused-vars
+  114:9    warning  'pendingPaymentCount' is assigned a value but never used     no-unused-vars
+  116:9    warning  'pendingExercises' is assigned a value but never used        no-unused-vars
+  232:80   warning  'groupIdx' is defined but never used                         no-unused-vars
+  386:19   warning  'sessionsThisMonth' is assigned a value but never used       no-unused-vars
+  388:19   warning  'caThisMonth' is assigned a value but never used             no-unused-vars
+  389:19   warning  'totalCompletedSessions' is assigned a value but never used  no-unused-vars
+  390:19   warning  'conversionRate' is assigned a value but never used          no-unused-vars
+  522:15   warning  'otherSessionsSameDay' is assigned a value but never used    no-unused-vars
+
+/home/zamolxes/devs/CoachCRM/src/pages/DeletedClientsPage.jsx
+  3:83  warning  'AlertTriangle' is defined but never used  no-unused-vars
+
+/home/zamolxes/devs/CoachCRM/src/pages/FinancesPage.jsx
+    1:29   warning  'useEffect' is defined but never used                                                                                                                                                                              no-unused-vars
+    2:28   warning  'TrendingDown' is defined but never used                                                                                                                                                                           no-unused-vars
+    2:56   warning  'User' is defined but never used                                                                                                                                                                                   no-unused-vars
+    2:82   warning  'FileText' is defined but never used                                                                                                                                                                               no-unused-vars
+    2:130  warning  'ChevronUp' is defined but never used                                                                                                                                                                              no-unused-vars
+    2:141  warning  'ChevronDown' is defined but never used                                                                                                                                                                            no-unused-vars
+    2:227  warning  'Sprout' is defined but never used                                                                                                                                                                                 no-unused-vars
+    2:235  warning  'UserCheck' is defined but never used                                                                                                                                                                              no-unused-vars
+    2:246  warning  'Zap' is defined but never used                                                                                                                                                                                    no-unused-vars
+   34:9    warning  The 'revenueObjectives' logical expression could make the dependencies of useMemo Hook (at line 98) change on every render. To fix this, wrap the initialization of 'revenueObjectives' in its own useMemo() Hook  react-hooks/exhaustive-deps
+   76:14   warning  'e' is defined but never used                                                                                                                                                                                      no-unused-vars
+  115:10   warning  'viewPeriod' is assigned a value but never used                                                                                                                                                                    no-unused-vars
+  115:22   warning  'setViewPeriod' is assigned a value but never used                                                                                                                                                                 no-unused-vars
+  117:10   warning  'expandedAlert' is assigned a value but never used                                                                                                                                                                 no-unused-vars
+  117:25   warning  'setExpandedAlert' is assigned a value but never used                                                                                                                                                              no-unused-vars
+  167:81   warning  React Hook useMemo has a missing dependency: 'monthlyStats'. Either include it or remove the dependency array                                                                                                      react-hooks/exhaustive-deps
+  172:70   warning  React Hook useMemo has a missing dependency: 'monthlyStats'. Either include it or remove the dependency array                                                                                                      react-hooks/exhaustive-deps
+  185:6    warning  React Hook useMemo has missing dependencies: 'MONTHS_SHORT', 'monthlyStats', and 'now'. Either include them or remove the dependency array                                                                         react-hooks/exhaustive-deps
+  187:9    warning  'maxCA' is assigned a value but never used                                                                                                                                                                         no-unused-vars
+  190:9    warning  'alerts' is assigned a value but never used                                                                                                                                                                        no-unused-vars
+  196:6    warning  React Hook useMemo has a missing dependency: 'getInvoiceForSession'. Either include it or remove the dependency array                                                                                              react-hooks/exhaustive-deps
+  311:15   warning  'projectedNextYear' is assigned a value but never used                                                                                                                                                             no-unused-vars
+  375:25   warning  'selH' is assigned a value but never used                                                                                                                                                                          no-unused-vars
+  523:17   warning  'maxTypeCount' is assigned a value but never used                                                                                                                                                                  no-unused-vars
+  652:23   warning  'isConfirmed' is assigned a value but never used                                                                                                                                                                   no-unused-vars
+
+/home/zamolxes/devs/CoachCRM/src/pages/HelpPage.jsx
+   3:135  warning  'ChevronRight' is defined but never used  no-unused-vars
+   3:171  warning  'Star' is defined but never used          no-unused-vars
+   3:209  warning  'ExternalLink' is defined but never used  no-unused-vars
+   3:223  warning  'Target' is defined but never used        no-unused-vars
+   3:231  warning  'Search' is defined but never used        no-unused-vars
+   3:239  warning  'PenTool' is defined but never used       no-unused-vars
+   3:248  warning  'CreditCard' is defined but never used    no-unused-vars
+   3:260  warning  'XCircle' is defined but never used       no-unused-vars
+  14:26   error    'IntersectionObserver' is not defined     no-undef
+  83:115  error    Unnecessary escape character: \"          no-useless-escape
+  83:128  error    Unnecessary escape character: \"          no-useless-escape
+  83:287  error    Unnecessary escape character: \"          no-useless-escape
+  83:308  error    Unnecessary escape character: \"          no-useless-escape
+  84:366  error    Unnecessary escape character: \"          no-useless-escape
+  84:388  error    Unnecessary escape character: \"          no-useless-escape
+  86:174  error    Unnecessary escape character: \"          no-useless-escape
+  86:196  error    Unnecessary escape character: \"          no-useless-escape
+
+/home/zamolxes/devs/CoachCRM/src/pages/LoginPage.jsx
+  1:105  warning  'FileText' is defined but never used  no-unused-vars
+
+/home/zamolxes/devs/CoachCRM/src/pages/ReseauProPage.jsx
+   3:34   warning  'Calendar' is defined but never used              no-unused-vars
+   3:245  warning  'Trash' is defined but never used                 no-unused-vars
+  49:12   warning  'forceUpdate' is assigned a value but never used  no-unused-vars
+  57:11   warning  'clients' is assigned a value but never used      no-unused-vars
+  92:13   warning  'id' is assigned a value but never used           no-unused-vars
+
+/home/zamolxes/devs/CoachCRM/src/services/dataService.js
+  119:39  warning  '_c' is defined but never used      no-unused-vars
+  173:34  warning  'userId' is defined but never used  no-unused-vars
+  182:45  warning  '_c' is defined but never used      no-unused-vars
+
+/home/zamolxes/devs/CoachCRM/src/services/dsarService.js
+  187:14  warning  '_' is defined but never used  no-unused-vars
+
+✖ 273 problems (24 errors, 249 warnings)
+

@@ -10,12 +10,13 @@ import { useEscapeKey } from '../../hooks/useEscapeKey'
  * Each item shows a client identity card with avatar (type icon + initials).
  */
 export default function ActionDetailPanel({ urgency, items, onClose, onItemClick }) {
+    const panelRef = useRef(null)
+    useFocusTrap(panelRef, !!urgency)
+    useEscapeKey(onClose, !!urgency)
+
     if (!urgency) return null
 
     const Icon = urgency.icon
-    const panelRef = useRef(null)
-    useFocusTrap(panelRef, true)
-    useEscapeKey(onClose, true)
 
     const getContactIcon = (type) => {
         switch (type?.toLowerCase()) {

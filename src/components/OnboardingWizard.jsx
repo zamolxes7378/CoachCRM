@@ -53,10 +53,10 @@ export default function OnboardingWizard({ user, onComplete }) {
   }
 
   const stepIcons = [
-    <Heart size={15} />,
-    <Layers size={15} />,
-    <Euro size={15} />,
-    <Users size={15} />
+    <Heart key="heart" size={15} />,
+    <Layers key="layers" size={15} />,
+    <Euro key="euro" size={15} />,
+    <Users key="users" size={15} />
   ]
   const stepLabels = ['Bienvenue', 'Parcours', 'Tarifs', 'Sources']
 

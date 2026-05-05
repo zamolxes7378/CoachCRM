@@ -444,7 +444,7 @@ export default function SessionDetailModal({
 
 
             {/* Paiement */}
-            <fieldset style={{ marginBottom: 'var(--space-md)', border: 'none', padding: 0, margin: 0, marginBottom: 'var(--space-md)' }}>
+            <fieldset style={{ marginBottom: 'var(--space-md)', border: 'none', padding: 0, margin: 0 }}>
               <legend className="sr-only">Mode de paiement</legend>
               <div style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6 }} aria-hidden="true">
                 Mode de paiement

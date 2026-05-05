@@ -42,6 +42,12 @@ export default [
         alert: 'readonly',
         confirm: 'readonly',
         prompt: 'readonly',
+        requestAnimationFrame: 'readonly',
+        cancelAnimationFrame: 'readonly',
+        IntersectionObserver: 'readonly',
+        AbortController: 'readonly',
+        TextEncoder: 'readonly',
+        crypto: 'readonly',
         // Vite
         'import.meta': 'readonly',
       },
@@ -59,6 +65,7 @@ export default [
       ...reactPlugin.configs.recommended.rules,
       'react/react-in-jsx-scope': 'off', // Not needed with React 17+ JSX transform
       'react/prop-types': 'off',         // No PropTypes in this codebase
+      'react/no-unescaped-entities': 'off', // Allow unescaped apostrophes in French text
 
       // Hooks rules — exhaustive-deps as warn so existing code isn't blocked
       ...reactHooks.configs.recommended.rules,
@@ -101,6 +108,8 @@ export default [
       'dist/**',
       'node_modules/**',
       'supabase/_archive/**',
+      'therapeute_docs/**',
+      '*.config.js'
     ],
   },
 ]

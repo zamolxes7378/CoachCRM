@@ -157,7 +157,7 @@ export function clearSponsorshipOnSourceChange(client, newSource, allClients) {
  */
 export function createSponsorshipTimelineEvent(referrerName) {
   return {
-    id: crypto.randomUUID(),
+    id: window.crypto.randomUUID(),
     type: 'parrainage',
     date: new Date().toISOString(),
     note: `Parrainé par ${referrerName}`,
