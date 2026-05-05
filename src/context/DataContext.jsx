@@ -66,19 +66,25 @@ export function DataProvider({ user, children }) {
     inflightRef.current = true
     setLoading(true)
     try {
+      // Resilient loading: each data source fails independently
+      const safeLoad = async (fn, label) => {
+        try { return await fn }
+        catch (err) {
+          console.error(`[DataContext] ${label} failed:`, err.message)
+          return label === 'settings' ? null : []
+        }
+      }
       const [c, s, r, st, p, ct, tc, inv] = await Promise.all([
-        ds.getClients(user.id),
-        ds.getSessions(user.id),
-        ds.getReports(user.id),
-        ds.getSettings(user.id),
-        ds.getProfessionals(user.id),
-        ds.getContacts(user.id),
-        ds.getTherapyCycles(user.id),
-        invService.getInvoices(user.id)
+        safeLoad(ds.getClients(user.id), 'clients'),
+        safeLoad(ds.getSessions(user.id), 'sessions'),
+        safeLoad(ds.getReports(user.id), 'reports'),
+        safeLoad(ds.getSettings(user.id), 'settings'),
+        safeLoad(ds.getProfessionals(user.id), 'professionals'),
+        safeLoad(ds.getContacts(user.id), 'contacts'),
+        safeLoad(ds.getTherapyCycles(user.id), 'therapy_cycles'),
+        safeLoad(invService.getInvoices(user.id), 'invoices')
       ])
-      // Note : L'auto-complétion des séances passées et l'audit d'alliance thérapeutique
-      // sont désormais gérés de manière optimisée par l'interface locale ou lors des actions
-      // de sauvegarde (Webhooks recommandés), évitant de bloquer le démarrage de l'app.
+      console.info(`[DataContext] Loaded: ${c.length} clients, ${s.length} sessions, ${r.length} reports, ${(tc||[]).length} cycles, ${(inv||[]).length} invoices`)
       setRawClients(c)
       setRawSessions(s)
       setRawReports(r)

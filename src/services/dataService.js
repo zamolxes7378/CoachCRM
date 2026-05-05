@@ -175,7 +175,7 @@ export async function getReports(userId) {
   // RLS on reports also enforces client_id IN (SELECT id FROM clients WHERE user_id = auth.uid()).
   const { data, error } = await supabase
     .from('reports')
-    .select('id, client_id, session_id, date, content, tags, client_name, session_number, narrative, themes, emotions_a, emotions_b, patterns, progress, vigilance, exercises, pedagogical_content, created_at, clients!inner(deleted_at)')
+    .select('id, client_id, session_id, date, client_name, session_number, narrative, themes, emotions_a, emotions_b, patterns, progress, vigilance, exercises, pedagogical_content, created_at, clients!inner(deleted_at)')
     .is('clients.deleted_at', null)
     .order('date', { ascending: false })
   if (error) throw new Error(`getReports failed: ${error.message}`)
