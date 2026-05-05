@@ -180,7 +180,7 @@ export default function LoginPage({ error, debugLogs = [] }) {
               textAlign: 'left', overflowX: 'auto', maxWidth: '100%',
               fontSize: '0.8rem', color: '#00ff00', fontFamily: 'monospace'
             }}>
-              <h4 style={{ color: '#ff4444', margin: '0 0 8px 0', fontSize: '1rem', fontWeight: 'bold' }}>⚠️ INFO DIAGNOSTIC POUR CLAUDE ⚠️</h4>
+              <h4 style={{ color: '#ff4444', margin: '0 0 8px 0', fontSize: '1rem', fontWeight: 'bold' }}>⚠️ INFO DIAGNOSTIC v3 POUR CLAUDE ⚠️</h4>
               <p style={{ color: 'white', marginBottom: 10 }}>S'il vous plaît, <strong>copiez tout le texte ci-dessous</strong> et envoyez-le dans le chat pour m'aider à corriger le problème.</p>
               {debugLogs.map((log, idx) => (
                 <div key={idx} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', marginBottom: 2 }}>
