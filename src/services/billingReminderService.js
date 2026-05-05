@@ -13,10 +13,10 @@ import { todayIso } from '../lib/date'
  */
 export async function getBillingReminders(userId) {
     const { data, error } = await supabase
-        .from('billing_reminders')
+        .from('invoices')
         .select(`
       *,
-      billing_reminder_sessions ( session_id )
+      invoice_sessions ( session_id )
     `)
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
@@ -29,10 +29,10 @@ export async function getBillingReminders(userId) {
  */
 export async function getBillingRemindersByClient(clientId) {
     const { data, error } = await supabase
-        .from('billing_reminders')
+        .from('invoices')
         .select(`
       *,
-      billing_reminder_sessions ( session_id )
+      invoice_sessions ( session_id )
     `)
         .eq('client_id', clientId)
         .order('created_at', { ascending: false })
@@ -46,7 +46,7 @@ export async function getBillingRemindersByClient(clientId) {
 export async function createBillingReminder({ userId, clientId, sessionIds, invoiceDate }) {
     // 1. Create the billing reminder
     const { data: reminder, error: remError } = await supabase
-        .from('billing_reminders')
+        .from('invoices')
         .insert({
             user_id: userId,
             client_id: clientId,
@@ -59,14 +59,14 @@ export async function createBillingReminder({ userId, clientId, sessionIds, invo
 
     // 2. Link sessions
     if (sessionIds?.length) {
-        const links = sessionIds.map(sid => ({ billing_reminder_id: reminder.id, session_id: sid }))
+        const links = sessionIds.map(sid => ({ invoice_id: reminder.id, session_id: sid }))
         const { error: linkError } = await supabase
-            .from('billing_reminder_sessions')
+            .from('invoice_sessions')
             .insert(links)
         if (linkError) throw new Error(`createBillingReminder session link failed: ${linkError.message}`)
     }
 
-    return { ...reminder, billing_reminder_sessions: (sessionIds || []).map(sid => ({ session_id: sid })) }
+    return { ...reminder, invoice_sessions: (sessionIds || []).map(sid => ({ session_id: sid })) }
 }
 
 /**
@@ -74,7 +74,7 @@ export async function createBillingReminder({ userId, clientId, sessionIds, invo
  */
 export async function updateBillingReminder(reminderId, updates) {
     const { data, error } = await supabase
-        .from('billing_reminders')
+        .from('invoices')
         .update(updates)
         .eq('id', reminderId)
         .select()
@@ -102,8 +102,8 @@ export async function unemitBillingReminder(reminderId) {
  */
 export async function addSessionToBillingReminder(reminderId, sessionId) {
     const { error } = await supabase
-        .from('billing_reminder_sessions')
-        .insert({ billing_reminder_id: reminderId, session_id: sessionId })
+        .from('invoice_sessions')
+        .insert({ invoice_id: reminderId, session_id: sessionId })
     if (error) throw new Error(`addSessionToBillingReminder failed: ${error.message}`)
     return true
 }
@@ -113,9 +113,9 @@ export async function addSessionToBillingReminder(reminderId, sessionId) {
  */
 export async function removeSessionFromBillingReminder(reminderId, sessionId) {
     const { error } = await supabase
-        .from('billing_reminder_sessions')
+        .from('invoice_sessions')
         .delete()
-        .eq('billing_reminder_id', reminderId)
+        .eq('invoice_id', reminderId)
         .eq('session_id', sessionId)
     if (error) throw new Error(`removeSessionFromBillingReminder failed: ${error.message}`)
     return true
@@ -127,16 +127,16 @@ export async function removeSessionFromBillingReminder(reminderId, sessionId) {
 export async function setBillingReminderSessions(reminderId, sessionIds) {
     // Remove all existing links
     const { error: delError } = await supabase
-        .from('billing_reminder_sessions')
+        .from('invoice_sessions')
         .delete()
-        .eq('billing_reminder_id', reminderId)
+        .eq('invoice_id', reminderId)
     if (delError) throw new Error(`setBillingReminderSessions delete failed: ${delError.message}`)
 
     // Insert new links
     if (sessionIds.length) {
-        const links = sessionIds.map(sid => ({ billing_reminder_id: reminderId, session_id: sid }))
+        const links = sessionIds.map(sid => ({ invoice_id: reminderId, session_id: sid }))
         const { error: insError } = await supabase
-            .from('billing_reminder_sessions')
+            .from('invoice_sessions')
             .insert(links)
         if (insError) throw new Error(`setBillingReminderSessions insert failed: ${insError.message}`)
     }
@@ -148,7 +148,7 @@ export async function setBillingReminderSessions(reminderId, sessionIds) {
  */
 export async function deleteBillingReminder(reminderId) {
     const { error } = await supabase
-        .from('billing_reminders')
+        .from('invoices')
         .delete()
         .eq('id', reminderId)
     if (error) throw new Error(`deleteBillingReminder failed: ${error.message}`)
