@@ -40,7 +40,7 @@ export async function getCurrentUser(email) {
 export async function upsertUser({ id, name, email, role = 'therapist', photo_url = null }) {
   const { data, error } = await supabase
     .from('users')
-    .upsert({ id, name, email, role, photo_url }, { onConflict: 'email' })
+    .insert({ id, name, email, role, photo_url })
     .select()
     .single()
   if (error) throw new Error(`upsertUser failed: ${error.message}`)

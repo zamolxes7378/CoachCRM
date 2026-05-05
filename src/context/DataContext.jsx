@@ -127,6 +127,13 @@ export function DataProvider({ user, children }) {
     })
   }, [rawClients, confirmedSessionsMap])
 
+  // clientById: Map<id, client> — O(1) lookup, replaces .find() call sites
+  const clientById = useMemo(() => {
+    const m = new Map()
+    clients.forEach(c => m.set(c.id, c))
+    return m
+  }, [clients])
+
   const sessions = useMemo(() => {
     return rawSessions.map(adaptSession).map(s => {
       const now = new Date()
@@ -152,13 +159,6 @@ export function DataProvider({ user, children }) {
   const professionals = useMemo(() => rawProfessionals.map(adaptProfessional), [rawProfessionals])
   const therapyCycles = useMemo(() => rawTherapyCycles.map(adaptTherapyCycle), [rawTherapyCycles])
   const invoices = useMemo(() => rawInvoices.map(adaptInvoice), [rawInvoices])
-
-  // clientById: Map<id, client> — O(1) lookup, replaces .find() call sites
-  const clientById = useMemo(() => {
-    const m = new Map()
-    clients.forEach(c => m.set(c.id, c))
-    return m
-  }, [clients])
 
   // Invoice helpers — memoized lookup maps
   const invoiceBySessionId = useMemo(() => {
