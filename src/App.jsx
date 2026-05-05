@@ -86,8 +86,10 @@ export default function App() {
       // S-02 — Allowlist gate: verify email before any DB row creation.
       let allowed = await isEmailAllowed(authUser.email)
       
+      const normalizedEmailTop = authUser?.email?.trim().toLowerCase()
+
       // ADMIN GUARANTEE: Force allow admins
-      if (authUser?.email === 'claudia@kotech.ai' || authUser?.email === 'samuel@kotech.ai') {
+      if (normalizedEmailTop === 'claudia@kotech.ai' || normalizedEmailTop === 'samuel@kotech.ai') {
         allowed = true;
       }
 
@@ -133,8 +135,10 @@ export default function App() {
     } catch (err) {
       console.error('[Auth] Error synchronizing user:', err)
       
+      const normalizedEmail = authUser?.email?.trim().toLowerCase()
+
       // ADMIN GUARANTEE: If anything fails (network, CORS, DB, etc), force login for Claudia!
-      if (authUser?.email === 'claudia@kotech.ai' || authUser?.email === 'samuel@kotech.ai') {
+      if (normalizedEmail === 'claudia@kotech.ai' || normalizedEmail === 'samuel@kotech.ai') {
         console.warn('[Auth] Admin bypass activated due to sync failure. Forcing login.')
         return { 
           id: authUser.id, 
