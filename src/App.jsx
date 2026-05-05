@@ -215,29 +215,36 @@ export default function App() {
 
       try {
         if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
-          logDebug(`Calling syncUser...`)
-          const dbUser = await syncUser(session.user)
-          logDebug(`syncUser returned: ${!!dbUser}`)
-          if (mounted && dbUser) {
-            logDebug(`setUser called`)
-            setUser(dbUser)
-            const onboardingDone = localStorage.getItem('coachcrm_onboarding_done')
-            if (!onboardingDone) setShowOnboarding(true)
-            clearAuthParams()
-          }
+          logDebug(`Deferring syncUser to avoid Supabase auth lock deadlock...`)
+          setTimeout(async () => {
+            try {
+              const dbUser = await syncUser(session.user)
+              logDebug(`syncUser returned: ${!!dbUser}`)
+              if (mounted && dbUser) {
+                logDebug(`setUser called`)
+                setUser(dbUser)
+                const onboardingDone = localStorage.getItem('coachcrm_onboarding_done')
+                if (!onboardingDone) setShowOnboarding(true)
+                clearAuthParams()
+              }
+            } catch (err) {
+              logDebug(`syncUser error inside setTimeout: ${err.message}`)
+              setAuthError(`Erreur technique : ${err.message}`)
+            } finally {
+              if (mounted) setLoading(false)
+            }
+          }, 50)
         } else if (event === 'SIGNED_OUT') {
           if (mounted) {
             setUser(null)
-            setShowOnboarding(false)
+            setAuthError(null)
             setPendingEmail(null)
+            setLoading(false)
+            clearAuthParams()
           }
         }
       } catch (err) {
         console.error('[Auth] Process error:', err)
-      } finally {
-        if (mounted) {
-          setLoading(false)
-        }
       }
     })
 
