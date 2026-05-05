@@ -172,6 +172,24 @@ export default function LoginPage({ error, debugLogs = [] }) {
         borderLeft: '1px solid rgba(255,255,255,0.06)'
       }}>
         <div style={{ width: '100%', maxWidth: 360 }}>
+          {/* DEBUG LOGS */}
+          {debugLogs.length > 0 && (
+            <div style={{
+              marginBottom: 20, padding: 12, background: 'rgba(0,0,0,0.85)',
+              border: '2px solid #ff4444', borderRadius: 8,
+              textAlign: 'left', overflowX: 'auto', maxWidth: '100%',
+              fontSize: '0.8rem', color: '#00ff00', fontFamily: 'monospace'
+            }}>
+              <h4 style={{ color: '#ff4444', margin: '0 0 8px 0', fontSize: '1rem', fontWeight: 'bold' }}>⚠️ INFO DIAGNOSTIC POUR CLAUDE ⚠️</h4>
+              <p style={{ color: 'white', marginBottom: 10 }}>S'il vous plaît, <strong>copiez tout le texte ci-dessous</strong> et envoyez-le dans le chat pour m'aider à corriger le problème.</p>
+              {debugLogs.map((log, idx) => (
+                <div key={idx} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', marginBottom: 2 }}>
+                  {log}
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Welcome badge */}
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -316,23 +334,6 @@ export default function LoginPage({ error, debugLogs = [] }) {
           <p style={{ marginTop: 20, fontSize: '0.643rem', color: 'rgba(255,255,255,0.25)', lineHeight: 1.5 }}>
             En vous connectant, vous acceptez nos <a href="/cgu" style={{ color: 'rgba(218,165,32,0.6)' }}>conditions d'utilisation</a> et notre <a href="/confidentialite" style={{ color: 'rgba(218,165,32,0.6)' }}>politique de confidentialité</a>.
           </p>
-
-          {/* DEBUG LOGS */}
-          {debugLogs.length > 0 && (
-            <div style={{
-              marginTop: 40, padding: 12, background: 'rgba(0,0,0,0.5)',
-              border: '1px solid #ff4444', borderRadius: 8,
-              textAlign: 'left', overflowX: 'auto', maxWidth: '100%',
-              fontSize: '0.7rem', color: '#00ff00', fontFamily: 'monospace'
-            }}>
-              <h4 style={{ color: '#ff4444', margin: '0 0 8px 0', fontSize: '0.8rem' }}>⚠️ DEBUG LOGS (Screenshot this!)</h4>
-              {debugLogs.map((log, idx) => (
-                <div key={idx} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', marginBottom: 2 }}>
-                  {log}
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       </div>
     </div>
