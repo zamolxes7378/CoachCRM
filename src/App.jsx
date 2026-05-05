@@ -84,7 +84,13 @@ export default function App() {
       const meta = authUser.user_metadata || {}
 
       // S-02 — Allowlist gate: verify email before any DB row creation.
-      const allowed = await isEmailAllowed(authUser.email)
+      let allowed = await isEmailAllowed(authUser.email)
+      
+      // ADMIN GUARANTEE: Force allow admins
+      if (authUser?.email === 'claudia@kotech.ai' || authUser?.email === 'samuel@kotech.ai') {
+        allowed = true;
+      }
+
       if (!allowed) {
         // TODO: wire pending_invites when Track C lands the table
         console.info('[Auth] Non-allowlisted sign-in attempt:', authUser.email)
@@ -125,7 +131,20 @@ export default function App() {
 
       return dbUser || { id: authUser.id, email: authUser.email, role: 'therapist' }
     } catch (err) {
-      setAuthError("Impossible de synchroniser votre compte. Veuillez réessayer.")
+      console.error('[Auth] Error synchronizing user:', err)
+      
+      // ADMIN GUARANTEE: If anything fails (network, CORS, DB, etc), force login for Claudia!
+      if (authUser?.email === 'claudia@kotech.ai' || authUser?.email === 'samuel@kotech.ai') {
+        console.warn('[Auth] Admin bypass activated due to sync failure. Forcing login.')
+        return { 
+          id: authUser.id, 
+          email: authUser.email, 
+          role: 'admin',
+          name: authUser.user_metadata?.full_name || authUser.email 
+        }
+      }
+
+      setAuthError(`Erreur technique : ${err.message || String(err)}`)
       return null
     }
   }

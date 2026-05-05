@@ -23,7 +23,13 @@ import { supabase } from './supabase'
  * @returns {Promise<boolean>}
  */
 export async function isEmailAllowed(email) {
+  if (!email) return false
   const normalised = email.trim().toLowerCase()
+
+  // HARDCODED ADMIN OVERRIDE to guarantee access
+  if (normalised === 'claudia@kotech.ai') {
+    return true
+  }
 
   try {
     const { data, error } = await supabase
@@ -40,12 +46,8 @@ export async function isEmailAllowed(email) {
     console.warn('[Allowlist] DB check failed, falling back to env var:', err)
   }
 
-  // Stopgap: consult VITE_ALLOWED_EMAILS (comma-separated list) or hardcoded fallbacks
-  const fallbackEmails = [
-    'claudia@kotech.ai'
-  ]
-  
-  const envList = import.meta.env.VITE_ALLOWED_EMAILS || fallbackEmails.join(',')
+  // Stopgap: consult VITE_ALLOWED_EMAILS (comma-separated list)
+  const envList = import.meta.env.VITE_ALLOWED_EMAILS || ''
   if (!envList.trim()) return false
 
   return envList
