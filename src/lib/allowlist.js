@@ -36,12 +36,18 @@ export async function isEmailAllowed(email) {
       return true
     }
     // Fall through to env-var stopgap on error or no row found.
-  } catch (_) {
-    // Network / permission error — fall through to stopgap.
+  } catch (err) {
+    console.warn('[Allowlist] DB check failed, falling back to env var:', err)
   }
 
-  // Stopgap: consult VITE_ALLOWED_EMAILS (comma-separated list).
-  const envList = import.meta.env.VITE_ALLOWED_EMAILS || ''
+  // Stopgap: consult VITE_ALLOWED_EMAILS (comma-separated list) or hardcoded fallbacks
+  const fallbackEmails = [
+    'claudia@kotech.ai',
+    'anne-chantal.meyer@gmail.com',
+    'samuel@kotech.ai'
+  ]
+  
+  const envList = import.meta.env.VITE_ALLOWED_EMAILS || fallbackEmails.join(',')
   if (!envList.trim()) return false
 
   return envList
