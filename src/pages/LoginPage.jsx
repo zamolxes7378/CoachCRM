@@ -166,30 +166,18 @@ export default function LoginPage({ error, debugLogs = [] }) {
 
       {/* ═══ RIGHT — Login Side ═══ */}
       <div style={{
-        width: 480, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '40px 50px',
-        background: 'linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)',
-        borderLeft: '1px solid rgba(255,255,255,0.06)'
+        width: 520, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '40px',
+        background: '#E2E8F0',
+        borderLeft: '1px solid rgba(0,0,0,0.04)'
       }}>
-        <div style={{ width: '100%', maxWidth: 360 }}>
-          {/* DEBUG LOGS */}
-          {debugLogs.length > 0 && (
-            <div style={{
-              marginBottom: 20, padding: 12, background: 'rgba(0,0,0,0.85)',
-              border: '2px solid #ff4444', borderRadius: 8,
-              textAlign: 'left', overflowX: 'auto', maxWidth: '100%',
-              fontSize: '0.8rem', color: '#00ff00', fontFamily: 'monospace'
-            }}>
-              <h4 style={{ color: '#ff4444', margin: '0 0 8px 0', fontSize: '1rem', fontWeight: 'bold' }}>⚠️ INFO DIAGNOSTIC v3 POUR CLAUDE ⚠️</h4>
-              <p style={{ color: 'white', marginBottom: 10 }}>S'il vous plaît, <strong>copiez tout le texte ci-dessous</strong> et envoyez-le dans le chat pour m'aider à corriger le problème.</p>
-              {debugLogs.map((log, idx) => (
-                <div key={idx} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', marginBottom: 2 }}>
-                  {log}
-                </div>
-              ))}
-            </div>
-          )}
-
+        <div style={{ 
+          width: '100%', maxWidth: 380,
+          background: '#FFFFFF',
+          padding: '40px',
+          borderRadius: 24,
+          boxShadow: '0 20px 40px -15px rgba(0,0,0,0.05), 0 0 0 1px rgba(0,0,0,0.03)'
+        }}>
           {/* Welcome badge */}
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -198,13 +186,13 @@ export default function LoginPage({ error, debugLogs = [] }) {
             marginBottom: 24
           }}>
             <Zap size={12} style={{ color: '#DAA520' }} />
-            <span style={{ fontSize: '0.714rem', fontWeight: 600, color: '#DAA520' }}>Gratuit jusqu'à 5 clients</span>
+            <span style={{ fontSize: '0.714rem', fontWeight: 600, color: '#B7791F' }}>Gratuit jusqu'à 5 clients</span>
           </div>
 
-          <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: 'white', marginBottom: 8, letterSpacing: '-0.02em' }}>
+          <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#1A2332', marginBottom: 8, letterSpacing: '-0.02em' }}>
             Commencez maintenant
           </h2>
-          <p style={{ fontSize: '0.857rem', color: 'rgba(255,255,255,0.5)', marginBottom: 32, lineHeight: 1.5 }}>
+          <p style={{ fontSize: '0.857rem', color: '#4A5568', marginBottom: 32, lineHeight: 1.5 }}>
             Moins d'administratif, plus de temps pour vos clients.
           </p>
 
@@ -230,13 +218,13 @@ export default function LoginPage({ error, debugLogs = [] }) {
             style={{
               width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
               padding: '14px 24px', borderRadius: 12,
-              background: 'white', border: 'none',
+              background: 'white', border: '1px solid #E2E8F0',
               fontSize: '0.929rem', fontWeight: 600, color: '#1A2332',
               cursor: 'pointer', transition: 'all 0.2s',
-              boxShadow: '0 2px 12px rgba(0,0,0,0.15)'
+              boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
             }}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.2)' }}
-            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.15)' }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)'; e.currentTarget.style.borderColor = '#CBD5E0' }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)'; e.currentTarget.style.borderColor = '#E2E8F0' }}
           >
             <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
@@ -249,9 +237,9 @@ export default function LoginPage({ error, debugLogs = [] }) {
 
           {/* Divider */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '24px 0' }}>
-            <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }} />
-            <span style={{ fontSize: '0.714rem', color: 'rgba(255,255,255,0.3)' }}>ou</span>
-            <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }} />
+            <div style={{ flex: 1, height: 1, background: '#E2E8F0' }} />
+            <span style={{ fontSize: '0.714rem', color: '#A0AEC0' }}>ou</span>
+            <div style={{ flex: 1, height: 1, background: '#E2E8F0' }} />
           </div>
 
           {/* Email signup form */}
@@ -266,12 +254,12 @@ export default function LoginPage({ error, debugLogs = [] }) {
               aria-describedby={(error || loginError) ? 'login-error-msg' : undefined}
               style={{
                 width: '100%', padding: '12px 16px', borderRadius: 10,
-                background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-                color: 'white', fontSize: '0.857rem', outline: 'none',
-                transition: 'border-color 0.2s', boxSizing: 'border-box'
+                background: '#F7FAFC', border: '1px solid #E2E8F0',
+                color: '#1A2332', fontSize: '0.857rem', outline: 'none',
+                transition: 'border-color 0.2s, background 0.2s', boxSizing: 'border-box'
               }}
-              onFocus={e => e.currentTarget.style.borderColor = 'rgba(218,165,32,0.4)'}
-              onBlur={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'}
+              onFocus={e => { e.currentTarget.style.borderColor = '#DAA520'; e.currentTarget.style.background = '#FFFFFF' }}
+              onBlur={e => { e.currentTarget.style.borderColor = '#E2E8F0'; e.currentTarget.style.background = '#F7FAFC' }}
             />
           </div>
           <button
@@ -294,8 +282,8 @@ export default function LoginPage({ error, debugLogs = [] }) {
           {/* Trust signals */}
           <div style={{
             marginTop: 24, padding: '16px 18px',
-            background: 'rgba(255,255,255,0.04)',
-            borderRadius: 12, border: '1px solid rgba(255,255,255,0.08)',
+            background: '#F7FAFC',
+            borderRadius: 12, border: '1px solid #E2E8F0',
             display: 'flex', flexDirection: 'column', gap: 10
           }}>
             {[
@@ -307,7 +295,7 @@ export default function LoginPage({ error, debugLogs = [] }) {
               return (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <TrustIcon size={15} style={{ color: '#DAA520', flexShrink: 0 }} />
-                  <span style={{ fontSize: '0.786rem', color: 'rgba(255,255,255,0.7)', fontWeight: 500 }}>{item.text}</span>
+                  <span style={{ fontSize: '0.786rem', color: '#4A5568', fontWeight: 500 }}>{item.text}</span>
                 </div>
               )
             })}
@@ -322,7 +310,7 @@ export default function LoginPage({ error, debugLogs = [] }) {
               background: 'transparent',
               border: '1.5px solid rgba(218,165,32,0.5)',
               cursor: 'pointer', fontSize: '0.857rem', fontWeight: 600,
-              color: '#DAA520', transition: 'all 0.2s'
+              color: '#B7791F', transition: 'all 0.2s'
             }}
             onMouseEnter={e => { e.currentTarget.style.background = 'rgba(218,165,32,0.1)'; e.currentTarget.style.borderColor = '#DAA520' }}
             onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'rgba(218,165,32,0.5)' }}
@@ -331,8 +319,8 @@ export default function LoginPage({ error, debugLogs = [] }) {
           </button>
 
           {/* Footer */}
-          <p style={{ marginTop: 20, fontSize: '0.643rem', color: 'rgba(255,255,255,0.25)', lineHeight: 1.5 }}>
-            En vous connectant, vous acceptez nos <a href="/cgu" style={{ color: 'rgba(218,165,32,0.6)' }}>conditions d'utilisation</a> et notre <a href="/confidentialite" style={{ color: 'rgba(218,165,32,0.6)' }}>politique de confidentialité</a>.
+          <p style={{ marginTop: 20, fontSize: '0.643rem', color: '#A0AEC0', lineHeight: 1.5 }}>
+            En vous connectant, vous acceptez nos <a href="/cgu" style={{ color: '#B7791F', textDecoration: 'none' }}>conditions d'utilisation</a> et notre <a href="/confidentialite" style={{ color: '#B7791F', textDecoration: 'none' }}>politique de confidentialité</a>.
           </p>
         </div>
       </div>

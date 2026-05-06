@@ -14,6 +14,7 @@ export default function Sidebar({ user, onLogout, isOpen, onToggle }) {
   const secondaryNav = [
     { to: '/rituo', icon: Repeat, label: 'Rituo', disabled: true },
     { to: '/ai', icon: Brain, label: 'IA Assistant', disabled: true },
+    { to: '/roadmap', icon: Map, label: 'Roadmap' },
   ]
 
   const initials = user?.name?.split(' ').map(n => n[0]).join('') || '?'
@@ -50,20 +51,36 @@ export default function Sidebar({ user, onLogout, isOpen, onToggle }) {
           <div className="sidebar-divider" />
 
           <div className="sidebar-section">
-            {secondaryNav.map(item => (
-              <button
-                key={item.to}
-                className="sidebar-link"
-                disabled
-                aria-disabled="true"
-                aria-label={`${item.label} — bientôt disponible`}
-                style={{ opacity: 0.4, cursor: 'default', width: '100%', background: 'none', border: 'none', textAlign: 'left' }}
-              >
-                <item.icon aria-hidden="true" />
-                <span>{item.label}</span>
-                <span aria-hidden="true" style={{ fontSize: '0.65rem', marginLeft: 'auto', background: 'rgba(255,255,255,0.1)', padding: '1px 6px', borderRadius: 4 }}>V2</span>
-              </button>
-            ))}
+            {secondaryNav.map(item => {
+              if (item.disabled) {
+                return (
+                  <button
+                    key={item.to}
+                    className="sidebar-link"
+                    disabled
+                    aria-disabled="true"
+                    aria-label={`${item.label} — bientôt disponible`}
+                    style={{ opacity: 0.4, cursor: 'default', width: '100%', background: 'none', border: 'none', textAlign: 'left' }}
+                  >
+                    <item.icon aria-hidden="true" />
+                    <span>{item.label}</span>
+                    <span aria-hidden="true" style={{ fontSize: '0.65rem', marginLeft: 'auto', background: 'rgba(255,255,255,0.1)', padding: '1px 6px', borderRadius: 4 }}>V2</span>
+                  </button>
+                )
+              }
+              return (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+                  aria-current={location.pathname.startsWith(item.to) ? 'page' : undefined}
+                  onClick={() => onToggle && window.innerWidth < 768 && onToggle()}
+                >
+                  <item.icon aria-hidden="true" />
+                  <span>{item.label}</span>
+                </NavLink>
+              )
+            })}
           </div>
 
           <div className="sidebar-divider" />
@@ -131,15 +148,7 @@ export default function Sidebar({ user, onLogout, isOpen, onToggle }) {
                   <ShieldAlert aria-hidden="true" />
                   <span>Demandes RGPD</span>
                 </NavLink>
-                <NavLink
-                  to="/admin/roadmap"
-                  className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
-                  aria-current={location.pathname.startsWith('/admin/roadmap') ? 'page' : undefined}
-                  onClick={() => onToggle && window.innerWidth < 768 && onToggle()}
-                >
-                  <Map aria-hidden="true" />
-                  <span>Roadmap</span>
-                </NavLink>
+
               </div>
             </>
           )}

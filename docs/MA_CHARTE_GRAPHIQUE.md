@@ -1064,6 +1064,34 @@ Icones Lucide React — 22px — couleur #D9E2EC
 
 > **Règle** : Le vert `var(--success)` (`#38A169`) est la couleur unique pour tout indicateur positif dans le suivi financier : statut « Réalisée », labels de paiement reçu (« Chèque », « Virement »), et badge « Encaissé ».
 
+### Page Roadmap (Vision Produit)
+- **Layout** : Vue multi-onglets (Kanban, Liste, Timeline).
+- **Colonnes Kanban** :
+  - **En cours** : Fond jaune très léger `#FEFEF2` pour attirer l'attention sur l'activité actuelle.
+  - **Drop Zones** : Zones de dépôt haute visibilité lors du drag-and-drop.
+- **Cartes (Items)** :
+  - **Effet Drag** : Opacité réduite, légère rotation (2deg) et ombre portée renforcée (`shadow-lg`).
+  - **Sélection** : Bordure bleue `var(--primary-500)` et ombre si la carte est ouverte dans le Drawer.
+  - **Badges** : Priorité et Catégorie avec icônes Lucide.
+- **Drawer de Détails** :
+  - **Largeur** : 840px (Largeur doublée pour plus de confort de lecture).
+  - **Mode Lecture seule** : Pour les non-admins, les champs sont `read-only` et le footer d'action est masqué.
+- **Badges Milestone (Échéance)** : La couleur de fond varie selon la proximité de la date :
+    - **≤ 30 jours** : Bleu foncé (`Primary 700`) / Texte blanc.
+    - **≤ 90 jours** : Bleu moyen (`Primary 500`) / Texte blanc.
+    - **≤ 180 jours** : Bleu clair (`Primary 200`) / Texte sombre.
+    - **> 180 jours** : Bleu très pâle (`Primary 50`) / Texte discret.
+
+### Page de Connexion (Commerciale)
+- **Structure** : Split-screen (Gauche Marketing / Droite Connexion).
+- **Zone Marketing (Gauche)** : Fond sombre dégradé (`#1A2332`), icônes dorées, typographie blanche et dorée.
+- **Zone Connexion (Droite)** :
+    - **Fond de zone** : Gris neutre moyen (`#E2E8F0`) pour créer un contraste de profondeur.
+    - **Carte de connexion** : Carte flottante blanche (`#FFFFFF`) avec un large arrondi (`24px`).
+    - **Ombre portée** : `box-shadow` diffuse pour un effet de relief moderne.
+    - **Typographie** : Textes en Bleu Marine sombre (`#1A2332`) et gris (`#4A5568`).
+
 ---
+
 
 > **Résumé en une phrase** : Une interface **bleu marine et or**, **arrondie et aérée** comme Notion, avec la **chaleur humaine** d'Airbnb et l'**organisation claire** de Monday — des **icônes Lucide React professionnelles** (pas d'emojis), conçue pour que chaque thérapeute se sente immédiatement chez soi.

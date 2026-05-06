@@ -41,6 +41,14 @@ const VIEWS = [
 const getPriority = k => PRIORITIES.find(p => p.key === k) || PRIORITIES[1]
 const getCategory = k => CATEGORIES.find(c => c.key === k) || CATEGORIES[0]
 const getStatus = k => STATUSES.find(s => s.key === k) || STATUSES[0]
+const getMilestoneFromDate = (dateStr) => {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  if (isNaN(date.getTime())) return ''
+  const quarter = Math.floor(date.getMonth() / 3) + 1
+  return `Q${quarter} ${date.getFullYear()}`
+}
+
 
 // ─── Priority Badge ──────────────────────────────────────────────────────────
 function PriorityBadge({ priority }) {
@@ -64,6 +72,50 @@ function CategoryBadge({ category }) {
   )
 }
 
+// ─── Milestone Badge ─────────────────────────────────────────────────────────
+function MilestoneBadge({ milestone, dueDate }) {
+  if (!milestone) return null
+  
+  let bg = 'var(--primary-50)'
+  let color = 'var(--primary-700)'
+  
+  if (dueDate) {
+    const now = new Date()
+    const due = new Date(dueDate)
+    const diffDays = Math.ceil((due - now) / (1000 * 60 * 60 * 24))
+    
+    if (diffDays <= 30) {
+      bg = 'var(--primary-700)'
+      color = 'white'
+    } else if (diffDays <= 90) {
+      bg = 'var(--primary-500)'
+      color = 'white'
+    } else if (diffDays <= 180) {
+      bg = 'var(--primary-200)'
+      color = 'var(--primary-800)'
+    } else {
+      bg = 'var(--primary-50)'
+      color = 'var(--primary-700)'
+    }
+  }
+
+  return (
+    <span style={{ 
+      fontSize: '0.72rem', 
+      color: color, 
+      background: bg, 
+      padding: '2px 8px', 
+      borderRadius: 10, 
+      fontWeight: 600,
+      transition: 'all 0.3s ease',
+      whiteSpace: 'nowrap'
+    }}>
+      {milestone}
+    </span>
+  )
+}
+
+
 // ─── Item Form (Create / Edit) ───────────────────────────────────────────────
 function ItemForm({ item, onSave, onCancel }) {
   const [form, setForm] = useState({
@@ -76,7 +128,11 @@ function ItemForm({ item, onSave, onCancel }) {
     due_date: item?.due_date || '',
   })
   const [saving, setSaving] = useState(false)
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+  const set = (k, v) => setForm(f => {
+    const next = { ...f, [k]: v }
+    if (k === 'due_date' && v) next.milestone = getMilestoneFromDate(v)
+    return next
+  })
 
   const handleSubmit = async e => {
     e.preventDefault()
@@ -176,7 +232,7 @@ function ItemCard({ item, onCardClick, dragHandlers, compact, isSelected, isDrag
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             <PriorityBadge priority={item.priority} />
             <CategoryBadge category={item.category} />
-            {item.milestone && <span style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', background: 'var(--primary-50)', padding: '2px 8px', borderRadius: 10, fontWeight: 500 }}>{item.milestone}</span>}
+            <MilestoneBadge milestone={item.milestone} dueDate={item.due_date} />
           </div>
         </div>
       </div>
@@ -186,14 +242,18 @@ function ItemCard({ item, onCardClick, dragHandlers, compact, isSelected, isDrag
 const iconBtnStyle = { background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-tertiary)', borderRadius: 6, display: 'inline-flex' }
 
 // ─── Detail Drawer (right side panel) ────────────────────────────────────────
-function DetailDrawer({ item, onClose, onSave, onDelete }) {
+function DetailDrawer({ item, onClose, onSave, onDelete, isAdmin }) {
   const [form, setForm] = useState({
     title: item.title, description: item.description || '', status: item.status,
     priority: item.priority, category: item.category, milestone: item.milestone || '', due_date: item.due_date || '',
   })
   const [saving, setSaving] = useState(false)
   const [confirmDel, setConfirmDel] = useState(false)
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+  const set = (k, v) => setForm(f => {
+    const next = { ...f, [k]: v }
+    if (k === 'due_date' && v) next.milestone = getMilestoneFromDate(v)
+    return next
+  })
 
   const handleSave = async () => {
     setSaving(true)
@@ -224,33 +284,35 @@ function DetailDrawer({ item, onClose, onSave, onDelete }) {
         {/* Body */}
         <div style={{ flex: 1, overflow: 'auto', padding: '8px 20px 20px' }}>
           <label style={labelStyle}>Titre</label>
-          <input value={form.title} onChange={e => set('title', e.target.value)} style={fieldStyle} />
+          <input value={form.title} onChange={e => set('title', e.target.value)} style={fieldStyle} readOnly={!isAdmin} />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <div><label style={labelStyle}>Statut</label><select value={form.status} onChange={e => set('status', e.target.value)} style={fieldStyle}>{STATUSES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}</select></div>
-            <div><label style={labelStyle}>Priorité</label><select value={form.priority} onChange={e => set('priority', e.target.value)} style={fieldStyle}>{PRIORITIES.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}</select></div>
-            <div><label style={labelStyle}>Catégorie</label><select value={form.category} onChange={e => set('category', e.target.value)} style={fieldStyle}>{CATEGORIES.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}</select></div>
-            <div><label style={labelStyle}>Milestone</label><input value={form.milestone} onChange={e => set('milestone', e.target.value)} placeholder="Q3 2026" style={fieldStyle} /></div>
+            <div><label style={labelStyle}>Statut</label><select value={form.status} onChange={e => set('status', e.target.value)} style={fieldStyle} disabled={!isAdmin}>{STATUSES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}</select></div>
+            <div><label style={labelStyle}>Priorité</label><select value={form.priority} onChange={e => set('priority', e.target.value)} style={fieldStyle} disabled={!isAdmin}>{PRIORITIES.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}</select></div>
+            <div><label style={labelStyle}>Catégorie</label><select value={form.category} onChange={e => set('category', e.target.value)} style={fieldStyle} disabled={!isAdmin}>{CATEGORIES.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}</select></div>
+            <div><label style={labelStyle}>Milestone</label><input value={form.milestone} onChange={e => set('milestone', e.target.value)} placeholder="Q3 2026" style={fieldStyle} readOnly={!isAdmin} /></div>
           </div>
           <label style={labelStyle}>Échéance</label>
-          <input type="date" value={form.due_date} onChange={e => set('due_date', e.target.value)} style={fieldStyle} />
+          <input type="date" value={form.due_date} onChange={e => set('due_date', e.target.value)} style={fieldStyle} readOnly={!isAdmin} />
           <label style={labelStyle}>Description</label>
-          <textarea value={form.description} onChange={e => set('description', e.target.value)} rows={5} placeholder="Détails, contexte, critères d'acceptation…" style={{ ...fieldStyle, resize: 'vertical' }} />
+          <textarea value={form.description} onChange={e => set('description', e.target.value)} rows={5} placeholder="Détails, contexte, critères d'acceptation…" style={{ ...fieldStyle, resize: 'vertical' }} readOnly={!isAdmin} />
           <div style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', marginTop: 16 }}>Créé le {new Date(item.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })} · Modifié le {new Date(item.updated_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
         </div>
         {/* Footer */}
-        <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            {!confirmDel
-              ? <button onClick={() => setConfirmDel(true)} style={{ background: 'none', border: 'none', color: '#E53E3E', fontSize: '0.82rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}><Trash2 size={14} /> Supprimer</button>
-              : <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.78rem', color: '#E53E3E', fontWeight: 600 }}>Confirmer ?</span>
-                  <button onClick={() => { onDelete(item.id); onClose() }} style={{ background: '#E53E3E', color: 'white', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: '0.78rem', cursor: 'pointer' }}>Oui</button>
-                  <button onClick={() => setConfirmDel(false)} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', fontSize: '0.78rem', cursor: 'pointer' }}>Non</button>
-                </div>
-            }
+        {isAdmin && (
+          <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              {!confirmDel
+                ? <button onClick={() => setConfirmDel(true)} style={{ background: 'none', border: 'none', color: '#E53E3E', fontSize: '0.82rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}><Trash2 size={14} /> Supprimer</button>
+                : <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.78rem', color: '#E53E3E', fontWeight: 600 }}>Confirmer ?</span>
+                    <button onClick={() => { onDelete(item.id); onClose() }} style={{ background: '#E53E3E', color: 'white', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: '0.78rem', cursor: 'pointer' }}>Oui</button>
+                    <button onClick={() => setConfirmDel(false)} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', fontSize: '0.78rem', cursor: 'pointer' }}>Non</button>
+                  </div>
+              }
+            </div>
+            <button onClick={handleSave} disabled={saving || !form.title.trim()} className="btn btn-primary" style={{ fontSize: '0.85rem' }}>{saving ? 'Enregistrement…' : 'Enregistrer'}</button>
           </div>
-          <button onClick={handleSave} disabled={saving || !form.title.trim()} className="btn btn-primary" style={{ fontSize: '0.85rem' }}>{saving ? 'Enregistrement…' : 'Enregistrer'}</button>
-        </div>
+        )}
       </div>
     </>
   )
@@ -277,7 +339,7 @@ function ProgressBar({ items, milestone }) {
 }
 
 // ─── KANBAN VIEW ─────────────────────────────────────────────────────────────
-function KanbanView({ items, onCardClick, onDelete, onStatusChange, onReorder, selectedId }) {
+function KanbanView({ items, onCardClick, onDelete, onStatusChange, onReorder, selectedId, isAdmin }) {
   const [dragItem, setDragItem] = useState(null)
   const [dropTarget, setDropTarget] = useState(null) // { status, index }
 
@@ -342,7 +404,7 @@ function KanbanView({ items, onCardClick, onDelete, onStatusChange, onReorder, s
             <div
               onDragOver={e => { e.preventDefault(); e.stopPropagation(); setDropTarget({ status: status.key, index: 0 }) }}
               onDragLeave={() => setDropTarget(null)}
-              onDrop={e => { e.preventDefault(); handleDrop(status.key, 0) }}
+              onDrop={e => { e.preventDefault(); isAdmin && handleDrop(status.key, 0) }}
               style={dropZoneStyle(status.key, 0, dropTarget?.status === status.key && dropTarget?.index === 0 && dragItem)}
             />
             {colItems.map((item, idx) => (
@@ -352,17 +414,17 @@ function KanbanView({ items, onCardClick, onDelete, onStatusChange, onReorder, s
                   onCardClick={onCardClick} onDelete={onDelete}
                   isSelected={item.id === selectedId}
                   isDragging={dragItem?.id === item.id}
-                  dragHandlers={{
+                  dragHandlers={isAdmin ? {
                     draggable: true,
                     onDragStart: () => setDragItem(item),
                     onDragEnd: () => { setDragItem(null); setDropTarget(null) },
-                  }}
+                  } : {}}
                 />
                 {/* Drop zone after each card */}
                 <div
                   onDragOver={e => { e.preventDefault(); e.stopPropagation(); setDropTarget({ status: status.key, index: idx + 1 }) }}
                   onDragLeave={() => setDropTarget(null)}
-                  onDrop={e => { e.preventDefault(); handleDrop(status.key, idx + 1) }}
+                  onDrop={e => { e.preventDefault(); isAdmin && handleDrop(status.key, idx + 1) }}
                   style={dropZoneStyle(status.key, idx + 1, dropTarget?.status === status.key && dropTarget?.index === idx + 1 && dragItem)}
                 />
               </div>
@@ -381,7 +443,7 @@ function KanbanView({ items, onCardClick, onDelete, onStatusChange, onReorder, s
 }
 
 // ─── LIST VIEW (grouped by milestone) ────────────────────────────────────────
-function ListView({ items, onCardClick, onDelete, onStatusChange, selectedId }) {
+function ListView({ items, onCardClick, onDelete, onStatusChange, selectedId, isAdmin }) {
   const milestones = [...new Set(items.map(i => i.milestone || 'Sans milestone'))].sort()
   return (
     <div>
@@ -412,7 +474,7 @@ function ListView({ items, onCardClick, onDelete, onStatusChange, selectedId }) 
 }
 
 // ─── TIMELINE VIEW ───────────────────────────────────────────────────────────
-function TimelineView({ items, onCardClick, onDelete, onStatusChange, selectedId }) {
+function TimelineView({ items, onCardClick, onDelete, onStatusChange, selectedId, isAdmin }) {
   const sorted = [...items].sort((a, b) => (a.due_date || '9999') < (b.due_date || '9999') ? -1 : 1)
   // TimelineView receives onCardClick too
   return (
@@ -429,7 +491,8 @@ function TimelineView({ items, onCardClick, onDelete, onStatusChange, selectedId
 }
 
 // ─── Main Page ───────────────────────────────────────────────────────────────
-export default function RoadmapPage() {
+export default function RoadmapPage({ user }) {
+  const isAdmin = user?.role === 'admin'
   usePageTitle('Roadmap Produit')
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
@@ -513,9 +576,11 @@ export default function RoadmapPage() {
               )
             })}
           </div>
-          <button className="btn btn-primary" onClick={() => { setShowForm(v => !v); setEditItem(null) }} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.85rem' }}>
-            <Plus size={16} /> Ajouter
-          </button>
+          {isAdmin && (
+            <button className="btn btn-primary" onClick={() => { setShowForm(v => !v); setEditItem(null) }} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.85rem' }}>
+              <Plus size={16} /> Ajouter
+            </button>
+          )}
         </div>
       </div>
 
@@ -537,10 +602,10 @@ export default function RoadmapPage() {
 
       {!loading && items.length > 0 && (
         <>
-          {view === 'kanban' && <KanbanView items={items} onCardClick={handleCardClick} onDelete={handleDelete} onStatusChange={handleStatusChange} onReorder={handleReorder} selectedId={editItem?.id} />}
-          {view === 'list' && <ListView items={items} onCardClick={handleCardClick} onDelete={handleDelete} onStatusChange={handleStatusChange} selectedId={editItem?.id} />}
-          {view === 'timeline' && <TimelineView items={items} onCardClick={handleCardClick} onDelete={handleDelete} onStatusChange={handleStatusChange} selectedId={editItem?.id} />}
-          {editItem && <DetailDrawer item={editItem} onClose={() => setEditItem(null)} onSave={handleDrawerSave} onDelete={handleDelete} />}
+          {view === 'kanban' && <KanbanView items={items} onCardClick={handleCardClick} onDelete={handleDelete} onStatusChange={handleStatusChange} onReorder={handleReorder} selectedId={editItem?.id} isAdmin={isAdmin} />}
+          {view === 'list' && <ListView items={items} onCardClick={handleCardClick} onDelete={handleDelete} onStatusChange={handleStatusChange} selectedId={editItem?.id} isAdmin={isAdmin} />}
+          {view === 'timeline' && <TimelineView items={items} onCardClick={handleCardClick} onDelete={handleDelete} onStatusChange={handleStatusChange} selectedId={editItem?.id} isAdmin={isAdmin} />}
+          {editItem && <DetailDrawer item={editItem} onClose={() => setEditItem(null)} onSave={handleDrawerSave} onDelete={handleDelete} isAdmin={isAdmin} />}
         </>
       )}
     </div>

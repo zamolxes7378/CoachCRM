@@ -412,7 +412,7 @@ function AppContent({ loading, user, authError, showOnboarding, setShowOnboardin
                 <Route path="/admin/deleted-clients" element={user.role === 'admin' ? <DeletedClientsPage /> : <Navigate to="/" />} />
                 <Route path="/admin/reseau-pro" element={user.role === 'admin' ? <ReseauProPage /> : <Navigate to="/" />} />
                 <Route path="/admin/dsar" element={user.role === 'admin' ? <DsarRequestsPage /> : <Navigate to="/" />} />
-                <Route path="/admin/roadmap" element={user.role === 'admin' ? <RoadmapPage /> : <Navigate to="/" />} />
+                <Route path="/roadmap" element={<RoadmapPage user={user} />} />
                 <Route path="*" element={<Navigate to="/" />} />
               </Routes>
               </ErrorBoundary>

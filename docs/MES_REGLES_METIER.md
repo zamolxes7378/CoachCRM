@@ -614,11 +614,20 @@ flowchart LR
 | Mes Clients | `/clients` | Annuaire des dossiers (actifs/prospects) |
 | Fiche Client | `/clients/:id` | Timeline thérapeutique et identité |
 | Finances | `/finances` | Suivi CA, encaissements (Tri Chronologique Croissant) |
+| Roadmap | `/roadmap` | Vision produit et évolutions futures (Visible par tous) |
 | Réseau Pro | `/admin/reseau-pro` | Partenaires et orientations (Admin) |
 | Clients archivés | `/admin/deleted-clients` | Corbeille et restauration (Admin) |
 | Administration | `/admin` | Vue d'ensemble des inscrits (Admin) |
 | Paramètres | `/settings` | Préférences personnelles du thérapeute |
 | Aide | `/help` | Guide d'utilisation et aide |
+
+## Roadmap Produit
+- **Visibilité** : La page `/roadmap` est accessible à tous les utilisateurs authentifiés (praticiens et admins).
+- **Objectif** : Partager la vision du produit, les fonctionnalités en cours de développement et le backlog.
+- **Droits d'édition** : Seuls les utilisateurs ayant le rôle `admin` peuvent ajouter, modifier, supprimer ou réorganiser les éléments de la roadmap. Pour les praticiens, la vue est strictement informative.
+- **Vues** : Supporte les vues Kanban, Liste et Timeline.
+- **Détails** : L'accès aux détails d'une carte via le Drawer est autorisé pour tous, mais les actions de modification y sont masquées pour les non-admins.
+
 
 ## Standards de l'Interface (Comportement UI)
 
