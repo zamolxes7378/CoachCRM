@@ -206,8 +206,49 @@ function ProgressBar({ items, milestone }) {
 }
 
 // ─── KANBAN VIEW ─────────────────────────────────────────────────────────────
-function KanbanView({ items, onEdit, onDelete, onStatusChange, onMoveUp, onMoveDown }) {
+function KanbanView({ items, onEdit, onDelete, onStatusChange, onMoveUp, onMoveDown, onReorder }) {
   const [dragItem, setDragItem] = useState(null)
+  const [dropTarget, setDropTarget] = useState(null) // { status, index }
+
+  const handleDrop = async (targetStatus, targetIndex) => {
+    if (!dragItem) return
+    const sameColumn = dragItem.status === targetStatus
+
+    if (sameColumn) {
+      // Reorder within the same column
+      const colItems = items
+        .filter(i => i.status === targetStatus)
+        .sort((a, b) => a.sort_order - b.sort_order)
+      const oldIdx = colItems.findIndex(i => i.id === dragItem.id)
+      if (oldIdx === -1 || oldIdx === targetIndex) { setDragItem(null); setDropTarget(null); return }
+      const reordered = [...colItems]
+      const [moved] = reordered.splice(oldIdx, 1)
+      const insertAt = targetIndex > oldIdx ? targetIndex - 1 : targetIndex
+      reordered.splice(insertAt, 0, moved)
+      await onReorder(reordered.map(i => i.id))
+    } else {
+      // Move to another column + insert at position
+      await onStatusChange(dragItem.id, targetStatus)
+      // After status change, reorder within the target column
+      const colItems = items
+        .filter(i => i.status === targetStatus)
+        .sort((a, b) => a.sort_order - b.sort_order)
+      const newList = [...colItems]
+      newList.splice(targetIndex, 0, { ...dragItem, status: targetStatus })
+      await onReorder(newList.map(i => i.id))
+    }
+    setDragItem(null)
+    setDropTarget(null)
+  }
+
+  const dropZoneStyle = (status, index, isActive) => ({
+    height: isActive ? 4 : 2,
+    borderRadius: 4,
+    background: isActive ? 'var(--primary-400)' : 'transparent',
+    margin: '2px 0',
+    transition: 'height 0.15s, background 0.15s',
+  })
+
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, alignItems: 'flex-start' }}>
       {STATUSES.map(status => {
@@ -216,7 +257,6 @@ function KanbanView({ items, onEdit, onDelete, onStatusChange, onMoveUp, onMoveD
           <div
             key={status.key}
             onDragOver={e => e.preventDefault()}
-            onDrop={() => { if (dragItem && dragItem.status !== status.key) onStatusChange(dragItem.id, status.key); setDragItem(null) }}
             style={{ background: status.bg, borderRadius: 12, padding: 12, minHeight: 200 }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, padding: '0 4px' }}>
@@ -224,19 +264,44 @@ function KanbanView({ items, onEdit, onDelete, onStatusChange, onMoveUp, onMoveD
               <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>{status.label}</span>
               <span style={{ marginLeft: 'auto', fontSize: '0.78rem', color: 'var(--text-tertiary)', fontWeight: 600, background: 'white', padding: '1px 8px', borderRadius: 10 }}>{colItems.length}</span>
             </div>
-            {colItems.map(item => (
-              <ItemCard
-                key={item.id} item={item} compact
-                onEdit={onEdit} onDelete={onDelete}
-                onStatusChange={onStatusChange}
-                onMoveUp={onMoveUp} onMoveDown={onMoveDown}
-                dragHandlers={{
-                  draggable: true,
-                  onDragStart: () => setDragItem(item),
-                  onDragEnd: () => setDragItem(null),
-                }}
-              />
+            {/* Drop zone at the top */}
+            <div
+              onDragOver={e => { e.preventDefault(); setDropTarget({ status: status.key, index: 0 }) }}
+              onDragLeave={() => setDropTarget(null)}
+              onDrop={e => { e.preventDefault(); handleDrop(status.key, 0) }}
+              style={dropZoneStyle(status.key, 0, dropTarget?.status === status.key && dropTarget?.index === 0 && dragItem)}
+            />
+            {colItems.map((item, idx) => (
+              <div key={item.id}>
+                <ItemCard
+                  item={item} compact
+                  onEdit={onEdit} onDelete={onDelete}
+                  onStatusChange={onStatusChange}
+                  onMoveUp={onMoveUp} onMoveDown={onMoveDown}
+                  dragHandlers={{
+                    draggable: true,
+                    onDragStart: () => setDragItem(item),
+                    onDragEnd: () => { setDragItem(null); setDropTarget(null) },
+                  }}
+                />
+                {/* Drop zone after each card */}
+                <div
+                  onDragOver={e => { e.preventDefault(); setDropTarget({ status: status.key, index: idx + 1 }) }}
+                  onDragLeave={() => setDropTarget(null)}
+                  onDrop={e => { e.preventDefault(); handleDrop(status.key, idx + 1) }}
+                  style={dropZoneStyle(status.key, idx + 1, dropTarget?.status === status.key && dropTarget?.index === idx + 1 && dragItem)}
+                />
+              </div>
             ))}
+            {/* Empty column drop target */}
+            {colItems.length === 0 && (
+              <div
+                onDragOver={e => { e.preventDefault(); setDropTarget({ status: status.key, index: 0 }) }}
+                onDragLeave={() => setDropTarget(null)}
+                onDrop={e => { e.preventDefault(); handleDrop(status.key, 0) }}
+                style={{ minHeight: 80, borderRadius: 8, border: dropTarget?.status === status.key ? '2px dashed var(--primary-400)' : '2px dashed transparent', transition: 'border 0.2s' }}
+              />
+            )}
           </div>
         )
       })}
@@ -346,6 +411,11 @@ export default function RoadmapPage() {
 
   const handleEdit = (item) => { setEditItem(item); setShowForm(false) }
 
+  const handleReorder = async (orderedIds) => {
+    await reorderRoadmapItems(orderedIds)
+    await load()
+  }
+
   return (
     <div>
       <div className="page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
@@ -391,7 +461,7 @@ export default function RoadmapPage() {
 
       {!loading && items.length > 0 && (
         <>
-          {view === 'kanban' && <KanbanView items={items} onEdit={handleEdit} onDelete={handleDelete} onStatusChange={handleStatusChange} onMoveUp={id => handleMove(id, -1)} onMoveDown={id => handleMove(id, 1)} />}
+          {view === 'kanban' && <KanbanView items={items} onEdit={handleEdit} onDelete={handleDelete} onStatusChange={handleStatusChange} onMoveUp={id => handleMove(id, -1)} onMoveDown={id => handleMove(id, 1)} onReorder={handleReorder} />}
           {view === 'list' && <ListView items={items} onEdit={handleEdit} onDelete={handleDelete} onStatusChange={handleStatusChange} onMoveUp={id => handleMove(id, -1)} onMoveDown={id => handleMove(id, 1)} />}
           {view === 'timeline' && <TimelineView items={items} onEdit={handleEdit} onDelete={handleDelete} onStatusChange={handleStatusChange} />}
         </>
