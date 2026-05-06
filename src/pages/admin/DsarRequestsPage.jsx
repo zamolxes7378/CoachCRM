@@ -170,7 +170,7 @@ export default function DsarRequestsPage() {
                   </span>
                 </td>
                 <td style={{ padding: '10px 12px', color: '#718096' }}>
-                  {new Date(r.raised_at).toLocaleDateString('fr-FR')}
+                  {new Date(r.raised_at || r.created_at).toLocaleDateString('fr-FR')}
                 </td>
                 <td style={{ padding: '10px 12px', color: '#718096' }}>
                   {r.fulfilled_at ? new Date(r.fulfilled_at).toLocaleDateString('fr-FR') : '—'}
@@ -339,7 +339,7 @@ function RequestDetailPanel({ request: r, loading, onClose, onStatusChange, onGe
             ['Email', r.subject_email],
             ['Type', REQUEST_TYPE_LABELS[r.request_type] || r.request_type],
             ['Statut', STATUS_LABELS[r.status] || r.status],
-            ['Reçue le', new Date(r.raised_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })],
+            ['Reçue le', new Date(r.raised_at || r.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })],
             r.fulfilled_at && ['Traitée le', new Date(r.fulfilled_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })],
             r.notes && ['Notes', r.notes],
           ].filter(Boolean).map(([k, v]) => (

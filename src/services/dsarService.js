@@ -43,6 +43,7 @@ export async function createRequest({ subjectEmail, requestType, notes = '' }) {
       request_type:  requestType,
       status:        'pending',
       notes:         notes || null,
+      raised_at:     new Date().toISOString(),
     })
     .select()
     .single()
