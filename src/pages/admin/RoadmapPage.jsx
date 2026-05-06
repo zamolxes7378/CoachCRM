@@ -136,8 +136,7 @@ function ItemForm({ item, onSave, onCancel }) {
 }
 
 // ─── Card (used in Kanban + List) ────────────────────────────────────────────
-function ItemCard({ item, onCardClick, onDelete, dragHandlers, compact }) {
-  const [confirm, setConfirm] = useState(false)
+function ItemCard({ item, onCardClick, dragHandlers, compact }) {
   return (
     <div
       {...(dragHandlers || {})}
@@ -163,15 +162,6 @@ function ItemCard({ item, onCardClick, onDelete, dragHandlers, compact }) {
             {item.milestone && <span style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', background: 'var(--primary-50)', padding: '2px 8px', borderRadius: 10, fontWeight: 500 }}>{item.milestone}</span>}
             {item.due_date && <span style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', display: 'inline-flex', alignItems: 'center', gap: 3 }}><Calendar size={11} />{new Date(item.due_date).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' })}</span>}
           </div>
-        </div>
-        <div style={{ display: 'flex', gap: 2, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
-          {!confirm
-            ? <button onClick={() => setConfirm(true)} title="Supprimer" style={{ ...iconBtnStyle, color: '#E53E3E' }}><Trash2 size={14} /></button>
-            : <>
-                <button onClick={() => { onDelete(item.id); setConfirm(false) }} title="Confirmer" style={{ ...iconBtnStyle, color: '#E53E3E', fontWeight: 700, fontSize: '0.7rem' }}>Oui</button>
-                <button onClick={() => setConfirm(false)} title="Annuler" style={{ ...iconBtnStyle, fontSize: '0.7rem' }}>Non</button>
-              </>
-          }
         </div>
       </div>
     </div>
