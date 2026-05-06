@@ -17,7 +17,7 @@ import {
 // ─── Constants ────────────────────────────────────────────────────────────────
 const STATUSES = [
   { key: 'backlog', label: 'Backlog', color: '#A0AEC0', bg: '#EDF2F7' },
-  { key: 'in_progress', label: 'En cours', color: '#3182CE', bg: '#EBF8FF' },
+  { key: 'in_progress', label: 'En cours', color: '#D69E2E', bg: '#FEFCBF' },
   { key: 'done', label: 'Terminé', color: '#38A169', bg: '#F0FFF4' },
 ]
 const PRIORITIES = [
@@ -136,16 +136,17 @@ function ItemForm({ item, onSave, onCancel }) {
 }
 
 // ─── Card (used in Kanban + List) ────────────────────────────────────────────
-function ItemCard({ item, onEdit, onDelete, onStatusChange, dragHandlers, compact }) {
+function ItemCard({ item, onCardClick, onDelete, dragHandlers, compact }) {
   const [confirm, setConfirm] = useState(false)
   return (
     <div
       {...(dragHandlers || {})}
+      onClick={e => { if (!e.defaultPrevented && onCardClick) onCardClick(item) }}
       style={{
         background: 'white', borderRadius: 10, border: '1px solid var(--border)',
         padding: compact ? '10px 14px' : '14px 16px', marginBottom: 8,
         boxShadow: 'var(--shadow-sm)', transition: 'box-shadow 0.2s, transform 0.15s',
-        cursor: dragHandlers ? 'grab' : 'default',
+        cursor: 'pointer',
       }}
       onMouseEnter={e => e.currentTarget.style.boxShadow = 'var(--shadow-md)'}
       onMouseLeave={e => e.currentTarget.style.boxShadow = 'var(--shadow-sm)'}
@@ -156,16 +157,14 @@ function ItemCard({ item, onEdit, onDelete, onStatusChange, dragHandlers, compac
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
             <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)' }}>{item.title}</span>
           </div>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: item.description ? 8 : 0 }}>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             <PriorityBadge priority={item.priority} />
             <CategoryBadge category={item.category} />
             {item.milestone && <span style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', background: 'var(--primary-50)', padding: '2px 8px', borderRadius: 10, fontWeight: 500 }}>{item.milestone}</span>}
             {item.due_date && <span style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', display: 'inline-flex', alignItems: 'center', gap: 3 }}><Calendar size={11} />{new Date(item.due_date).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' })}</span>}
           </div>
-          {item.description && !compact && <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: '6px 0 0', lineHeight: 1.5, whiteSpace: 'pre-line' }}>{item.description}</p>}
         </div>
-        <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
-          <button onClick={() => onEdit(item)} title="Modifier" style={iconBtnStyle}><Edit3 size={14} /></button>
+        <div style={{ display: 'flex', gap: 2, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
           {!confirm
             ? <button onClick={() => setConfirm(true)} title="Supprimer" style={{ ...iconBtnStyle, color: '#E53E3E' }}><Trash2 size={14} /></button>
             : <>
@@ -179,6 +178,77 @@ function ItemCard({ item, onEdit, onDelete, onStatusChange, dragHandlers, compac
   )
 }
 const iconBtnStyle = { background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-tertiary)', borderRadius: 6, display: 'inline-flex' }
+
+// ─── Detail Drawer (right side panel) ────────────────────────────────────────
+function DetailDrawer({ item, onClose, onSave, onDelete }) {
+  const [form, setForm] = useState({
+    title: item.title, description: item.description || '', status: item.status,
+    priority: item.priority, category: item.category, milestone: item.milestone || '', due_date: item.due_date || '',
+  })
+  const [saving, setSaving] = useState(false)
+  const [confirmDel, setConfirmDel] = useState(false)
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  const handleSave = async () => {
+    setSaving(true)
+    try { await onSave(item.id, form); onClose() } finally { setSaving(false) }
+  }
+
+  const fieldStyle = { width: '100%', padding: '8px 12px', borderRadius: 8, border: '1.5px solid var(--border)', fontSize: '0.875rem', boxSizing: 'border-box', fontFamily: 'inherit' }
+  const labelStyle = { display: 'block', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, marginTop: 14 }
+  const st = getStatus(item.status)
+
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.25)', zIndex: 999, transition: 'opacity 0.2s' }} />
+      <div style={{
+        position: 'fixed', top: 0, right: 0, bottom: 0, width: 420, maxWidth: '90vw',
+        background: 'white', zIndex: 1000, boxShadow: '-8px 0 30px rgba(0,0,0,0.12)',
+        display: 'flex', flexDirection: 'column', animation: 'slideInRight 0.25s ease-out',
+      }}>
+        <style>{`@keyframes slideInRight { from { transform: translateX(100%) } to { transform: translateX(0) } }`}</style>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ width: 10, height: 10, borderRadius: '50%', background: st.color }} />
+            <span style={{ fontSize: '0.82rem', fontWeight: 600, color: st.color }}>{st.label}</span>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 4 }}><X size={20} /></button>
+        </div>
+        {/* Body */}
+        <div style={{ flex: 1, overflow: 'auto', padding: '8px 20px 20px' }}>
+          <label style={labelStyle}>Titre</label>
+          <input value={form.title} onChange={e => set('title', e.target.value)} style={fieldStyle} />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div><label style={labelStyle}>Statut</label><select value={form.status} onChange={e => set('status', e.target.value)} style={fieldStyle}>{STATUSES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}</select></div>
+            <div><label style={labelStyle}>Priorité</label><select value={form.priority} onChange={e => set('priority', e.target.value)} style={fieldStyle}>{PRIORITIES.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}</select></div>
+            <div><label style={labelStyle}>Catégorie</label><select value={form.category} onChange={e => set('category', e.target.value)} style={fieldStyle}>{CATEGORIES.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}</select></div>
+            <div><label style={labelStyle}>Milestone</label><input value={form.milestone} onChange={e => set('milestone', e.target.value)} placeholder="Q3 2026" style={fieldStyle} /></div>
+          </div>
+          <label style={labelStyle}>Échéance</label>
+          <input type="date" value={form.due_date} onChange={e => set('due_date', e.target.value)} style={fieldStyle} />
+          <label style={labelStyle}>Description</label>
+          <textarea value={form.description} onChange={e => set('description', e.target.value)} rows={5} placeholder="Détails, contexte, critères d'acceptation…" style={{ ...fieldStyle, resize: 'vertical' }} />
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', marginTop: 16 }}>Créé le {new Date(item.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })} · Modifié le {new Date(item.updated_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
+        </div>
+        {/* Footer */}
+        <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            {!confirmDel
+              ? <button onClick={() => setConfirmDel(true)} style={{ background: 'none', border: 'none', color: '#E53E3E', fontSize: '0.82rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}><Trash2 size={14} /> Supprimer</button>
+              : <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.78rem', color: '#E53E3E', fontWeight: 600 }}>Confirmer ?</span>
+                  <button onClick={() => { onDelete(item.id); onClose() }} style={{ background: '#E53E3E', color: 'white', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: '0.78rem', cursor: 'pointer' }}>Oui</button>
+                  <button onClick={() => setConfirmDel(false)} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', fontSize: '0.78rem', cursor: 'pointer' }}>Non</button>
+                </div>
+            }
+          </div>
+          <button onClick={handleSave} disabled={saving || !form.title.trim()} className="btn btn-primary" style={{ fontSize: '0.85rem' }}>{saving ? 'Enregistrement…' : 'Enregistrer'}</button>
+        </div>
+      </div>
+    </>
+  )
+}
 
 // ─── Progress Bar ────────────────────────────────────────────────────────────
 function ProgressBar({ items, milestone }) {
@@ -201,7 +271,7 @@ function ProgressBar({ items, milestone }) {
 }
 
 // ─── KANBAN VIEW ─────────────────────────────────────────────────────────────
-function KanbanView({ items, onEdit, onDelete, onStatusChange, onReorder }) {
+function KanbanView({ items, onCardClick, onDelete, onStatusChange, onReorder }) {
   const [dragItem, setDragItem] = useState(null)
   const [dropTarget, setDropTarget] = useState(null) // { status, index }
 
@@ -270,8 +340,7 @@ function KanbanView({ items, onEdit, onDelete, onStatusChange, onReorder }) {
               <div key={item.id}>
                 <ItemCard
                   item={item} compact
-                  onEdit={onEdit} onDelete={onDelete}
-                  onStatusChange={onStatusChange}
+                  onCardClick={onCardClick} onDelete={onDelete}
                   dragHandlers={{
                     draggable: true,
                     onDragStart: () => setDragItem(item),
@@ -304,7 +373,7 @@ function KanbanView({ items, onEdit, onDelete, onStatusChange, onReorder }) {
 }
 
 // ─── LIST VIEW (grouped by milestone) ────────────────────────────────────────
-function ListView({ items, onEdit, onDelete, onStatusChange }) {
+function ListView({ items, onCardClick, onDelete, onStatusChange }) {
   const milestones = [...new Set(items.map(i => i.milestone || 'Sans milestone'))].sort()
   return (
     <div>
@@ -323,7 +392,7 @@ function ListView({ items, onEdit, onDelete, onStatusChange }) {
               <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ width: 10, height: 10, borderRadius: '50%', background: getStatus(item.status).color, flexShrink: 0 }} />
                 <div style={{ flex: 1 }}>
-                  <ItemCard item={item} onEdit={onEdit} onDelete={onDelete} onStatusChange={onStatusChange} />
+                  <ItemCard item={item} onCardClick={onCardClick} onDelete={onDelete} />
                 </div>
               </div>
             ))}
@@ -335,15 +404,16 @@ function ListView({ items, onEdit, onDelete, onStatusChange }) {
 }
 
 // ─── TIMELINE VIEW ───────────────────────────────────────────────────────────
-function TimelineView({ items, onEdit, onDelete, onStatusChange }) {
+function TimelineView({ items, onCardClick, onDelete, onStatusChange }) {
   const sorted = [...items].sort((a, b) => (a.due_date || '9999') < (b.due_date || '9999') ? -1 : 1)
+  // TimelineView receives onCardClick too
   return (
     <div style={{ position: 'relative', paddingLeft: 28 }}>
       <div style={{ position: 'absolute', left: 12, top: 0, bottom: 0, width: 2, background: 'var(--primary-200)' }} />
       {sorted.map((item, i) => (
         <div key={item.id} style={{ position: 'relative', marginBottom: 16 }}>
           <div style={{ position: 'absolute', left: -22, top: 14, width: 12, height: 12, borderRadius: '50%', background: getStatus(item.status).color, border: '2px solid white', boxShadow: '0 0 0 2px ' + getStatus(item.status).color + '40' }} />
-          <ItemCard item={item} onEdit={onEdit} onDelete={onDelete} onStatusChange={onStatusChange} />
+          <ItemCard item={item} onCardClick={onCardClick} onDelete={onDelete} />
         </div>
       ))}
     </div>
@@ -403,10 +473,15 @@ export default function RoadmapPage() {
     await load()
   }
 
-  const handleEdit = (item) => { setEditItem(item); setShowForm(false) }
+  const handleCardClick = (item) => { setEditItem(item); setShowForm(false) }
 
   const handleReorder = async (orderedIds) => {
     await reorderRoadmapItems(orderedIds)
+    await load()
+  }
+
+  const handleDrawerSave = async (id, form) => {
+    await updateRoadmapItem(id, form)
     await load()
   }
 
@@ -441,7 +516,6 @@ export default function RoadmapPage() {
       <ProgressBar items={items} />
 
       {showForm && <ItemForm onSave={handleCreate} onCancel={() => setShowForm(false)} />}
-      {editItem && <ItemForm item={editItem} onSave={handleUpdate} onCancel={() => setEditItem(null)} />}
 
       {loading && <div style={{ textAlign: 'center', padding: 48, color: 'var(--text-secondary)' }}><div className="spinner" style={{ margin: '0 auto 12px' }} />Chargement…</div>}
 
@@ -455,9 +529,10 @@ export default function RoadmapPage() {
 
       {!loading && items.length > 0 && (
         <>
-          {view === 'kanban' && <KanbanView items={items} onEdit={handleEdit} onDelete={handleDelete} onStatusChange={handleStatusChange} onReorder={handleReorder} />}
-          {view === 'list' && <ListView items={items} onEdit={handleEdit} onDelete={handleDelete} onStatusChange={handleStatusChange} />}
-          {view === 'timeline' && <TimelineView items={items} onEdit={handleEdit} onDelete={handleDelete} onStatusChange={handleStatusChange} />}
+          {view === 'kanban' && <KanbanView items={items} onCardClick={handleCardClick} onDelete={handleDelete} onStatusChange={handleStatusChange} onReorder={handleReorder} />}
+          {view === 'list' && <ListView items={items} onCardClick={handleCardClick} onDelete={handleDelete} onStatusChange={handleStatusChange} />}
+          {view === 'timeline' && <TimelineView items={items} onCardClick={handleCardClick} onDelete={handleDelete} onStatusChange={handleStatusChange} />}
+          {editItem && <DetailDrawer item={editItem} onClose={() => setEditItem(null)} onSave={handleDrawerSave} onDelete={handleDelete} />}
         </>
       )}
     </div>
