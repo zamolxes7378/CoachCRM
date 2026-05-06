@@ -165,9 +165,6 @@ function ItemCard({ item, onEdit, onDelete, onStatusChange, dragHandlers, compac
           {item.description && !compact && <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: '6px 0 0', lineHeight: 1.5, whiteSpace: 'pre-line' }}>{item.description}</p>}
         </div>
         <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
-          {onStatusChange && item.status !== 'done' && (
-            <button onClick={() => onStatusChange(item.id, item.status === 'backlog' ? 'in_progress' : 'done')} title="Avancer le statut" style={{ ...iconBtnStyle, color: '#38A169' }}><Check size={14} /></button>
-          )}
           <button onClick={() => onEdit(item)} title="Modifier" style={iconBtnStyle}><Edit3 size={14} /></button>
           {!confirm
             ? <button onClick={() => setConfirm(true)} title="Supprimer" style={{ ...iconBtnStyle, color: '#E53E3E' }}><Trash2 size={14} /></button>
