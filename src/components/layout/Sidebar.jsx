@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom'
-import { Home, Users, Mic, FileText, BookOpen, Settings, HelpCircle, Crown, Heart, LogOut, Menu, X, Brain, Euro, Repeat, Archive, Briefcase, ShieldAlert } from 'lucide-react'
+import { Home, Users, Mic, FileText, BookOpen, Settings, HelpCircle, Crown, Heart, LogOut, Menu, X, Brain, Euro, Repeat, Archive, Briefcase, ShieldAlert, Map } from 'lucide-react'
 
 export default function Sidebar({ user, onLogout, isOpen, onToggle }) {
   const location = useLocation()
@@ -130,6 +130,15 @@ export default function Sidebar({ user, onLogout, isOpen, onToggle }) {
                 >
                   <ShieldAlert aria-hidden="true" />
                   <span>Demandes RGPD</span>
+                </NavLink>
+                <NavLink
+                  to="/admin/roadmap"
+                  className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+                  aria-current={location.pathname.startsWith('/admin/roadmap') ? 'page' : undefined}
+                  onClick={() => onToggle && window.innerWidth < 768 && onToggle()}
+                >
+                  <Map aria-hidden="true" />
+                  <span>Roadmap</span>
                 </NavLink>
               </div>
             </>

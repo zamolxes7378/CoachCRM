@@ -1,0 +1,401 @@
+/**
+ * RoadmapPage.jsx — Admin-only product roadmap with 3 views (Kanban, List, Timeline)
+ * Inspired by Monday.com — drag-and-drop, priority badges, progress indicators
+ */
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { usePageTitle } from '../../hooks/usePageTitle'
+import {
+  getRoadmapItems, createRoadmapItem, updateRoadmapItem,
+  deleteRoadmapItem, reorderRoadmapItems
+} from '../../services/roadmapService'
+import {
+  Map, LayoutGrid, List, Clock, Plus, GripVertical, Edit3, Trash2,
+  ChevronDown, ChevronUp, X, Check, AlertTriangle, Zap, Bug, Palette,
+  Shield, Server, Target, Calendar
+} from 'lucide-react'
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+const STATUSES = [
+  { key: 'backlog', label: 'Backlog', color: '#A0AEC0', bg: '#EDF2F7' },
+  { key: 'in_progress', label: 'En cours', color: '#3182CE', bg: '#EBF8FF' },
+  { key: 'done', label: 'Terminé', color: '#38A169', bg: '#F0FFF4' },
+]
+const PRIORITIES = [
+  { key: 'low', label: 'Basse', color: '#A0AEC0', icon: ChevronDown },
+  { key: 'medium', label: 'Moyenne', color: '#D69E2E', icon: Target },
+  { key: 'high', label: 'Haute', color: '#DD6B20', icon: ChevronUp },
+  { key: 'critical', label: 'Critique', color: '#E53E3E', icon: AlertTriangle },
+]
+const CATEGORIES = [
+  { key: 'feature', label: 'Fonctionnalité', color: '#553C9A', icon: Zap },
+  { key: 'bug', label: 'Bug', color: '#E53E3E', icon: Bug },
+  { key: 'design', label: 'Design', color: '#D69E2E', icon: Palette },
+  { key: 'legal', label: 'Légal / RGPD', color: '#2B6CB0', icon: Shield },
+  { key: 'infrastructure', label: 'Infrastructure', color: '#718096', icon: Server },
+]
+const VIEWS = [
+  { key: 'kanban', label: 'Kanban', icon: LayoutGrid },
+  { key: 'list', label: 'Liste', icon: List },
+  { key: 'timeline', label: 'Timeline', icon: Clock },
+]
+const getPriority = k => PRIORITIES.find(p => p.key === k) || PRIORITIES[1]
+const getCategory = k => CATEGORIES.find(c => c.key === k) || CATEGORIES[0]
+const getStatus = k => STATUSES.find(s => s.key === k) || STATUSES[0]
+
+// ─── Priority Badge ──────────────────────────────────────────────────────────
+function PriorityBadge({ priority }) {
+  const p = getPriority(priority)
+  const Icon = p.icon
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.75rem', fontWeight: 600, color: p.color, background: p.color + '18', padding: '2px 8px', borderRadius: 12 }}>
+      <Icon size={12} /> {p.label}
+    </span>
+  )
+}
+
+// ─── Category Badge ──────────────────────────────────────────────────────────
+function CategoryBadge({ category }) {
+  const c = getCategory(category)
+  const Icon = c.icon
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.75rem', fontWeight: 500, color: c.color, background: c.color + '12', padding: '2px 8px', borderRadius: 12 }}>
+      <Icon size={12} /> {c.label}
+    </span>
+  )
+}
+
+// ─── Item Form (Create / Edit) ───────────────────────────────────────────────
+function ItemForm({ item, onSave, onCancel }) {
+  const [form, setForm] = useState({
+    title: item?.title || '',
+    description: item?.description || '',
+    status: item?.status || 'backlog',
+    priority: item?.priority || 'medium',
+    category: item?.category || 'feature',
+    milestone: item?.milestone || '',
+    due_date: item?.due_date || '',
+  })
+  const [saving, setSaving] = useState(false)
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  const handleSubmit = async e => {
+    e.preventDefault()
+    if (!form.title.trim()) return
+    setSaving(true)
+    try { await onSave(form) } finally { setSaving(false) }
+  }
+
+  const fieldStyle = { width: '100%', padding: '8px 12px', borderRadius: 8, border: '1.5px solid var(--border)', fontSize: '0.875rem', boxSizing: 'border-box', fontFamily: 'inherit' }
+  const labelStyle = { display: 'block', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }
+
+  return (
+    <form onSubmit={handleSubmit} style={{ background: 'var(--bg-card, white)', borderRadius: 12, border: '1px solid var(--border)', padding: 20, marginBottom: 20 }}>
+      <h3 style={{ fontSize: '0.95rem', fontWeight: 700, margin: '0 0 16px' }}>{item ? 'Modifier l\'élément' : 'Nouvel élément'}</h3>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+        <div style={{ gridColumn: '1 / -1' }}>
+          <label style={labelStyle}>Titre *</label>
+          <input value={form.title} onChange={e => set('title', e.target.value)} required placeholder="Ex: Intégration Google Calendar" style={fieldStyle} />
+        </div>
+        <div>
+          <label style={labelStyle}>Statut</label>
+          <select value={form.status} onChange={e => set('status', e.target.value)} style={fieldStyle}>
+            {STATUSES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={labelStyle}>Priorité</label>
+          <select value={form.priority} onChange={e => set('priority', e.target.value)} style={fieldStyle}>
+            {PRIORITIES.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={labelStyle}>Catégorie</label>
+          <select value={form.category} onChange={e => set('category', e.target.value)} style={fieldStyle}>
+            {CATEGORIES.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={labelStyle}>Milestone</label>
+          <input value={form.milestone} onChange={e => set('milestone', e.target.value)} placeholder="Ex: Q3 2026" style={fieldStyle} />
+        </div>
+        <div>
+          <label style={labelStyle}>Échéance</label>
+          <input type="date" value={form.due_date} onChange={e => set('due_date', e.target.value)} style={fieldStyle} />
+        </div>
+        <div style={{ gridColumn: '1 / -1' }}>
+          <label style={labelStyle}>Description</label>
+          <textarea value={form.description} onChange={e => set('description', e.target.value)} rows={3} placeholder="Détails, contexte, critères d'acceptation…" style={{ ...fieldStyle, resize: 'vertical' }} />
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        <button type="button" onClick={onCancel} className="btn btn-secondary" style={{ fontSize: '0.85rem' }}>Annuler</button>
+        <button type="submit" disabled={saving || !form.title.trim()} className="btn btn-primary" style={{ fontSize: '0.85rem' }}>{saving ? 'Enregistrement…' : item ? 'Mettre à jour' : 'Créer'}</button>
+      </div>
+    </form>
+  )
+}
+
+// ─── Card (used in Kanban + List) ────────────────────────────────────────────
+function ItemCard({ item, onEdit, onDelete, onStatusChange, onMoveUp, onMoveDown, dragHandlers, compact }) {
+  const [confirm, setConfirm] = useState(false)
+  return (
+    <div
+      {...(dragHandlers || {})}
+      style={{
+        background: 'white', borderRadius: 10, border: '1px solid var(--border)',
+        padding: compact ? '10px 14px' : '14px 16px', marginBottom: 8,
+        boxShadow: 'var(--shadow-sm)', transition: 'box-shadow 0.2s, transform 0.15s',
+        cursor: dragHandlers ? 'grab' : 'default',
+      }}
+      onMouseEnter={e => e.currentTarget.style.boxShadow = 'var(--shadow-md)'}
+      onMouseLeave={e => e.currentTarget.style.boxShadow = 'var(--shadow-sm)'}
+    >
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+        {dragHandlers && <GripVertical size={16} style={{ color: 'var(--text-tertiary)', marginTop: 2, flexShrink: 0, cursor: 'grab' }} />}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
+            <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)' }}>{item.title}</span>
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: item.description ? 8 : 0 }}>
+            <PriorityBadge priority={item.priority} />
+            <CategoryBadge category={item.category} />
+            {item.milestone && <span style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', background: 'var(--primary-50)', padding: '2px 8px', borderRadius: 10, fontWeight: 500 }}>{item.milestone}</span>}
+            {item.due_date && <span style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', display: 'inline-flex', alignItems: 'center', gap: 3 }}><Calendar size={11} />{new Date(item.due_date).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' })}</span>}
+          </div>
+          {item.description && !compact && <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: '6px 0 0', lineHeight: 1.5, whiteSpace: 'pre-line' }}>{item.description}</p>}
+        </div>
+        <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+          {onMoveUp && <button onClick={() => onMoveUp(item.id)} title="Monter" style={iconBtnStyle}><ChevronUp size={14} /></button>}
+          {onMoveDown && <button onClick={() => onMoveDown(item.id)} title="Descendre" style={iconBtnStyle}><ChevronDown size={14} /></button>}
+          {onStatusChange && item.status !== 'done' && (
+            <button onClick={() => onStatusChange(item.id, item.status === 'backlog' ? 'in_progress' : 'done')} title="Avancer le statut" style={{ ...iconBtnStyle, color: '#38A169' }}><Check size={14} /></button>
+          )}
+          <button onClick={() => onEdit(item)} title="Modifier" style={iconBtnStyle}><Edit3 size={14} /></button>
+          {!confirm
+            ? <button onClick={() => setConfirm(true)} title="Supprimer" style={{ ...iconBtnStyle, color: '#E53E3E' }}><Trash2 size={14} /></button>
+            : <>
+                <button onClick={() => { onDelete(item.id); setConfirm(false) }} title="Confirmer" style={{ ...iconBtnStyle, color: '#E53E3E', fontWeight: 700, fontSize: '0.7rem' }}>Oui</button>
+                <button onClick={() => setConfirm(false)} title="Annuler" style={{ ...iconBtnStyle, fontSize: '0.7rem' }}>Non</button>
+              </>
+          }
+        </div>
+      </div>
+    </div>
+  )
+}
+const iconBtnStyle = { background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-tertiary)', borderRadius: 6, display: 'inline-flex' }
+
+// ─── Progress Bar ────────────────────────────────────────────────────────────
+function ProgressBar({ items, milestone }) {
+  const filtered = milestone ? items.filter(i => i.milestone === milestone) : items
+  const total = filtered.length
+  if (!total) return null
+  const done = filtered.filter(i => i.status === 'done').length
+  const inProg = filtered.filter(i => i.status === 'in_progress').length
+  const pct = Math.round((done / total) * 100)
+  return (
+    <div style={{ marginBottom: 16 }}>
+      {milestone && <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>{milestone} — {pct}% complété ({done}/{total})</div>}
+      {!milestone && <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>Progression globale — {pct}% ({done}/{total} items)</div>}
+      <div style={{ height: 8, borderRadius: 8, background: '#EDF2F7', overflow: 'hidden', display: 'flex' }}>
+        <div style={{ width: `${(done / total) * 100}%`, background: '#38A169', transition: 'width 0.4s' }} />
+        <div style={{ width: `${(inProg / total) * 100}%`, background: '#3182CE', transition: 'width 0.4s' }} />
+      </div>
+    </div>
+  )
+}
+
+// ─── KANBAN VIEW ─────────────────────────────────────────────────────────────
+function KanbanView({ items, onEdit, onDelete, onStatusChange, onMoveUp, onMoveDown }) {
+  const [dragItem, setDragItem] = useState(null)
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, alignItems: 'flex-start' }}>
+      {STATUSES.map(status => {
+        const colItems = items.filter(i => i.status === status.key).sort((a, b) => a.sort_order - b.sort_order)
+        return (
+          <div
+            key={status.key}
+            onDragOver={e => e.preventDefault()}
+            onDrop={() => { if (dragItem && dragItem.status !== status.key) onStatusChange(dragItem.id, status.key); setDragItem(null) }}
+            style={{ background: status.bg, borderRadius: 12, padding: 12, minHeight: 200 }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, padding: '0 4px' }}>
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: status.color }} />
+              <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>{status.label}</span>
+              <span style={{ marginLeft: 'auto', fontSize: '0.78rem', color: 'var(--text-tertiary)', fontWeight: 600, background: 'white', padding: '1px 8px', borderRadius: 10 }}>{colItems.length}</span>
+            </div>
+            {colItems.map(item => (
+              <ItemCard
+                key={item.id} item={item} compact
+                onEdit={onEdit} onDelete={onDelete}
+                onStatusChange={onStatusChange}
+                onMoveUp={onMoveUp} onMoveDown={onMoveDown}
+                dragHandlers={{
+                  draggable: true,
+                  onDragStart: () => setDragItem(item),
+                  onDragEnd: () => setDragItem(null),
+                }}
+              />
+            ))}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ─── LIST VIEW (grouped by milestone) ────────────────────────────────────────
+function ListView({ items, onEdit, onDelete, onStatusChange, onMoveUp, onMoveDown }) {
+  const milestones = [...new Set(items.map(i => i.milestone || 'Sans milestone'))].sort()
+  return (
+    <div>
+      {milestones.map(ms => {
+        const group = items.filter(i => (i.milestone || 'Sans milestone') === ms).sort((a, b) => {
+          const po = { critical: 0, high: 1, medium: 2, low: 3 }
+          return (po[a.priority] ?? 2) - (po[b.priority] ?? 2) || a.sort_order - b.sort_order
+        })
+        return (
+          <div key={ms} style={{ marginBottom: 24 }}>
+            <ProgressBar items={items} milestone={ms === 'Sans milestone' ? null : ms} />
+            <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--primary-700)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Target size={16} style={{ color: 'var(--accent-main)' }} /> {ms}
+            </h3>
+            {group.map(item => (
+              <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ width: 10, height: 10, borderRadius: '50%', background: getStatus(item.status).color, flexShrink: 0 }} />
+                <div style={{ flex: 1 }}>
+                  <ItemCard item={item} onEdit={onEdit} onDelete={onDelete} onStatusChange={onStatusChange} onMoveUp={onMoveUp} onMoveDown={onMoveDown} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ─── TIMELINE VIEW ───────────────────────────────────────────────────────────
+function TimelineView({ items, onEdit, onDelete, onStatusChange }) {
+  const sorted = [...items].sort((a, b) => (a.due_date || '9999') < (b.due_date || '9999') ? -1 : 1)
+  return (
+    <div style={{ position: 'relative', paddingLeft: 28 }}>
+      <div style={{ position: 'absolute', left: 12, top: 0, bottom: 0, width: 2, background: 'var(--primary-200)' }} />
+      {sorted.map((item, i) => (
+        <div key={item.id} style={{ position: 'relative', marginBottom: 16 }}>
+          <div style={{ position: 'absolute', left: -22, top: 14, width: 12, height: 12, borderRadius: '50%', background: getStatus(item.status).color, border: '2px solid white', boxShadow: '0 0 0 2px ' + getStatus(item.status).color + '40' }} />
+          <ItemCard item={item} onEdit={onEdit} onDelete={onDelete} onStatusChange={onStatusChange} />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ─── Main Page ───────────────────────────────────────────────────────────────
+export default function RoadmapPage() {
+  usePageTitle('Roadmap Produit')
+  const [items, setItems] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [view, setView] = useState('kanban')
+  const [showForm, setShowForm] = useState(false)
+  const [editItem, setEditItem] = useState(null)
+  const [error, setError] = useState(null)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try { setItems(await getRoadmapItems()); setError(null) }
+    catch (e) { setError(e.message) }
+    finally { setLoading(false) }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const handleCreate = async (form) => {
+    const maxOrder = items.reduce((m, i) => Math.max(m, i.sort_order), -1)
+    await createRoadmapItem({ ...form, sort_order: maxOrder + 1 })
+    setShowForm(false)
+    await load()
+  }
+
+  const handleUpdate = async (form) => {
+    await updateRoadmapItem(editItem.id, form)
+    setEditItem(null)
+    await load()
+  }
+
+  const handleDelete = async (id) => {
+    await deleteRoadmapItem(id)
+    await load()
+  }
+
+  const handleStatusChange = async (id, newStatus) => {
+    await updateRoadmapItem(id, { status: newStatus })
+    await load()
+  }
+
+  const handleMove = async (id, direction) => {
+    const sorted = [...items].sort((a, b) => a.sort_order - b.sort_order)
+    const idx = sorted.findIndex(i => i.id === id)
+    const swapIdx = idx + direction
+    if (swapIdx < 0 || swapIdx >= sorted.length) return
+    const ids = sorted.map(i => i.id)
+    ;[ids[idx], ids[swapIdx]] = [ids[swapIdx], ids[idx]]
+    await reorderRoadmapItems(ids)
+    await load()
+  }
+
+  const handleEdit = (item) => { setEditItem(item); setShowForm(false) }
+
+  return (
+    <div>
+      <div className="page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+        <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+          <Map size={24} style={{ color: 'var(--accent-main)' }} /> Roadmap Produit
+        </h1>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {/* View switcher */}
+          <div style={{ display: 'flex', background: 'var(--primary-50)', borderRadius: 10, padding: 3, gap: 2 }}>
+            {VIEWS.map(v => {
+              const Icon = v.icon
+              const active = view === v.key
+              return (
+                <button key={v.key} onClick={() => setView(v.key)} title={v.label}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600, background: active ? 'white' : 'transparent', color: active ? 'var(--primary-700)' : 'var(--text-tertiary)', boxShadow: active ? 'var(--shadow-sm)' : 'none', transition: 'all 0.2s' }}>
+                  <Icon size={14} /> {v.label}
+                </button>
+              )
+            })}
+          </div>
+          <button className="btn btn-primary" onClick={() => { setShowForm(v => !v); setEditItem(null) }} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.85rem' }}>
+            <Plus size={16} /> Ajouter
+          </button>
+        </div>
+      </div>
+
+      {error && <div style={{ color: 'var(--error)', marginBottom: 16, padding: 12, background: '#FEF2F2', borderRadius: 8, fontSize: '0.85rem' }}>{error}</div>}
+
+      <ProgressBar items={items} />
+
+      {showForm && <ItemForm onSave={handleCreate} onCancel={() => setShowForm(false)} />}
+      {editItem && <ItemForm item={editItem} onSave={handleUpdate} onCancel={() => setEditItem(null)} />}
+
+      {loading && <div style={{ textAlign: 'center', padding: 48, color: 'var(--text-secondary)' }}><div className="spinner" style={{ margin: '0 auto 12px' }} />Chargement…</div>}
+
+      {!loading && items.length === 0 && !showForm && (
+        <div style={{ textAlign: 'center', padding: '64px 32px', background: 'var(--primary-50)', borderRadius: 12, border: '1px dashed var(--primary-200)' }}>
+          <Map size={48} style={{ color: 'var(--primary-300)', margin: '0 auto 12px', display: 'block' }} />
+          <p style={{ fontWeight: 600, color: 'var(--primary-700)' }}>Votre roadmap est vide</p>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Cliquez sur « Ajouter » pour créer votre premier élément.</p>
+        </div>
+      )}
+
+      {!loading && items.length > 0 && (
+        <>
+          {view === 'kanban' && <KanbanView items={items} onEdit={handleEdit} onDelete={handleDelete} onStatusChange={handleStatusChange} onMoveUp={id => handleMove(id, -1)} onMoveDown={id => handleMove(id, 1)} />}
+          {view === 'list' && <ListView items={items} onEdit={handleEdit} onDelete={handleDelete} onStatusChange={handleStatusChange} onMoveUp={id => handleMove(id, -1)} onMoveDown={id => handleMove(id, 1)} />}
+          {view === 'timeline' && <TimelineView items={items} onEdit={handleEdit} onDelete={handleDelete} onStatusChange={handleStatusChange} />}
+        </>
+      )}
+    </div>
+  )
+}
