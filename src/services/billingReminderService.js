@@ -1,4 +1,21 @@
 import { supabase } from '../lib/supabase.js'
+
+// Helper to fetch all rows circumventing Supabase's max_rows API limit
+async function fetchAllRows(queryBuilder) {
+  let allData = [];
+  let page = 0;
+  const pageSize = 1000;
+  while (true) {
+    const { data, error } = await queryBuilder.range(page * pageSize, (page + 1) * pageSize - 1);
+    if (error) return { data: null, error };
+    if (!data || data.length === 0) break;
+    allData = allData.concat(data);
+    if (data.length < pageSize) break;
+    page++;
+  }
+  return { data: allData, error: null };
+}
+
 import { todayIso } from '../lib/date'
 
 // ============================================
@@ -12,7 +29,7 @@ import { todayIso } from '../lib/date'
  * Get all billing reminders for a user, with their linked session IDs.
  */
 export async function getBillingReminders(userId) {
-    const { data, error } = await supabase
+    const { data, error } = await fetchAllRows(supabase
         .from('invoices')
         .select(`
       *,
@@ -20,6 +37,7 @@ export async function getBillingReminders(userId) {
     `)
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
+    )
     if (error) throw new Error(`getBillingReminders failed: ${error.message}`)
     return data || []
 }
@@ -28,7 +46,7 @@ export async function getBillingReminders(userId) {
  * Get all billing reminders for a specific client.
  */
 export async function getBillingRemindersByClient(clientId) {
-    const { data, error } = await supabase
+    const { data, error } = await fetchAllRows(supabase
         .from('invoices')
         .select(`
       *,
@@ -36,6 +54,7 @@ export async function getBillingRemindersByClient(clientId) {
     `)
         .eq('client_id', clientId)
         .order('created_at', { ascending: false })
+    )
     if (error) throw new Error(`getBillingRemindersByClient failed: ${error.message}`)
     return data || []
 }

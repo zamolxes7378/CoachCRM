@@ -1,5 +1,22 @@
 import { supabase } from '../lib/supabase.js'
 
+// Helper to fetch all rows circumventing Supabase's max_rows API limit
+async function fetchAllRows(queryBuilder) {
+  let allData = [];
+  let page = 0;
+  const pageSize = 1000;
+  while (true) {
+    const { data, error } = await queryBuilder.range(page * pageSize, (page + 1) * pageSize - 1);
+    if (error) return { data: null, error };
+    if (!data || data.length === 0) break;
+    allData = allData.concat(data);
+    if (data.length < pageSize) break;
+    page++;
+  }
+  return { data: allData, error: null };
+}
+
+
 // ============================================
 // Access log — Art. 9 sensitive data reads
 // ============================================
@@ -51,12 +68,13 @@ export async function upsertUser({ id, name, email, role = 'therapist', photo_ur
 // Clients
 // ============================================
 export async function getClients(userId) {
-  const { data, error } = await supabase
+  const { data, error } = await fetchAllRows(supabase
     .from('clients')
     .select('id, user_id, type, phase, status, source, start_date, created_at, updated_at, deleted_at, session_rate, session_frequency, billing_address, note_dynamique, note_axes, note_vigilance, note_objectifs, client_links, external_referrer, referred_by, prospect_stage, partner_a, partner_b')
     .eq('user_id', userId)
     .is('deleted_at', null)
     .order('created_at', { ascending: false })
+    )
   if (error) throw new Error(`getClients failed: ${error.message}`)
   return data || []
 }
@@ -109,22 +127,24 @@ export async function deleteClient(clientId) {
 // ============================================
 export async function getSessions(userId) {
   // Join clients!inner so sessions belonging to soft-deleted clients are excluded server-side.
-  const { data, error } = await supabase
+  const { data, error } = await fetchAllRows(supabase
     .from('sessions')
     .select('*, clients!inner(deleted_at)')
     .eq('user_id', userId)
     .is('clients.deleted_at', null)
     .order('date', { ascending: false })
+    )
   if (error) throw new Error(`getSessions failed: ${error.message}`)
   return (data || []).map(({ clients: _c, ...s }) => s)
 }
 
 export async function getSessionsByClient(clientId) {
-  const { data, error } = await supabase
+  const { data, error } = await fetchAllRows(supabase
     .from('sessions')
     .select('*')
     .eq('client_id', clientId)
     .order('date', { ascending: true })
+    )
   if (error) throw new Error(`getSessionsByClient failed: ${error.message}`)
   return data || []
 }
@@ -173,11 +193,12 @@ export async function deleteSessions(sessionIds) {
 export async function getReports(userId) {
   // Join clients!inner so reports for soft-deleted clients are excluded server-side.
   // RLS on reports also enforces client_id IN (SELECT id FROM clients WHERE user_id = auth.uid()).
-  const { data, error } = await supabase
+  const { data, error } = await fetchAllRows(supabase
     .from('reports')
     .select('id, client_id, session_id, date, client_name, session_number, narrative, themes, emotions_a, emotions_b, patterns, progress, vigilance, exercises, pedagogical_content, created_at, clients!inner(deleted_at)')
     .is('clients.deleted_at', null)
     .order('date', { ascending: false })
+    )
   if (error) throw new Error(`getReports failed: ${error.message}`)
   const rows = (data || []).map(({ clients: _c, ...r }) => r)
   // Emit one access_log row per report read (narrative + vigilance are Art. 9 sensitive)
@@ -201,11 +222,12 @@ export async function createReport(report) {
 // Therapy Cycles
 // ============================================
 export async function getTherapyCycles(userId) {
-  const { data, error } = await supabase
+  const { data, error } = await fetchAllRows(supabase
     .from('therapy_cycles')
     .select('*')
     .eq('user_id', userId)
     .order('start_date', { ascending: false })
+    )
   if (error) throw new Error(`getTherapyCycles failed: ${error.message}`)
   return data || []
 }
@@ -244,21 +266,23 @@ export async function deleteTherapyCycle(cycleId) {
 // Contacts
 // ============================================
 export async function getContacts(userId) {
-  const { data, error } = await supabase
+  const { data, error } = await fetchAllRows(supabase
     .from('contacts')
     .select('*')
     .eq('user_id', userId)
     .order('date', { ascending: false })
+    )
   if (error) throw new Error(`getContacts failed: ${error.message}`)
   return data || []
 }
 
 export async function getContactsByClient(clientId) {
-  const { data, error } = await supabase
+  const { data, error } = await fetchAllRows(supabase
     .from('contacts')
     .select('*')
     .eq('client_id', clientId)
     .order('date', { ascending: false })
+    )
   if (error) throw new Error(`getContactsByClient failed: ${error.message}`)
   return data || []
 }
@@ -320,11 +344,12 @@ export async function upsertSettings(userId, settings) {
 // Professionals
 // ============================================
 export async function getProfessionals(userId) {
-  const { data, error } = await supabase
+  const { data, error } = await fetchAllRows(supabase
     .from('professionals')
     .select('*')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
+    )
   if (error) throw new Error(`getProfessionals failed: ${error.message}`)
   return data || []
 }
