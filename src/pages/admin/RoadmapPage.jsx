@@ -307,11 +307,14 @@ function KanbanView({ items, onCardClick, onDelete, onStatusChange, onReorder })
   }
 
   const dropZoneStyle = (status, index, isActive) => ({
-    height: isActive ? 4 : 2,
-    borderRadius: 4,
-    background: isActive ? 'var(--primary-400)' : 'transparent',
-    margin: '2px 0',
-    transition: 'height 0.15s, background 0.15s',
+    height: isActive ? 40 : 10,
+    borderRadius: 10,
+    background: isActive ? 'var(--primary-50)' : 'transparent',
+    border: isActive ? '2px dashed var(--primary-300)' : '2px dashed transparent',
+    margin: '4px 0',
+    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+    position: 'relative',
+    zIndex: isActive ? 10 : 1,
   })
 
   return (
@@ -321,8 +324,8 @@ function KanbanView({ items, onCardClick, onDelete, onStatusChange, onReorder })
         return (
           <div
             key={status.key}
-            onDragOver={e => e.preventDefault()}
-            style={{ background: status.bg, borderRadius: 12, padding: 12, minHeight: 200 }}
+            onDragOver={e => { e.preventDefault(); if (!dropTarget) setDropTarget({ status: status.key, index: colItems.length }) }}
+            style={{ background: status.bg, borderRadius: 12, padding: 12, minHeight: 200, transition: 'background 0.2s' }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, padding: '0 4px' }}>
               <span style={{ width: 10, height: 10, borderRadius: '50%', background: status.color }} />
@@ -331,7 +334,7 @@ function KanbanView({ items, onCardClick, onDelete, onStatusChange, onReorder })
             </div>
             {/* Drop zone at the top */}
             <div
-              onDragOver={e => { e.preventDefault(); setDropTarget({ status: status.key, index: 0 }) }}
+              onDragOver={e => { e.preventDefault(); e.stopPropagation(); setDropTarget({ status: status.key, index: 0 }) }}
               onDragLeave={() => setDropTarget(null)}
               onDrop={e => { e.preventDefault(); handleDrop(status.key, 0) }}
               style={dropZoneStyle(status.key, 0, dropTarget?.status === status.key && dropTarget?.index === 0 && dragItem)}
@@ -349,21 +352,18 @@ function KanbanView({ items, onCardClick, onDelete, onStatusChange, onReorder })
                 />
                 {/* Drop zone after each card */}
                 <div
-                  onDragOver={e => { e.preventDefault(); setDropTarget({ status: status.key, index: idx + 1 }) }}
+                  onDragOver={e => { e.preventDefault(); e.stopPropagation(); setDropTarget({ status: status.key, index: idx + 1 }) }}
                   onDragLeave={() => setDropTarget(null)}
                   onDrop={e => { e.preventDefault(); handleDrop(status.key, idx + 1) }}
                   style={dropZoneStyle(status.key, idx + 1, dropTarget?.status === status.key && dropTarget?.index === idx + 1 && dragItem)}
                 />
               </div>
             ))}
-            {/* Empty column drop target */}
-            {colItems.length === 0 && (
-              <div
-                onDragOver={e => { e.preventDefault(); setDropTarget({ status: status.key, index: 0 }) }}
-                onDragLeave={() => setDropTarget(null)}
-                onDrop={e => { e.preventDefault(); handleDrop(status.key, 0) }}
-                style={{ minHeight: 80, borderRadius: 8, border: dropTarget?.status === status.key ? '2px dashed var(--primary-400)' : '2px dashed transparent', transition: 'border 0.2s' }}
-              />
+            {/* Empty column drop target enhancement */}
+            {colItems.length === 0 && !dragItem && (
+              <div style={{ height: 100, border: '2px dashed var(--border)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', fontSize: '0.8rem' }}>
+                Vide
+              </div>
             )}
           </div>
         )
