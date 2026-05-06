@@ -554,7 +554,7 @@ export default function ReseauProPage() {
         <div style={{
           position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
           display: 'flex', alignItems: 'center', gap: 'var(--space-md)',
-          background: 'var(--error)', padding: '10px 24px', borderRadius: 'var(--radius-full)',
+          background: 'var(--error)', padding: '10px 24px', borderRadius: 'var(--radius-lg)',
           boxShadow: '0 10px 30px rgba(239, 68, 68, 0.3)', color: 'white', zIndex: 100
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

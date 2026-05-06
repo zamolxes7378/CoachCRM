@@ -40,6 +40,11 @@ stateDiagram-v2
 - **Déclencheur** : chargement de l'application (`loadData`).
 - **Logique** : l'application vérifie systématiquement la cohérence Phase/Séances. Tout client non-prospect n'ayant aucune séance validée est réinitialisé en `prospect`.
 
+### Passage au statut Inactif (Inactivité Automatique)
+- **Déclencheur** : chargement de l'application (`loadData`).
+- **Condition** : si un client a le statut `active` mais que son **dernier rendez-vous** (date de la dernière séance non annulée) remonte à **plus de six mois** par rapport à la date du jour.
+- **Effet** : le statut du client passe automatiquement à `inactive` (sans pour autant devenir prospect ni être archivé).
+
 > Alliance thérapeutique = au moins 1 séance `completed` + (`paymentMethod` renseigné OU montant de la séance = **0€**).
 > *Note : Le montant d'une séance est déterminé par `payment_amount` (si saisi), sinon par le `session_rate` spécifique du client, sinon par le tarif par défaut du système.*
 
@@ -88,7 +93,7 @@ Philippe est resté "Prospect" malgré ses séances à cause d'une incohérence 
 - **Libellé Facture** : Toute annulation facturée porte la mention **"Annulation facturée"** (automatiquement renseignée dans le champ raison d'annulation).
 
 ## Création de séance (modale Accueil)
-- **Normalisation des Prénoms** : Chaque prénom (dans `partner_a` et `partner_b`) doit impérativement commencer par une majuscule pour chaque mot (ex: `Jean-Christophe`, `Anne-Marie`). Cette règle est appliquée automatiquement à la création et à la modification.
+- **Normalisation des Prénoms** : Chaque prénom (dans `partner_a` et `partner_b`) doit impérativement commencer par une majuscule pour chaque mot (ex: `Jean-Christophe`, `Anne-Marie`). De plus, pour les profils de type Couple ou Famille, le champ prénom ne doit contenir que les prénoms ; tout mot entièrement en majuscules saisi dans ce champ est considéré comme un nom de famille et doit être automatiquement extrait vers le champ `lastName`. Cette règle est appliquée automatiquement à la création et à la modification.
 
 ### Champs obligatoires
 - **Client** : sélection obligatoire parmi les clients actifs (prospects inclus)
@@ -640,6 +645,11 @@ flowchart LR
   1. *Soft Delete* (Archivage visuel) sur la fiche client.
   2. *Hard Delete* via la page "Clients Archivés" (Suppression irréversible du client, des séances et des contacts associés).
 - **Purge Automatique des Enregistrements** : Une fonction Edge Supabase (`purge-audio`) s'exécute via cron (ex: `pg_cron`) pour supprimer de manière irréversible tous les enregistrements audio bruts datant de plus de 90 jours dans le bucket de stockage, assurant une stricte minimisation du stockage des données sensibles.
+- **Politiques de Conservation (P1-R)** : La table `retention_policies` définit de manière canonique les durées de conservation (ex: `post_therapy`, `accounting`, `erasure_request`) pour encadrer légalement le cycle de vie de la donnée.
 
-### 3. Isolation (Art. 32)
-- **Sécurité par design (RLS)** : Les données sont strictement cloisonnées par `user_id` au niveau de PostgreSQL (Supabase Row Level Security). Aucun thérapeute ne peut accéder aux dossiers, notes ou CR d'un autre professionnel.
+### 3. Gestion des Demandes de Droits (DSAR)
+- **Traçabilité des requêtes** : Toutes les demandes (Droit d'accès, effacement, portabilité, rectification, limitation) sont tracées de bout en bout dans la table `dsar_requests`.
+- **Validation** : Les demandes sont qualifiées et traitées exclusivement par des administrateurs, avec suivi du statut (`pending`, `in_progress`, `fulfilled`, `rejected`, `cancelled`).
+
+### 4. Isolation (Art. 32)
+- **Sécurité par design (RLS)** : Les données sont strictement cloisonnées par `user_id` au niveau de PostgreSQL (Supabase Row Level Security). Aucun thérapeute ne peut accéder aux dossiers, notes ou CR d'un autre professionnel. Les tables d'administration (comme `dsar_requests` et `retention_policies`) sont en outre limitées aux utilisateurs ayant le rôle `admin`.

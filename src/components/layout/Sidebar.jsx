@@ -57,7 +57,7 @@ export default function Sidebar({ user, onLogout, isOpen, onToggle }) {
                 disabled
                 aria-disabled="true"
                 aria-label={`${item.label} — bientôt disponible`}
-                style={{ opacity: 0.4, cursor: 'default', width: '100%', background: 'none', border: 'none', textAlign: 'left', color: 'inherit' }}
+                style={{ opacity: 0.4, cursor: 'default', width: '100%', background: 'none', border: 'none', textAlign: 'left' }}
               >
                 <item.icon aria-hidden="true" />
                 <span>{item.label}</span>

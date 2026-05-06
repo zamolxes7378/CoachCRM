@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link2, Award, Briefcase, Plus, X, Edit3, Download } from 'lucide-react';
+import { Link2, Award, Briefcase, Plus, X, Edit3, Download, Info } from 'lucide-react';
 import { ClientTypeIcon } from '../ClientTypeBadge';
 
 export default function ClientHeaderPanel({
@@ -85,16 +85,19 @@ export default function ClientHeaderPanel({
           </button>
           <div
             onClick={() => {
+              if (client.isAutoInactive) return; // Prevent manual toggle if auto-inactive
               const newStatus = client.status === 'active' ? 'inactive' : 'active';
               updateClient(client.id, { status: newStatus });
             }}
             style={{
               display: 'flex', alignItems: 'center', gap: 8,
-              cursor: 'pointer', userSelect: 'none',
+              cursor: client.isAutoInactive ? 'not-allowed' : 'pointer', userSelect: 'none',
               padding: '4px 14px',
               borderRadius: 'var(--radius-full)',
-              background: 'transparent'
+              background: 'transparent',
+              opacity: client.isAutoInactive ? 0.6 : 1
             }}
+            title={client.isAutoInactive ? "Réactivation automatique à la programmation d'une nouvelle séance" : "Changer le statut"}
           >
             <span style={{
               fontSize: '0.857rem', fontWeight: 600,
@@ -119,6 +122,21 @@ export default function ClientHeaderPanel({
           </div>
         </div>
       </div>
+
+      {client.isAutoInactive && (
+        <div style={{ 
+          display: 'flex', alignItems: 'center', gap: 8, 
+          padding: '8px 12px', marginBottom: 'var(--space-md)', 
+          background: '#F8FAFC', borderRadius: 'var(--radius-md)', 
+          border: '1px solid #E2E8F0', color: 'var(--text-secondary)',
+          fontSize: '0.82rem'
+        }}>
+          <Info size={16} style={{ color: 'var(--text-tertiary)' }} />
+          <span>
+            Ce dossier est inactif car le dernier rendez-vous remonte à plus de 6 mois. Il sera réactivé automatiquement dès la programmation d'une nouvelle séance.
+          </span>
+        </div>
+      )}
 
       {/* Client Links Section */}
       {(hasLinks || showAddLink) ? (

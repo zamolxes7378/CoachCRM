@@ -122,16 +122,45 @@ export function DataProvider({ user, children }) {
     return map
   }, [rawSessions, rawClients, sessionRates])
 
+  // Calcul de la date du dernier rendez-vous (hors annulations) pour chaque client
+  const latestSessionMap = useMemo(() => {
+    const map = {}
+    rawSessions.forEach(s => {
+      if (s.status === 'cancelled') return
+      const sDate = new Date(s.date).getTime()
+      if (!map[s.client_id] || sDate > map[s.client_id]) {
+        map[s.client_id] = sDate
+      }
+    })
+    return map
+  }, [rawSessions])
+
   // Adapted data (camelCase, compatible with existing pages)
   const clients = useMemo(() => {
+    const sixMonthsAgo = new Date()
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+    const sixMonthsAgoTime = sixMonthsAgo.getTime()
+
     return rawClients.map(adaptClient).map(c => {
+      let updatedClient = { ...c }
+      
       // Règle 41 : Tout client non-prospect n'ayant aucune séance validée est réinitialisé en prospect
-      if (c.phase !== 'prospect' && !confirmedSessionsMap[c.id]) {
-        return { ...c, phase: 'prospect' }
+      if (updatedClient.phase !== 'prospect' && !confirmedSessionsMap[updatedClient.id]) {
+        updatedClient.phase = 'prospect'
       }
-      return c
+
+      // Nouvelle Règle : Inactivité automatique après 6 mois sans rendez-vous
+      if (updatedClient.status === 'active') {
+        const lastSessionTime = latestSessionMap[updatedClient.id]
+        if (lastSessionTime && lastSessionTime < sixMonthsAgoTime) {
+          updatedClient.status = 'inactive'
+          updatedClient.isAutoInactive = true
+        }
+      }
+      
+      return updatedClient
     })
-  }, [rawClients, confirmedSessionsMap])
+  }, [rawClients, confirmedSessionsMap, latestSessionMap])
 
   // clientById: Map<id, client> — O(1) lookup, replaces .find() call sites
   const clientById = useMemo(() => {

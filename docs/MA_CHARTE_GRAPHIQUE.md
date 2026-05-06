@@ -540,7 +540,7 @@ Disponible uniquement sur l'onglet **« En cours »** du calendrier d'accueil.
 
 - **Usage** : Ce composant est le standard pour **tous** les traitements de masse (Suppression groupée dans les Archives, le Calendrier, ou le Réseau Pro).
 - **Position** : Fixe en bas de l'écran, centré.
-- **Radius** : `var(--radius-full)` (forme pilule).
+- **Radius** : `var(--radius-lg)` (forme rectangulaire arrondie).
 - **Ombre** : `0 10px 30px rgba(239, 68, 68, 0.3)`.
 - **Confirmation** : Toute action destructive via cette barre nécessite une validation par `ConfirmDialog`.
 
