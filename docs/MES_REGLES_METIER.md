@@ -653,3 +653,8 @@ flowchart LR
 
 ### 4. Isolation (Art. 32)
 - **Sécurité par design (RLS)** : Les données sont strictement cloisonnées par `user_id` au niveau de PostgreSQL (Supabase Row Level Security). Aucun thérapeute ne peut accéder aux dossiers, notes ou CR d'un autre professionnel. Les tables d'administration (comme `dsar_requests` et `retention_policies`) sont en outre limitées aux utilisateurs ayant le rôle `admin`.
+
+
+## 8. Historique et Intégrité des Données (Finances & Suivi)
+- **Conservation de l'historique complet :** Le système est tenu d'afficher l'intégralité de l'historique d'un praticien (séances, factures, statistiques financières) peu importe l'ancienneté. Aucune troncature "technique" (par exemple au-delà de 1 000 séances) n'est autorisée. Le backend doit assurer une pagination automatique pour garantir que les tableaux de bord (comme le Suivi Financier) consolident les données de manière exhaustive depuis l'année de création du compte.
+

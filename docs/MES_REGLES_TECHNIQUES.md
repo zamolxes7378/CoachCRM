@@ -231,3 +231,10 @@ Dans les vues compactes où `ConfirmBadge` est présent, les sessions `isToConfi
 2. **Passage de props** : L'orchestrateur passe les fonctions globales (`updateClient`, `formatDate`) et la donnée centrale aux panneaux. Les panneaux gèrent leurs interactions locales de manière autonome.
 3. **Hiérarchie visuelle** : Les panneaux extraits (`ClientHeaderPanel`, `ClientTimelinePanel`, etc.) doivent être rangés dans des sous-dossiers pertinents (ex: `src/components/client/`).
 4. **Maintenance** : Ce découpage réduit la complexité cyclomatique, prévient les re-rendus excessifs de toute la page, et rend le composant racine purement déclaratif. L'orchestrateur devient un routeur visuel.
+
+
+## 7. Pagination Supabase Obligatoire (Contournement max_rows)
+**Règle absolue :** Ne JAMAIS utiliser `await supabase.from('table').select('*')` seul pour récupérer des listes, ni même s'appuyer sur un simple `.limit(10000)`.
+- **Pourquoi ?** L'API de base de données (PostgREST) impose une limite matérielle côté serveur (`max_rows` fixé à 1 000 par défaut). Tout résultat dépassant cette limite est tronqué silencieusement.
+- **Solution obligatoire :** Utiliser systématiquement la fonction utilitaire de pagination `fetchAllRows` (définie dans `dataService.js` et autres services concernés) qui boucle avec `.range(start, end)` jusqu'à récupérer l'intégralité des données. Cela garantit la préservation de l'historique complet (ex: suivi financier sur plusieurs années).
+
