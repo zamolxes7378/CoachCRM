@@ -17,7 +17,7 @@ import {
 // ─── Constants ────────────────────────────────────────────────────────────────
 const STATUSES = [
   { key: 'backlog', label: 'Backlog', color: '#A0AEC0', bg: '#EDF2F7' },
-  { key: 'in_progress', label: 'En cours', color: '#D69E2E', bg: '#FEFCBF' },
+  { key: 'in_progress', label: 'En cours', color: '#D69E2E', bg: '#FEFEF2' },
   { key: 'done', label: 'Terminé', color: '#38A169', bg: '#F0FFF4' },
 ]
 const PRIORITIES = [
