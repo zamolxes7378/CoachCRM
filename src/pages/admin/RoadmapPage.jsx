@@ -136,7 +136,21 @@ function ItemForm({ item, onSave, onCancel }) {
 }
 
 // ─── Card (used in Kanban + List) ────────────────────────────────────────────
-function ItemCard({ item, onCardClick, dragHandlers, compact }) {
+function ItemCard({ item, onCardClick, dragHandlers, compact, isSelected, isDragging }) {
+  const highlightStyle = isSelected ? {
+    border: '2px solid var(--primary-500)',
+    background: 'var(--primary-25, #F8FAFC)',
+    boxShadow: '0 0 0 2px var(--primary-100), var(--shadow-md)',
+  } : {}
+
+  const draggingStyle = isDragging ? {
+    opacity: 0.4,
+    transform: 'scale(1.03) rotate(2deg)',
+    boxShadow: 'var(--shadow-xl)',
+    cursor: 'grabbing',
+    zIndex: 100,
+  } : {}
+
   return (
     <div
       {...(dragHandlers || {})}
@@ -144,23 +158,25 @@ function ItemCard({ item, onCardClick, dragHandlers, compact }) {
       style={{
         background: 'white', borderRadius: 10, border: '1px solid var(--border)',
         padding: compact ? '10px 14px' : '14px 16px', marginBottom: 8,
-        boxShadow: 'var(--shadow-sm)', transition: 'box-shadow 0.2s, transform 0.15s',
+        boxShadow: 'var(--shadow-sm)', transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
         cursor: 'pointer',
+        position: 'relative',
+        ...highlightStyle,
+        ...draggingStyle,
       }}
-      onMouseEnter={e => e.currentTarget.style.boxShadow = 'var(--shadow-md)'}
-      onMouseLeave={e => e.currentTarget.style.boxShadow = 'var(--shadow-sm)'}
+      onMouseEnter={e => { if (!isSelected && !isDragging) e.currentTarget.style.boxShadow = 'var(--shadow-md)' }}
+      onMouseLeave={e => { if (!isSelected && !isDragging) e.currentTarget.style.boxShadow = 'var(--shadow-sm)' }}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
         {dragHandlers && <GripVertical size={16} style={{ color: 'var(--text-tertiary)', marginTop: 2, flexShrink: 0, cursor: 'grab' }} />}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
-            <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)' }}>{item.title}</span>
+            <span style={{ fontWeight: 700, fontSize: '0.9rem', color: isSelected ? 'var(--primary-700)' : 'var(--text-primary)' }}>{item.title}</span>
           </div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             <PriorityBadge priority={item.priority} />
             <CategoryBadge category={item.category} />
             {item.milestone && <span style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', background: 'var(--primary-50)', padding: '2px 8px', borderRadius: 10, fontWeight: 500 }}>{item.milestone}</span>}
-            {item.due_date && <span style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', display: 'inline-flex', alignItems: 'center', gap: 3 }}><Calendar size={11} />{new Date(item.due_date).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' })}</span>}
           </div>
         </div>
       </div>
@@ -261,7 +277,7 @@ function ProgressBar({ items, milestone }) {
 }
 
 // ─── KANBAN VIEW ─────────────────────────────────────────────────────────────
-function KanbanView({ items, onCardClick, onDelete, onStatusChange, onReorder }) {
+function KanbanView({ items, onCardClick, onDelete, onStatusChange, onReorder, selectedId }) {
   const [dragItem, setDragItem] = useState(null)
   const [dropTarget, setDropTarget] = useState(null) // { status, index }
 
@@ -334,6 +350,8 @@ function KanbanView({ items, onCardClick, onDelete, onStatusChange, onReorder })
                 <ItemCard
                   item={item} compact
                   onCardClick={onCardClick} onDelete={onDelete}
+                  isSelected={item.id === selectedId}
+                  isDragging={dragItem?.id === item.id}
                   dragHandlers={{
                     draggable: true,
                     onDragStart: () => setDragItem(item),
@@ -363,7 +381,7 @@ function KanbanView({ items, onCardClick, onDelete, onStatusChange, onReorder })
 }
 
 // ─── LIST VIEW (grouped by milestone) ────────────────────────────────────────
-function ListView({ items, onCardClick, onDelete, onStatusChange }) {
+function ListView({ items, onCardClick, onDelete, onStatusChange, selectedId }) {
   const milestones = [...new Set(items.map(i => i.milestone || 'Sans milestone'))].sort()
   return (
     <div>
@@ -382,7 +400,7 @@ function ListView({ items, onCardClick, onDelete, onStatusChange }) {
               <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ width: 10, height: 10, borderRadius: '50%', background: getStatus(item.status).color, flexShrink: 0 }} />
                 <div style={{ flex: 1 }}>
-                  <ItemCard item={item} onCardClick={onCardClick} onDelete={onDelete} />
+                  <ItemCard item={item} onCardClick={onCardClick} onDelete={onDelete} isSelected={item.id === selectedId} />
                 </div>
               </div>
             ))}
@@ -394,7 +412,7 @@ function ListView({ items, onCardClick, onDelete, onStatusChange }) {
 }
 
 // ─── TIMELINE VIEW ───────────────────────────────────────────────────────────
-function TimelineView({ items, onCardClick, onDelete, onStatusChange }) {
+function TimelineView({ items, onCardClick, onDelete, onStatusChange, selectedId }) {
   const sorted = [...items].sort((a, b) => (a.due_date || '9999') < (b.due_date || '9999') ? -1 : 1)
   // TimelineView receives onCardClick too
   return (
@@ -403,7 +421,7 @@ function TimelineView({ items, onCardClick, onDelete, onStatusChange }) {
       {sorted.map((item, i) => (
         <div key={item.id} style={{ position: 'relative', marginBottom: 16 }}>
           <div style={{ position: 'absolute', left: -22, top: 14, width: 12, height: 12, borderRadius: '50%', background: getStatus(item.status).color, border: '2px solid white', boxShadow: '0 0 0 2px ' + getStatus(item.status).color + '40' }} />
-          <ItemCard item={item} onCardClick={onCardClick} onDelete={onDelete} />
+          <ItemCard item={item} onCardClick={onCardClick} onDelete={onDelete} isSelected={item.id === selectedId} />
         </div>
       ))}
     </div>
@@ -519,9 +537,9 @@ export default function RoadmapPage() {
 
       {!loading && items.length > 0 && (
         <>
-          {view === 'kanban' && <KanbanView items={items} onCardClick={handleCardClick} onDelete={handleDelete} onStatusChange={handleStatusChange} onReorder={handleReorder} />}
-          {view === 'list' && <ListView items={items} onCardClick={handleCardClick} onDelete={handleDelete} onStatusChange={handleStatusChange} />}
-          {view === 'timeline' && <TimelineView items={items} onCardClick={handleCardClick} onDelete={handleDelete} onStatusChange={handleStatusChange} />}
+          {view === 'kanban' && <KanbanView items={items} onCardClick={handleCardClick} onDelete={handleDelete} onStatusChange={handleStatusChange} onReorder={handleReorder} selectedId={editItem?.id} />}
+          {view === 'list' && <ListView items={items} onCardClick={handleCardClick} onDelete={handleDelete} onStatusChange={handleStatusChange} selectedId={editItem?.id} />}
+          {view === 'timeline' && <TimelineView items={items} onCardClick={handleCardClick} onDelete={handleDelete} onStatusChange={handleStatusChange} selectedId={editItem?.id} />}
           {editItem && <DetailDrawer item={editItem} onClose={() => setEditItem(null)} onSave={handleDrawerSave} onDelete={handleDelete} />}
         </>
       )}
