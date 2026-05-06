@@ -136,7 +136,7 @@ function ItemForm({ item, onSave, onCancel }) {
 }
 
 // ─── Card (used in Kanban + List) ────────────────────────────────────────────
-function ItemCard({ item, onEdit, onDelete, onStatusChange, onMoveUp, onMoveDown, dragHandlers, compact }) {
+function ItemCard({ item, onEdit, onDelete, onStatusChange, dragHandlers, compact }) {
   const [confirm, setConfirm] = useState(false)
   return (
     <div
@@ -165,8 +165,6 @@ function ItemCard({ item, onEdit, onDelete, onStatusChange, onMoveUp, onMoveDown
           {item.description && !compact && <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: '6px 0 0', lineHeight: 1.5, whiteSpace: 'pre-line' }}>{item.description}</p>}
         </div>
         <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
-          {onMoveUp && <button onClick={() => onMoveUp(item.id)} title="Monter" style={iconBtnStyle}><ChevronUp size={14} /></button>}
-          {onMoveDown && <button onClick={() => onMoveDown(item.id)} title="Descendre" style={iconBtnStyle}><ChevronDown size={14} /></button>}
           {onStatusChange && item.status !== 'done' && (
             <button onClick={() => onStatusChange(item.id, item.status === 'backlog' ? 'in_progress' : 'done')} title="Avancer le statut" style={{ ...iconBtnStyle, color: '#38A169' }}><Check size={14} /></button>
           )}
@@ -206,7 +204,7 @@ function ProgressBar({ items, milestone }) {
 }
 
 // ─── KANBAN VIEW ─────────────────────────────────────────────────────────────
-function KanbanView({ items, onEdit, onDelete, onStatusChange, onMoveUp, onMoveDown, onReorder }) {
+function KanbanView({ items, onEdit, onDelete, onStatusChange, onReorder }) {
   const [dragItem, setDragItem] = useState(null)
   const [dropTarget, setDropTarget] = useState(null) // { status, index }
 
@@ -277,7 +275,6 @@ function KanbanView({ items, onEdit, onDelete, onStatusChange, onMoveUp, onMoveD
                   item={item} compact
                   onEdit={onEdit} onDelete={onDelete}
                   onStatusChange={onStatusChange}
-                  onMoveUp={onMoveUp} onMoveDown={onMoveDown}
                   dragHandlers={{
                     draggable: true,
                     onDragStart: () => setDragItem(item),
@@ -310,7 +307,7 @@ function KanbanView({ items, onEdit, onDelete, onStatusChange, onMoveUp, onMoveD
 }
 
 // ─── LIST VIEW (grouped by milestone) ────────────────────────────────────────
-function ListView({ items, onEdit, onDelete, onStatusChange, onMoveUp, onMoveDown }) {
+function ListView({ items, onEdit, onDelete, onStatusChange }) {
   const milestones = [...new Set(items.map(i => i.milestone || 'Sans milestone'))].sort()
   return (
     <div>
@@ -329,7 +326,7 @@ function ListView({ items, onEdit, onDelete, onStatusChange, onMoveUp, onMoveDow
               <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ width: 10, height: 10, borderRadius: '50%', background: getStatus(item.status).color, flexShrink: 0 }} />
                 <div style={{ flex: 1 }}>
-                  <ItemCard item={item} onEdit={onEdit} onDelete={onDelete} onStatusChange={onStatusChange} onMoveUp={onMoveUp} onMoveDown={onMoveDown} />
+                  <ItemCard item={item} onEdit={onEdit} onDelete={onDelete} onStatusChange={onStatusChange} />
                 </div>
               </div>
             ))}
@@ -461,8 +458,8 @@ export default function RoadmapPage() {
 
       {!loading && items.length > 0 && (
         <>
-          {view === 'kanban' && <KanbanView items={items} onEdit={handleEdit} onDelete={handleDelete} onStatusChange={handleStatusChange} onMoveUp={id => handleMove(id, -1)} onMoveDown={id => handleMove(id, 1)} onReorder={handleReorder} />}
-          {view === 'list' && <ListView items={items} onEdit={handleEdit} onDelete={handleDelete} onStatusChange={handleStatusChange} onMoveUp={id => handleMove(id, -1)} onMoveDown={id => handleMove(id, 1)} />}
+          {view === 'kanban' && <KanbanView items={items} onEdit={handleEdit} onDelete={handleDelete} onStatusChange={handleStatusChange} onReorder={handleReorder} />}
+          {view === 'list' && <ListView items={items} onEdit={handleEdit} onDelete={handleDelete} onStatusChange={handleStatusChange} />}
           {view === 'timeline' && <TimelineView items={items} onEdit={handleEdit} onDelete={handleDelete} onStatusChange={handleStatusChange} />}
         </>
       )}
