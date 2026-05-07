@@ -92,6 +92,14 @@ Philippe est resté "Prospect" malgré ses séances à cause d'une incohérence 
 - **Progression** : Une séance annulée ne consomme pas de numéro de séance (ex: si la S4 est annulée, la séance suivante reste la S4).
 - **Libellé Facture** : Toute annulation facturée porte la mention **"Annulation facturée"** (automatiquement renseignée dans le champ raison d'annulation).
 
+## Édition de l'Identité Client (Type et Référent)
+
+- **Priorité au Choix Utilisateur (Type)** : Lors du changement de type de client (ex: Famille → Individuel), le système honore strictement le type choisi sans inférer un autre type à cause de la présence de données résiduelles.
+- **Rétention Silencieuse (Anti-Data Loss)** : Si un client de type Couple ou Famille est transformé en Individuel, les informations du Partenaire B et des enfants ne sont **pas effacées de la base de données**. Elles sont conservées (Safe Save) mais masquées dans l'interface, permettant une réversibilité immédiate si le type est rechangé par erreur.
+- **Gestion du Référent** : 
+  - Le référent principal (Parent 1 ou Parent 2) est stocké de manière persistante (champ `referents` en base).
+  - **Affichage dynamique des Noms de Famille** : Pour les profils de type Famille, l'affichage central concatène les prénoms de tous les membres (Parent A, Parent B, Enfants), suivis obligatoirement par le **Nom de famille du Référent** défini. Exemple : "Mathilde, Xavier et Chlotilde NOM_REFERENT".
+
 ## Création de séance (modale Accueil)
 - **Normalisation des Prénoms** : Chaque prénom (dans `partner_a` et `partner_b`) doit impérativement commencer par une majuscule pour chaque mot (ex: `Jean-Christophe`, `Anne-Marie`). De plus, pour les profils de type Couple ou Famille, le champ prénom ne doit contenir que les prénoms ; tout mot entièrement en majuscules saisi dans ce champ est considéré comme un nom de famille et doit être automatiquement extrait vers le champ `lastName`. Cette règle est appliquée automatiquement à la création et à la modification.
 
@@ -340,6 +348,13 @@ Toute modification de la signalétique doit être répercutée sur **toutes** ce
 
 ## Flux de Paiement & Facturation
 
+### Module de Facturation Client (Invoices)
+Le nouveau système de facturation permet d'émettre un document officiel (facture) couvrant une ou plusieurs séances.
+- **Liaison** : Les séances facturées sont liées à une facture via la table `invoice_sessions`.
+- **Statut** : Le suivi de l'envoi au client est assuré par le champ `sent` de la table `invoices`.
+- **Synchronisation** : Lors de la génération/envoi de la facture, les séances concernées voient leur champ `invoice_sent` passer à `true`.
+
+### Logique de Paiement des Séances
 ```mermaid
 flowchart LR
     A[Séance réalisée] --> B{Montant = 0 ?}

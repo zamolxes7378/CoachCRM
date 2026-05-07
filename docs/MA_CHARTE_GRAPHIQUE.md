@@ -1,7 +1,7 @@
 # CoachCRM — Design System
 ## Charte Graphique & Système de Design
 
-> **Date** : 27 mars 2026
+> **Date** : 07 mai 2026
 > **Basé sur** : Interview préférences graphiques fondatrice + Optimisations Pilotage Intelligent
 > **Mots-clés** : Bienveillant · Simple · Créatif · Proactif
 > **Iconographie** : Lucide React (pas d'emojis — icônes professionnelles et plus grandes)
@@ -459,6 +459,17 @@ Propriétés :
 > Tout sélecteur de vue (Liste, Calendrier, Cartes) doit **obligatoirement** utiliser le composant `src/components/layout/ViewSwitcher.jsx`.
 > **Style** : Les boutons utilisent `btn-primary` (fond bleu marine, icône blanche) pour l'état actif et `btn-secondary` (fond clair, icône `--primary-600`) pour l'état inactif.
 > **Icônes standard** : `LayoutList` (Vue liste), `Calendar` (Vue calendrier), `LayoutGrid` (Vue cartes).
+
+> **Règle absolue — Composant InvoiceIcon unique :**
+> L'icône signalant l'état de facturation doit **obligatoirement** utiliser le composant `src/components/common/InvoiceIcon.jsx` (ou équivalent canonique).
+> **Style** : Affiche une icône documentaire (ex: `FileText`) avec un indicateur coloré dynamique (bleu à émettre, vert facturé).
+> **Props attendues** : État de facturation.
+
+### Page de Connexion (Login)
+La page de connexion utilise un thème clair et hautement contrasté pour un rendu SaaS moderne.
+- **Mise en page** : Interface épurée et centrée sur l'action principale.
+- **Bannière d'information** : Présentation claire des avantages (sécurité européenne, IA intégrée).
+- **Propreté visuelle** : Aucun élément de diagnostic ou log technique ("diagnostic debris") ne doit être visible dans l'interface publique.
 
 ### Navigation Temporelle (Contrôles fléchés)
 Utilisé pour naviguer entre les périodes (mois, années) dans les tableaux de bord.

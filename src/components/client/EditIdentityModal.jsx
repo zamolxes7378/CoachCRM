@@ -168,8 +168,28 @@ export default function EditIdentityModal({
                   </div>
                 )
               })()}
+              {/* Type Switcher */}
+              <div style={{ marginBottom: 'var(--space-md)' }}>
+                <div style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-sm)' }}>Type de suivi</div>
+                <div style={{ display: 'flex', background: 'var(--primary-50)', padding: 4, borderRadius: 'var(--radius-md)', gap: 4 }}>
+                  <button type="button" onClick={() => setEditType('individual')}
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px', borderRadius: 'var(--radius-sm)', border: 'none', background: editType === 'individual' ? 'white' : 'transparent', boxShadow: editType === 'individual' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', color: editType === 'individual' ? 'var(--primary-700)' : 'var(--text-tertiary)', fontWeight: 600, fontSize: '0.786rem', cursor: 'pointer', transition: 'all 0.2s' }}>
+                    <User size={14} /> Individuel
+                  </button>
+                  <button type="button" onClick={() => { setEditType('client'); if(!editPartnerB) setEditPartnerB({}); }}
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px', borderRadius: 'var(--radius-sm)', border: 'none', background: editType === 'client' ? 'white' : 'transparent', boxShadow: editType === 'client' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', color: editType === 'client' ? 'var(--primary-700)' : 'var(--text-tertiary)', fontWeight: 600, fontSize: '0.786rem', cursor: 'pointer', transition: 'all 0.2s' }}>
+                    <Users size={14} /> Couple
+                  </button>
+                  <button type="button" onClick={() => { setEditType('family'); if(!editPartnerB) setEditPartnerB({}); }}
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px', borderRadius: 'var(--radius-sm)', border: 'none', background: editType === 'family' ? 'white' : 'transparent', boxShadow: editType === 'family' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', color: editType === 'family' ? 'var(--primary-700)' : 'var(--text-tertiary)', fontWeight: 600, fontSize: '0.786rem', cursor: 'pointer', transition: 'all 0.2s' }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="7" cy="6" r="2.5"/><circle cx="17" cy="6" r="2.5"/><circle cx="12" cy="9" r="2"/><path d="M1 20v-1.5a4.5 4.5 0 0 1 4.5-4.5h3a4.5 4.5 0 0 1 4.5 4.5V20"/><path d="M15.5 14h3a4.5 4.5 0 0 1 4.5 4.5V20"/></svg>
+                    Famille
+                  </button>
+                </div>
+              </div>
+
               {/* Section title */}
-              <div style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-sm)' }}>Modifier l'identité</div>
+              <div style={{ fontSize: '0.714rem', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-sm)' }}>Identité des participants</div>
               {editType !== 'individual' && (
                 <p style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)', marginBottom: 'var(--space-md)', display: 'flex', alignItems: 'center', gap: 4 }}>
                   <Star size={9} color="var(--text-tertiary)" /> Référent = interlocuteur principal pour la communication et le suivi financier
@@ -629,11 +649,13 @@ export default function EditIdentityModal({
                       setIsSaving(true)
                       // Build updated values without mutating client directly
                       const updatedPartnerA = { ...editPartnerA, lastName: (editPartnerA.lastName || '').toUpperCase() }
-                      const updatedPartnerB = (editType === 'client' || editType === 'family') ? { ...editPartnerB, lastName: (editPartnerB.lastName || '').toUpperCase() } : client.partnerB
+                      const updatedPartnerB = { ...editPartnerB, lastName: (editPartnerB.lastName || '').toUpperCase() }
                       
                       const updates = {
                         partnerA: updatedPartnerA,
                         partnerB: updatedPartnerB,
+                        children: [...editChildren],
+                        referents: [...editReferents],
                         type: editType,
                         source: editSource || null,
                         billingAddress: editBillingAddress,
@@ -642,7 +664,7 @@ export default function EditIdentityModal({
                       }
                       
                       // Local update for UI consistency
-                      client.children = editType === 'family' ? [...editChildren] : null
+                      client.children = [...editChildren]
 
                       // Auto-force source to 'parrainage' if a referrer is configured
                       if (modalSelectedReferrer || (modalExternalReferrer && modalExternalReferrer.lastName?.trim())) {

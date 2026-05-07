@@ -45,6 +45,8 @@ export function adaptClient(c) {
     externalReferrer: c.external_referrer || c.externalReferrer || null,
     deletedAt: c.deleted_at,
     deleted: !!c.deleted_at,
+    children: c.children || [],
+    referents: c.referents || ['A'],
     sessionRate: c.session_rate,
     sessionFrequency: c.session_frequency,
     aiSynthesis: (typeof c.ai_synthesis === 'string' && (c.ai_synthesis.startsWith('{') || c.ai_synthesis.startsWith('[')))
@@ -172,7 +174,6 @@ export function unadaptClient(c) {
   if ('noteVigilance' in c) { out.note_vigilance = c.noteVigilance; delete out.noteVigilance }
   if ('noteObjectifs' in c) { out.note_objectifs = c.noteObjectifs; delete out.noteObjectifs }
   delete out.deleted
-  delete out.children
   return out
 }
 

@@ -9,6 +9,37 @@ import { todayIso } from '../lib/date'
 
 export function getClientName(client) {
   if (!client?.partnerA) return 'Client inconnu'
+  
+  const type = getClientType(client)
+  
+  if (type === 'family') {
+    const names = []
+    if (client.partnerA?.firstName) names.push(client.partnerA.firstName.trim())
+    if (client.partnerB?.firstName) names.push(client.partnerB.firstName.trim())
+    if (client.children && client.children.length > 0) {
+      client.children.forEach(c => {
+        if (c.name) names.push(c.name.trim())
+      })
+    }
+    
+    let firstNamesStr = ''
+    if (names.length === 0) {
+      firstNamesStr = '...'
+    } else if (names.length === 1) {
+      firstNamesStr = names[0]
+    } else {
+      const last = names.pop()
+      firstNamesStr = names.join(', ') + ' et ' + last
+    }
+    
+    let refLastName = (client.partnerA.lastName || '').toUpperCase()
+    if (client.referents && client.referents.includes('B') && !client.referents.includes('A')) {
+      refLastName = (client.partnerB?.lastName || '').toUpperCase()
+    }
+    
+    return `${firstNamesStr} ${refLastName}`
+  }
+
   const fnA = (client.partnerA.firstName || '').trim() || '...'
   if (!client.partnerB) return `${fnA} ${(client.partnerA.lastName || '').toUpperCase()}`
   const fnB = (client.partnerB.firstName || '').trim() || '...'
@@ -54,13 +85,12 @@ export function getProspectStageInfo(stage) {
 // ── Type client ──
 
 export function getClientType(client) {
+  if (client.type) return client.type
   const hasChildren = client.children && client.children.length > 0
   const hasPartnerB = !!client.partnerB
-  if (client.type === 'family') return 'family'
-  if (client.type === 'individual' && !hasPartnerB) return 'individual'
   if (hasChildren) return 'family'
   if (hasPartnerB) return 'client'
-  return client.type || 'individual'
+  return 'individual'
 }
 
 // ── Statut calculé ──

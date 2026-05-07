@@ -288,7 +288,7 @@ export default function LoginPage({ error, debugLogs = [] }) {
           }}>
             {[
               { icon: CheckCircle, text: 'Gratuit jusqu\'à 5 clients, sans engagement' },
-              { icon: Shield, text: 'Hébergement Supabase · région UE (eu-west-2, Londres — GDPR-adéquat)' },
+              { icon: Shield, text: 'Hébergement sécurisé en Europe' },
               { icon: Sparkles, text: 'IA intégrée, aucune configuration requise' }
             ].map((item, i) => {
               const TrustIcon = item.icon

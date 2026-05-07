@@ -70,7 +70,7 @@ export async function upsertUser({ id, name, email, role = 'therapist', photo_ur
 export async function getClients(userId) {
   const { data, error } = await fetchAllRows(supabase
     .from('clients')
-    .select('id, user_id, type, phase, status, source, start_date, created_at, updated_at, deleted_at, session_rate, session_frequency, billing_address, note_dynamique, note_axes, note_vigilance, note_objectifs, client_links, external_referrer, referred_by, prospect_stage, partner_a, partner_b')
+    .select('id, user_id, type, phase, status, source, start_date, created_at, updated_at, deleted_at, session_rate, session_frequency, billing_address, note_dynamique, note_axes, note_vigilance, note_objectifs, client_links, external_referrer, referred_by, prospect_stage, partner_a, partner_b, children, referents')
     .eq('user_id', userId)
     .is('deleted_at', null)
     .order('created_at', { ascending: false })

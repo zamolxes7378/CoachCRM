@@ -7,7 +7,7 @@
 
 ## Vue d'ensemble
 
-CoachCRM utilise 7 tables principales, toutes protégées par **Row Level Security (RLS)**.
+CoachCRM utilise 14 tables principales, toutes protégées par **Row Level Security (RLS)**.
 Chaque thérapeute ne voit que ses propres données grâce au champ `user_id` présent dans chaque table.
 
 ```
@@ -15,10 +15,16 @@ users (thérapeutes)
  ├── clients (dossiers patients)
  │    ├── sessions (séances de thérapie)
  │    │    └── reports (comptes-rendus IA)
- │    └── contacts (historique de communication)
+ │    ├── contacts (historique de communication)
+ │    ├── therapy_cycles (cycles de thérapie)
+ │    └── invoices (factures)
+ │         └── invoice_sessions (liaison factures/séances)
  ├── settings (configuration personnelle)
- └── professionals (réseau professionnel)
+ ├── professionals (réseau professionnel)
+ └── roadmap_items (roadmap produit)
 ```
+
+*(Note: `allowed_emails`, `retention_policies`, et `dsar_requests` sont gérées au niveau système/admin)*
 
 ---
 
@@ -50,6 +56,8 @@ Un « client » peut être un couple, un individu, ou une famille. C'est le doss
 | `type` | text | `client` (ex-couple), `individual`, ou `family` |
 | `partner_a` | JSONB | Identité du premier partenaire (`{ firstName, lastName, email, phone }`) |
 | `partner_b` | JSONB | Identité du second partenaire (null si individuel, présent si duo/client) |
+| `children` | JSONB | Liste des enfants (présent si type famille) `[{ name, birthYear }]` |
+| `referents` | JSONB | Tableau indiquant qui est le référent principal (ex: `['A']` ou `['B']`) |
 | `phase` | text | Phase thérapeutique actuelle (par défaut `prospect`) |
 | `source` | text | Source de recrutement (ex: "Site web", "Parrainage") |
 | `status` | text | `active`, `inactive`, ou `completed` |
@@ -70,9 +78,9 @@ Un « client » peut être un couple, un individu, ou une famille. C'est le doss
 | `created_at` | timestamptz | Date de création |
 | `updated_at` | timestamptz | Dernière modification |
 | `deleted_at` | timestamptz | Archivage (soft delete — null = actif) |
-| `ai_synthesis` | JSONB | Synthèse IA globale (parcours, dynamique...) |
+| `ai_synthesis` | text | Synthèse IA globale (parcours, dynamique...) |
 | `session_rate` | numeric | Tarif spécifique de ce client (facultatif) |
-| `session_frequency` | integer | Fréquence des séances (par défaut 2 pour 1/15j) |
+| `session_frequency` | integer | Fréquence des séances (par défaut 4) |
 | `note_dynamique` | text | Note libre — dynamique relationnelle (**colonne canonique**) |
 | `note_axes` | text | Note libre — axes de travail (**colonne canonique**) |
 | `note_vigilance` | text | Note libre — points de vigilance (**colonne canonique**) |
@@ -218,7 +226,7 @@ Les clés du premier niveau sont les années (string). Le second niveau contient
   "2025": { "0": 2000, "11": 3000 }
 }
 ```
-### 8. `therapy_cycles` — Cycles de thérapie
+### 7. `therapy_cycles` — Cycles de thérapie
 
 Stocke les différents cycles de suivi pour un même client.
 
@@ -235,7 +243,7 @@ Stocke les différents cycles de suivi pour un même client.
 
 ---
 
-### 7. `professionals` — Réseau professionnel
+### 8. `professionals` — Réseau professionnel
 
 Carnet d'adresses des professionnels partenaires (médecins, avocats, etc.).
 
@@ -258,7 +266,64 @@ Carnet d'adresses des professionnels partenaires (médecins, avocats, etc.).
 
 ---
 
-### 9. `retention_policies` — Politique de conservation (P1-R)
+### 9. `invoices` — Factures clients
+
+Système de facturation pour les clients.
+
+| Champ | Type | Description |
+|-------|------|-------------|
+| `id` | UUID (auto) | Identifiant unique |
+| `user_id` | UUID → auth.users | Thérapeute |
+| `client_id` | UUID → clients | Client facturé |
+| `invoice_date` | date | Date d'émission (défaut CURRENT_DATE) |
+| `sent` | boolean | Facture envoyée au client (défaut false) |
+| `sent_at` | timestamptz | Date d'envoi |
+| `created_at` | timestamptz | Date de création |
+
+---
+
+### 10. `invoice_sessions` — Table de liaison (Factures ↔ Séances)
+
+| Champ | Type | Description |
+|-------|------|-------------|
+| `invoice_id` | UUID → invoices | Facture concernée |
+| `session_id` | UUID (unique) → sessions | Séance facturée |
+
+---
+
+### 11. `allowed_emails` — Whitelist (Accès)
+
+Liste des emails autorisés à accéder ou avoir des privilèges (ex: admin).
+
+| Champ | Type | Description |
+|-------|------|-------------|
+| `email` | text | Email autorisé |
+| `created_at` | timestamptz | Date de création |
+
+---
+
+### 12. `roadmap_items` — Roadmap Produit
+
+Gestion des tickets/tâches de la roadmap.
+
+| Champ | Type | Description |
+|-------|------|-------------|
+| `id` | UUID (auto) | Identifiant unique |
+| `user_id` | UUID → auth.users | Utilisateur créateur |
+| `title` | text | Titre du ticket |
+| `description` | text | Description détaillée |
+| `status` | text | `backlog`, `in_progress`, ou `done` |
+| `priority` | text | `low`, `medium`, `high`, `critical` |
+| `category` | text | `feature`, `bug`, `design`, `legal`, `infrastructure` |
+| `milestone` | text | Jalon optionnel |
+| `due_date` | date | Date d'échéance |
+| `sort_order` | integer | Ordre de tri |
+| `created_at` | timestamptz | Date de création |
+| `updated_at` | timestamptz | Dernière modification |
+
+---
+
+### 13. `retention_policies` — Politique de conservation (P1-R)
 
 Registre canonique des durées de conservation par entité/régime. Mis à jour conjointement avec `docs/retention_policy.md`.
 
@@ -274,7 +339,7 @@ Registre canonique des durées de conservation par entité/régime. Mis à jour 
 
 ---
 
-### 10. `dsar_requests` — Demandes de droits (DSAR, P1-R)
+### 14. `dsar_requests` — Demandes de droits (DSAR, P1-R)
 
 Journal des demandes DSAR (accès, effacement, portabilité…). Accès admin uniquement via RLS.
 
@@ -300,13 +365,18 @@ users ──< clients        (un thérapeute a plusieurs clients)
 users ──< sessions       (un thérapeute a plusieurs séances)
 users ──< contacts       (un thérapeute a plusieurs contacts)
 users ──1 settings       (un thérapeute a une configuration)
+users ──< therapy_cycles (un thérapeute a plusieurs cycles de thérapie)
+users ──< invoices       (un thérapeute a plusieurs factures)
 
 clients ──< sessions     (un client a plusieurs séances)
 clients ──< contacts     (un client a plusieurs contacts)
 clients ──< reports      (un client a plusieurs comptes-rendus)
+clients ──< therapy_cycles (un client a plusieurs cycles)
+clients ──< invoices     (un client a plusieurs factures)
 clients ──? clients      (un client peut parrainer d'autres clients via referred_by)
 
 sessions ──< reports     (une séance peut avoir un compte-rendu)
+sessions ──1 invoice_sessions ── invoices (une séance facturée est liée à une facture)
 ```
 
 ---
