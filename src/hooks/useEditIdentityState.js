@@ -52,6 +52,7 @@ export default function useEditIdentityState({ client, getClientType }) {
     setEditChildren(client.children || [])
     setEditType(getClientType(client))
     setEditReferents(client.referents || ['A'])
+    setEditSource(client?.source || '')
     setEditBillingAddress(client?.billingAddress || '')
     setShowEditModal(true)
   }, [client, getClientType])
