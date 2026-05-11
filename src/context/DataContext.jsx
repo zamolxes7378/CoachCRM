@@ -405,7 +405,22 @@ export function DataProvider({ user, children }) {
     createContact: async (contact) => {
       try {
         const row = await ds.createContact(unadaptContact({ ...contact, userId: user.id }))
-        if (row) setRawContacts(prev => applyInsert(prev, row))
+        if (row) {
+          setRawContacts(prev => applyInsert(prev, row))
+          
+          // Règle métier : Si c'est le tout premier contact du client et qu'il vient du site web,
+          // on force la source du client à "website"
+          const isFirstContact = !rawContacts.some(c => c.client_id === contact.clientId)
+          if (isFirstContact && contact.type === 'web') {
+            const clientToUpdate = rawClients.find(c => c.id === contact.clientId)
+            if (clientToUpdate && clientToUpdate.source !== 'website') {
+              const updatedClientRow = await ds.updateClient(contact.clientId, { source: 'website' })
+              if (updatedClientRow) {
+                setRawClients(prev => applyUpdate(prev, contact.clientId, updatedClientRow))
+              }
+            }
+          }
+        }
         return row
       } catch (err) {
         reportError(err, { operation: 'createContact', entity: 'contact' })

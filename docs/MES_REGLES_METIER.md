@@ -476,6 +476,7 @@ Afin de garantir l'hygiène de la base de données lors de l'intégration massiv
    - Source : `website`.
    - Type par défaut : `individual` (le praticien pourra l'ajuster ultérieurement en `couple` ou `famille` selon le contexte).
    - Attribution : Assigner l'utilisateur responsable (Admin/Thérapeute principal).
+6. **Mise à jour automatique de la source** : Pour tout dossier (existant ou nouveau), si le **tout premier contact** enregistré dans son historique est de type « web », la source d'acquisition du client/prospect doit être obligatoirement forcée sur « Site web » (`website`).
 
 ## Date de création du dossier
 - **Modifiable** : clic sur la date dans la timeline de la thérapie → input date inline
