@@ -460,6 +460,23 @@ L'alliance thérapeutique est validée par la présence d'au moins une séance �
 - Alerte si même client + même jour (bloquante avec confirmation)
 - Alerte si autres clients le même jour (informationnelle, désactivée pour les prospects)
 
+## Règles d'importation des leads (Site Web)
+Afin de garantir l'hygiène de la base de données lors de l'intégration massive de prospects (ex: soumissions du formulaire Jetpack), les règles suivantes doivent être appliquées :
+
+1. **Déduplication à la source** : Si un même lead (identifié par l'email ou le nom/prénom) soumet plusieurs fois le formulaire, seule la soumission la plus **récente** est conservée pour le traitement. Les anciennes soumissions sont ignorées.
+2. **Matching intelligent** : Le système doit chercher une correspondance avec la base existante (Clients et Prospects) en se basant sur :
+   - Correspondance stricte de l'adresse e-mail.
+   - OU Correspondance du Nom/Prénom (sans tenir compte de l'ordre, de la casse ou des accents).
+3. **Enrichissement (Anti-Data Loss)** : Si un prospect correspond à un client/prospect existant :
+   - On **n'écrase jamais** les coordonnées existantes (email, téléphone).
+   - Les nouvelles coordonnées sont ajoutées en bas du champ `notes` du client, précédées de l'en-tête `--- Contact Site Web (Date) ---`.
+4. **Traçabilité des messages** : Chaque demande entrante, qu'elle soit pour un nouveau ou un ancien client, déclenche la création d'un enregistrement dans la table `contacts` (type `web`, avec le message du formulaire et la date).
+5. **Nouveaux Prospects** : Si aucune correspondance n'est trouvée, une nouvelle fiche est créée :
+   - Phase : `prospect`.
+   - Source : `website`.
+   - Type par défaut : `individual` (le praticien pourra l'ajuster ultérieurement en `couple` ou `famille` selon le contexte).
+   - Attribution : Assigner l'utilisateur responsable (Admin/Thérapeute principal).
+
 ## Date de création du dossier
 - **Modifiable** : clic sur la date dans la timeline de la thérapie → input date inline
 - **Alerte visuelle** : un bandeau ambre discret (`#FFFBEB`, bordure `#FEF3C7`, icône `AlertTriangle` `#D97706`) s'affiche sous le champ :  
