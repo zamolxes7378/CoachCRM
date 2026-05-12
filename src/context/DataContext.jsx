@@ -413,8 +413,9 @@ export function DataProvider({ user, children }) {
           const isFirstContact = !rawContacts.some(c => c.client_id === contact.clientId)
           if (isFirstContact && contact.type === 'web') {
             const clientToUpdate = rawClients.find(c => c.id === contact.clientId)
-            if (clientToUpdate && clientToUpdate.source !== 'website') {
-              const updatedClientRow = await ds.updateClient(contact.clientId, { source: 'website' })
+            const contactDate = contact.date.split('T')[0]
+            if (clientToUpdate && (clientToUpdate.source !== 'website' || clientToUpdate.start_date !== contactDate)) {
+              const updatedClientRow = await ds.updateClient(contact.clientId, { source: 'website', start_date: contactDate })
               if (updatedClientRow) {
                 setRawClients(prev => applyUpdate(prev, contact.clientId, updatedClientRow))
               }
