@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import { Euro, TrendingUp, TrendingDown, Minus, Users, User, UserPlus, Calendar, FileText, Hourglass, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Download, BarChart3, ArrowUpRight, ArrowDownRight, XCircle, X, PieChart, Sprout, UserCheck, Zap } from 'lucide-react'
+import { Euro, TrendingUp, TrendingDown, Minus, Users, User, UserPlus, Calendar, FileText, Hourglass, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Download, BarChart3, ArrowUpRight, ArrowDownRight, XCircle, X, PieChart, Sprout, UserCheck, Zap, Info, Lightbulb, HelpCircle, Target } from 'lucide-react'
 import ClientTypeBadge from '../components/ClientTypeBadge'
 import PaymentBadge from '../components/PaymentBadge'
 import InvoiceBadge from '../components/InvoiceBadge'
@@ -113,6 +113,7 @@ export default function FinancesPage() {
   }
 
   const [viewPeriod, setViewPeriod] = useState('month') // month, quarter, semester, year
+  const [showLtvGuide, setShowLtvGuide] = useState(false)
   const [topModal, setTopModal] = useState(null) // 'ca' | 'referrals' | null
   const [expandedAlert, setExpandedAlert] = useState(null) // 'unpaid' | 'deferred' | 'invoices' | null
   const [exportFrom, setExportFrom] = useState(`${now.getFullYear()}-01-01`)
@@ -473,7 +474,12 @@ export default function FinancesPage() {
             <div className="card" style={{ padding: 'var(--space-md)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 'var(--space-md)' }}>
                 <PieChart size={16} style={{ color: 'var(--primary-500)' }} />
-                <span style={{ fontSize: '0.786rem', fontWeight: 700, color: 'var(--text-primary)' }}>Canaux d'acquisition</span>
+                <span 
+                  style={{ fontSize: '0.786rem', fontWeight: 700, color: 'var(--text-primary)', cursor: 'help', textDecoration: 'underline dotted', textUnderlineOffset: 2 }}
+                  title={`Affiche la source des ${totalClients} nouveaux profils (clients et prospects) créés en ${selectedYear}.`}
+                >
+                  Canaux d'acquisition
+                </span>
                 <span style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)', marginLeft: 'auto' }}>{selectedYear} · {totalClients} client{totalClients > 1 ? 's' : ''}</span>
               </div>
               {entries.length === 0 ? (
@@ -525,7 +531,7 @@ export default function FinancesPage() {
             <div className="card" style={{ padding: 'var(--space-md)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 'var(--space-md)' }}>
                 <Users size={16} style={{ color: 'var(--primary-500)' }} />
-                <span style={{ fontSize: '0.786rem', fontWeight: 700, color: 'var(--text-primary)' }}>Types de clients</span>
+                <span style={{ fontSize: '0.786rem', fontWeight: 700, color: 'var(--text-primary)' }}>Types de clients actifs</span>
                 <span style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)', marginLeft: 'auto' }}>{selectedYear} · {totalTypes} client{totalTypes > 1 ? 's' : ''}</span>
               </div>
               {totalTypes === 0 ? (
@@ -577,6 +583,7 @@ export default function FinancesPage() {
           )
         })()}
       </div>
+
 
       {/* Zone 3 — Détail mensuel (KPIs + Tableau) */}
       <div className="card" style={{ padding: 'var(--space-md)' }}>
@@ -862,6 +869,137 @@ export default function FinancesPage() {
       </div>
 
 
+      {/* Widget LTV par source d'acquisition */}
+      {(() => {
+        // Build source label map
+        const sourceLabels = {}
+        recruitmentSources.forEach(s => { sourceLabels[s.key] = s.label })
+        sourceLabels['unknown'] = 'Non renseigné'
+
+        // Build label→key and oldKey→newKey maps (same normalization as countClientsBySource)
+        const labelToKey = {}
+        recruitmentSources.forEach(s => { labelToKey[s.label.toLowerCase()] = s.key })
+
+        const normalizeSource = (src) => {
+          if (!src) return 'unknown'
+          const fromLabel = labelToKey[src.toLowerCase()]
+          if (fromLabel) return fromLabel
+          return src
+        }
+
+        // Group ALL clients by source (global, no year filter)
+        const sourceGroups = {}
+        clients.forEach(c => {
+          const src = normalizeSource(c.source)
+          if (!sourceGroups[src]) sourceGroups[src] = []
+          sourceGroups[src].push(c)
+        })
+
+        // For each source, compute LTV metrics
+        const MIN_CLIENTS = 3
+        const ltvData = Object.entries(sourceGroups).map(([sourceKey, sourceClients]) => {
+          const nbClients = sourceClients.length
+          let totalRevenue = 0
+          let totalSessions = 0
+
+          sourceClients.forEach(client => {
+            const clientSessions = sessions.filter(s => s.clientId === client.id && s.status !== 'cancelled')
+            totalSessions += clientSessions.length
+            clientSessions.forEach(s => {
+              totalRevenue += s.paymentAmount || getDefaultRate(s.clientId, clients, sessionRates)
+            })
+          })
+
+          const ltvMoyen = nbClients > 0 ? Math.round(totalRevenue / nbClients) : 0
+          const seancesMoyennes = nbClients > 0 ? (totalSessions / nbClients).toFixed(1) : '0'
+          const significant = nbClients >= MIN_CLIENTS
+
+          return {
+            sourceKey,
+            label: sourceLabels[sourceKey] || sourceKey,
+            nbClients,
+            totalRevenue: Math.round(totalRevenue),
+            ltvMoyen,
+            seancesMoyennes,
+            significant
+          }
+        }).sort((a, b) => {
+          if (a.significant !== b.significant) {
+            return a.significant ? -1 : 1
+          }
+          return b.totalRevenue - a.totalRevenue
+        })
+
+        const maxTotal = Math.max(...ltvData.filter(d => d.significant).map(d => d.totalRevenue), 1)
+
+        return (
+          <div className="card" style={{ padding: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 'var(--space-md)' }}>
+              <TrendingUp size={16} style={{ color: 'var(--primary-500)' }} />
+              <span
+                style={{ fontSize: '0.786rem', fontWeight: 700, color: 'var(--text-primary)', cursor: 'pointer', textDecoration: 'underline dotted', textUnderlineOffset: 2 }}
+                onClick={() => setShowLtvGuide(true)}
+                title="Cliquez pour ouvrir le guide méthodologique"
+              >
+                Lifetime Value par source
+              </span>
+              <span style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)', marginLeft: 'auto' }}>{ltvData.length} source{ltvData.length > 1 ? 's' : ''}</span>
+            </div>
+
+            {ltvData.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: 'var(--space-md)', color: 'var(--text-tertiary)', fontSize: '0.786rem' }}>Aucune donnée</div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0 4px', fontSize: '0.75rem' }}>
+                  <thead>
+                    <tr style={{ color: 'var(--text-tertiary)', fontSize: '0.643rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      <th style={{ textAlign: 'left', padding: '4px 8px' }}>Source</th>
+                      <th style={{ textAlign: 'center', padding: '4px 8px' }}>Clients</th>
+                      <th style={{ textAlign: 'center', padding: '4px 8px' }}>Séances moy.</th>
+                      <th style={{ textAlign: 'right', padding: '4px 8px' }}>LTV moyen</th>
+                      <th style={{ textAlign: 'right', padding: '4px 8px' }}>LTV total</th>
+                      <th style={{ padding: '4px 8px', width: '30%' }}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ltvData.map(({ sourceKey, label, nbClients, totalRevenue, ltvMoyen, seancesMoyennes, significant }) => (
+                      <tr key={sourceKey} style={{ background: 'var(--bg-secondary)', borderRadius: 'var(--radius-sm)' }}>
+                        <td style={{ padding: '6px 8px', fontWeight: 600, color: 'var(--text-primary)', borderRadius: 'var(--radius-sm) 0 0 var(--radius-sm)' }}>{label}</td>
+                        <td style={{ padding: '6px 8px', textAlign: 'center', color: 'var(--text-secondary)' }}>{nbClients}</td>
+                        <td style={{ padding: '6px 8px', textAlign: 'center', color: 'var(--text-secondary)' }}>{significant ? seancesMoyennes : '—'}</td>
+                        <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 700, color: significant ? 'var(--success-600)' : 'var(--text-tertiary)' }}>
+                          {significant ? `${formatAmount(ltvMoyen)} €` : '—'}
+                        </td>
+                        <td style={{ padding: '6px 8px', textAlign: 'right', color: significant ? 'var(--text-secondary)' : 'var(--text-tertiary)', fontWeight: 600 }}>
+                          {significant ? `${formatAmount(totalRevenue)} €` : '—'}
+                        </td>
+                        <td style={{ padding: '6px 8px', borderRadius: '0 var(--radius-sm) var(--radius-sm) 0' }}>
+                          {significant ? (
+                            <div style={{ height: 8, background: '#E2E8F0', borderRadius: 4, overflow: 'hidden' }}>
+                              <div style={{
+                                height: '100%',
+                                borderRadius: 4,
+                                background: 'linear-gradient(90deg, var(--primary-400), var(--primary-600))',
+                                width: `${Math.min((totalRevenue / maxTotal) * 100, 100)}%`,
+                                transition: 'width 0.4s ease'
+                              }} />
+                            </div>
+                          ) : (
+                            <span style={{ fontSize: '0.571rem', color: 'var(--text-tertiary)', fontStyle: 'italic' }}>min. 3 clients requis</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )
+      })()}
+
+
+
       {/* Modal — Client Detail */}
       {/* Top Modal */}
       {topModal && (
@@ -999,8 +1137,122 @@ export default function FinancesPage() {
         </div>
       )}
 
+      {/* LTV Methodology Guide Drawer */}
+      {showLtvGuide && (
+        <div 
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 10000, display: 'flex', justifyContent: 'flex-end', backdropFilter: 'blur(2px)', animation: 'fadeIn 0.2s ease' }}
+          onClick={() => setShowLtvGuide(false)}
+        >
+          <div 
+            style={{ width: 450, background: 'white', height: '100%', boxShadow: '-10px 0 30px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', animation: 'slideInRight 0.3s ease-out' }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{ padding: 'var(--space-lg)', borderBottom: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ padding: 8, background: 'white', borderRadius: 'var(--radius-md)', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                  <TrendingUp size={20} style={{ color: 'var(--primary-600)' }} />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Méthodologie LTV</h2>
+                  <p style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)', margin: 0 }}>Comprendre et piloter votre croissance</p>
+                </div>
+              </div>
+              <button onClick={() => setShowLtvGuide(false)} style={{ background: 'white', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-full)', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: 'var(--space-lg)', display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
+              
+              {/* Section 1: Intro */}
+              <section>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 'var(--space-sm)' }}>
+                  <Info size={16} style={{ color: 'var(--primary-500)' }} />
+                  <h3 style={{ fontSize: '0.857rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>C'est quoi la LTV ?</h3>
+                </div>
+                <p style={{ fontSize: '0.786rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                  La <strong>Lifetime Value</strong> (Valeur Vie Client) estime la richesse totale qu'un client apporte à votre cabinet sur l'ensemble de sa relation avec vous. C'est l'indicateur ultime pour mesurer la rentabilité réelle de vos canaux d'acquisition.
+                </p>
+              </section>
+
+              {/* Section 2: Lexique */}
+              <section style={{ padding: 'var(--space-md)', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-light)' }}>
+                <h3 style={{ fontSize: '0.786rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 'var(--space-sm)' }}>Lexique & Distinctions</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+                  <div>
+                    <span style={{ fontSize: '0.714rem', fontWeight: 800, color: 'var(--primary-700)', textTransform: 'uppercase', display: 'block', marginBottom: 2 }}>CA Théorique</span>
+                    <p style={{ fontSize: '0.714rem', color: 'var(--text-secondary)', margin: 0 }}>Somme des honoraires prévus (séances réalisées + futures). Il mesure le <strong>potentiel</strong> généré par un canal.</p>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '0.714rem', fontWeight: 800, color: '#2A4365', textTransform: 'uppercase', display: 'block', marginBottom: 2 }}>LTV Moyenne</span>
+                    <p style={{ fontSize: '0.714rem', color: 'var(--text-secondary)', margin: 0 }}>Il s'agit du <strong>CA Théorique total</strong> de la source divisé par son <strong>nombre total de contacts</strong>. Cela représente la valeur moyenne d'un "lead" (prospect ou client) sur le long terme.</p>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '0.714rem', fontWeight: 800, color: '#D69E2E', textTransform: 'uppercase', display: 'block', marginBottom: 2 }}>Fidélité (Séances moy.)</span>
+                    <p style={{ fontSize: '0.714rem', color: 'var(--text-secondary)', margin: 0 }}>C'est le nombre de séances total (réalisées + prévues) divisé par le nombre de contacts. C'est l'indicateur de <strong>rétention</strong> de la source.</p>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '0.714rem', fontWeight: 800, color: 'var(--success-700)', textTransform: 'uppercase', display: 'block', marginBottom: 2 }}>CA Encaissé</span>
+                    <p style={{ fontSize: '0.714rem', color: 'var(--text-secondary)', margin: 0 }}>Argent réellement perçu sur votre compte. La LTV se base sur le théorique pour valoriser le lien thérapeutique, même si les paiements sont en attente.</p>
+                  </div>
+                </div>
+              </section>
+
+              {/* Section 3: Astuces Marketing */}
+              <section>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 'var(--space-sm)' }}>
+                  <Zap size={16} style={{ color: '#D69E2E' }} />
+                  <h3 style={{ fontSize: '0.857rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Astuces Marketing</h3>
+                </div>
+                <ul style={{ paddingLeft: 'var(--space-md)', margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+                  <li style={{ fontSize: '0.786rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                    <strong>Volume vs Qualité</strong> : Un canal avec beaucoup de clients mais un LTV moyen faible (ex: Site Web) attire du monde, mais peut-être pas les profils les plus engagés.
+                  </li>
+                  <li style={{ fontSize: '0.786rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                    <strong>Le "Trésor" du Parrainage</strong> : Généralement, le LTV moyen est plus élevé ici. Vos meilleurs clients sont vos meilleurs ambassadeurs.
+                  </li>
+                </ul>
+              </section>
+
+              {/* Section 4: Conseils */}
+              <section style={{ borderLeft: '3px solid #6366f1', paddingLeft: 'var(--space-md)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 'var(--space-sm)' }}>
+                  <Lightbulb size={16} style={{ color: '#6366f1' }} />
+                  <h3 style={{ fontSize: '0.857rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Conseils actionnables</h3>
+                </div>
+                <div style={{ fontSize: '0.714rem', color: 'var(--text-secondary)', background: '#f5f3ff', padding: '10px', borderRadius: 'var(--radius-md)' }}>
+                  <p style={{ margin: '0 0 8px 0' }}>💡 <strong>Rétention</strong> : Si une source a une moyenne &lt; 3 séances, analysez votre premier rendez-vous. Le client n'a peut-être pas perçu la valeur de l'accompagnement sur le long terme.</p>
+                  <p style={{ margin: 0 }}>🎯 <strong>Ciblage</strong> : Réallouez votre temps ou votre budget vers les sources qui ont le LTV moyen le plus élevé, pas forcément celles qui apportent le plus de monde.</p>
+                </div>
+              </section>
+
+              {/* Section 5: Technique (Accordion-like) */}
+              <details style={{ marginTop: 'auto', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
+                <summary style={{ padding: 'var(--space-sm)', background: '#f8fafc', fontSize: '0.714rem', fontWeight: 700, color: 'var(--text-tertiary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Target size={14} /> Détails techniques du calcul
+                </summary>
+                <div style={{ padding: 'var(--space-md)', background: 'white', borderTop: '1px solid var(--border-light)' }}>
+                  <code style={{ fontSize: '0.643rem', display: 'block', background: '#f1f5f9', padding: 8, borderRadius: 4, marginBottom: 10 }}>
+                    LTV Total = Σ(CA théorique des clients de la source)<br/>
+                    LTV Moyen = LTV Total / Nb Contacts<br/>
+                    Séances Moy. = Nb Séances Total / Nb Contacts
+                  </code>
+                  <p style={{ fontSize: '0.643rem', color: 'var(--text-tertiary)', margin: 0, fontStyle: 'italic' }}>
+                    * CA théorique = séances réalisées + futures (hors annulées).<br/>
+                    * Le seuil de 3 clients évite les biais statistiques.
+                  </p>
+                </div>
+              </details>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`
         @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes slideInRight { from { transform: translateX(100%) } to { transform: translateX(0) } }
         @keyframes slideUp { from { opacity: 0; transform: translateY(20px) } to { opacity: 1; transform: translateY(0) } }
       `}</style>
     </div>

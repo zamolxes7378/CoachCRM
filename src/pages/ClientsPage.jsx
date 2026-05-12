@@ -572,7 +572,7 @@ export default function ClientsPage() {
                   <th style={{ cursor: 'pointer', textAlign: 'center' }} onClick={() => handleSort('sessions')}>SÉANCES <SortIcon colKey="sessions" /></th>
                   <th style={{ cursor: 'pointer' }} onClick={() => handleSort('lastSession')}>DERNIER RDV <SortIcon colKey="lastSession" /></th>
                   <th style={{ cursor: 'pointer' }} onClick={() => handleSort('nextSession')}>PROCHAIN RDV <SortIcon colKey="nextSession" /></th>
-                  <th>RECOMMANDATION</th>
+                  <th style={{ cursor: 'pointer' }} onClick={() => handleSort('source')}>SOURCE DE RECRUTEMENT <SortIcon colKey="source" /></th>
                 </>) : (<>
                   <th style={{ cursor: 'pointer' }} onClick={() => handleSort('nextSession')}>PROCHAIN RDV <SortIcon colKey="nextSession" /></th>
                   <th style={{ cursor: 'pointer' }} onClick={() => handleSort('startDate')}>PREMIER CONTACT <SortIcon colKey="startDate" /></th>
@@ -627,13 +627,8 @@ export default function ClientsPage() {
                       <td style={{ color: 'var(--text-secondary)', textAlign: 'center' }}>{getSessionsCount(client.id)}{client.totalSessions ? `/${client.totalSessions}` : ''}</td>
                       <td style={{ color: 'var(--text-secondary)' }}>{getLastSession(client.id) ? formatDate(getLastSession(client.id)) : '—'}</td>
                       <td style={{ color: 'var(--text-secondary)' }}>{getNextSession(client.id) ? formatDate(getNextSession(client.id)) : '—'}</td>
-                      <td>
-                        {referrals.length > 0 ? (
-                          <span style={{ color: '#6B46C1', fontWeight: 500, fontSize: '0.786rem' }}>
-                            <Award size={12} style={{ verticalAlign: -2, marginRight: 3 }} />
-                            {referrals.map(r => getClientName(r)).join(', ')}
-                          </span>
-                        ) : '—'}
+                      <td style={{ color: 'var(--text-secondary)' }}>
+                        {(recruitmentSources.find(s => s.key === client.source) || {}).label || client.source || '—'}
                       </td>
                     </>) : (<>
                       <td style={{ color: 'var(--text-secondary)' }}>{getNextSession(client.id) ? formatDate(getNextSession(client.id)) : '—'}</td>

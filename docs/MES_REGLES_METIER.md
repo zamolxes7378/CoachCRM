@@ -456,6 +456,46 @@ L'alliance thérapeutique est validée par la présence d'au moins une séance �
 - **Icône de section** : Utilisation exclusive de l'icône `Zap` (`#D69E2E`) pour marquer l'énergie de la transformation.
 - **Format** : `1. Nom du Client (Date)`.
 
+## Lifetime Value par source d'acquisition (Finances)
+
+### 1. Définition
+Le **Lifetime Value (LTV)** mesure la valeur financière moyenne générée par un client sur l'ensemble de sa relation avec le cabinet, ventilée par canal d'acquisition (Site web, Téléphone, Parrainage, etc.).
+
+### 2. Mode de calcul
+- **Base de revenu** : Chiffre d'affaires théorique (nombre de séances × tarif). Le montant utilisé est `paymentAmount` si renseigné, sinon le tarif par défaut du client (`sessionRate` ou tarif système).
+- **Périmètre temporel** : Global — toutes les séances non annulées de toute la durée de vie du client sont comptabilisées, sans filtre d'année.
+- **Séances exclues** : Les séances au statut `cancelled` sont systématiquement exclues du calcul.
+
+### 3. Métriques affichées
+
+| Colonne | Description |
+|---------|-------------|
+| **Source** | Canal d'acquisition du client (normalisé via `recruitmentSources`) |
+| **Clients** | Nombre total de clients rattachés à cette source |
+| **Séances moy.** | Nombre moyen de séances non annulées par client (indicateur de fidélité/rétention) |
+| **LTV moyen** | CA théorique total de la source ÷ nombre de clients (en €) |
+| **LTV total** | CA théorique cumulé de tous les clients de cette source (en €) |
+| **Barre** | Visualisation comparative proportionnelle au LTV moyen le plus élevé |
+
+### 4. Seuil de pertinence statistique
+- **Minimum requis** : **3 clients** par source pour afficher les métriques LTV.
+- Si une source a moins de 3 clients, les colonnes Séances moy., LTV moyen et LTV total affichent un tiret (`—`) et la mention *« min. 3 clients requis »* remplace la barre de progression.
+- Cette règle évite de tirer des conclusions stratégiques à partir d'échantillons non significatifs.
+- **Règle de relégation** : Les sources non significatives sont systématiquement reléguées en bas de tableau, quel que soit leur CA théorique.
+
+### 5. Tri et normalisation
+- **Tri hiérarchique** : 
+    1. Priorité aux **sources significatives** (≥ 3 clients).
+    2. Au sein des sources significatives, tri par **LTV Total décroissant** (le canal ayant apporté le plus de richesse cumulée apparaît en premier).
+    3. Les sources non significatives sont affichées en fin de liste, également triées par LTV Total décroissant.
+- **Normalisation des sources** : Identique à celle du widget « Canaux d'acquisition » — les anciennes clés (`website`, `phone`) sont converties vers les clés du contexte utilisateur. Les sources inconnues sont affichées telles quelles ; les clients sans source sont regroupés sous « Non renseigné ».
+
+### 6. Guide Méthodologique (Drawer)
+- **Accès** : Le clic sur le titre du widget "Lifetime Value par source" ouvre un panneau latéral (Drawer) à droite.
+- **Contenu** : Le guide contient une vulgarisation pédagogique, un lexique (distinction CA Théorique / CA Encaissé), des astuces marketing pour interpréter les écarts entre volume et valeur, et des conseils actionnables.
+- **Détails techniques** : Une section dépliante affiche les formules mathématiques exactes pour garantir la transparence de l'outil.
+- **Emplacement du widget** : Tout en bas de la page Finances, après les exports.
+
 ## Dédoublonnage
 - Alerte si même client + même jour (bloquante avec confirmation)
 - Alerte si autres clients le même jour (informationnelle, désactivée pour les prospects)
@@ -477,6 +517,11 @@ Afin de garantir l'hygiène de la base de données lors de l'intégration massiv
    - Type par défaut : `individual` (le praticien pourra l'ajuster ultérieurement en `couple` ou `famille` selon le contexte).
    - Attribution : Assigner l'utilisateur responsable (Admin/Thérapeute principal).
 6. **Mise à jour automatique de la source et date de création** : Pour tout dossier (existant ou nouveau), si le **tout premier contact** enregistré dans son historique est de type « web », la source d'acquisition du client/prospect doit être obligatoirement forcée sur « Site web » (`website`). De plus, la **date de création** du dossier (`start_date`) doit refléter la date de ce premier contact, et non la date de la première séance ou la date de création en base.
+
+## Liste des clients
+- **Source de recrutement** : La colonne "Recommandation" est remplacée par "Source de recrutement".
+- **Tri** : Cette colonne accepte l'ordonnancement alphabétique.
+- **Contenu** : Affiche le libellé normalisé de la source d'acquisition du client.
 
 ## Date de création du dossier
 - **Modifiable** : clic sur la date dans la timeline de la thérapie → input date inline

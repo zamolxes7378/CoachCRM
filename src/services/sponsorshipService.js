@@ -225,7 +225,10 @@ export function countClientsBySource(clients, year, sources = []) {
 
   const counts = {}
   clients.forEach(c => {
-    if (year && c.startDate && new Date(c.startDate).getFullYear() !== year) return
+    if (year) {
+      if (!c.startDate) return
+      if (new Date(c.startDate).getFullYear() !== year) return
+    }
     let src = c.source || 'unknown'
     // Normalize: label → key
     const fromLabel = labelToKey[src.toLowerCase()]
